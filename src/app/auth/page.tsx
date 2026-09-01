@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-browser";
 import { Header } from "@/components/media-kit/header";
 import { Footer } from "@/components/media-kit/footer";
 
-export default function AuthPage() {
+// Force dynamic — page uses useSearchParams and Supabase auth state.
+export const dynamic = "force-dynamic";
+
+function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/knowledge";
@@ -154,5 +157,23 @@ export default function AuthPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col bg-background">
+          <Header />
+          <main id="main-content" className="flex-1 flex items-center justify-center px-4 py-24">
+            <div className="text-sm text-muted-foreground animate-pulse">Carregando…</div>
+          </main>
+          <Footer />
+        </div>
+      }
+    >
+      <AuthForm />
+    </Suspense>
   );
 }
