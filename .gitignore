@@ -60,3 +60,6 @@ server.log
 /prisma/
 /examples/
 /mini-services/
+
+# Vercel CLI local config (project IDs, OIDC tokens)
+.vercel/
