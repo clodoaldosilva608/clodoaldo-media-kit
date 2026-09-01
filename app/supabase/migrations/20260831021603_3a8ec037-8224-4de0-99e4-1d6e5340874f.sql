@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.service_queue_join(text) FROM anon;

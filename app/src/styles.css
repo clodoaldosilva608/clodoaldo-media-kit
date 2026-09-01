@@ -1,0 +1,264 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --font-display: "Newsreader", ui-serif, Georgia, serif;
+  --font-sans: "Inter Tight", "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Editorial dark: matte graphite, off-white type, single bronze accent */
+  --background: oklch(0.15 0.004 60);
+  --foreground: oklch(0.96 0.006 80);
+
+  --card: oklch(0.185 0.005 60);
+  --card-foreground: oklch(0.96 0.006 80);
+
+  --popover: oklch(0.185 0.005 60);
+  --popover-foreground: oklch(0.96 0.006 80);
+
+  /* Primary = desaturated bronze */
+  --primary: oklch(0.75 0.088 62);
+  --primary-foreground: oklch(0.15 0.004 60);
+  --primary-glow: oklch(0.8 0.075 68);
+
+  --secondary: oklch(0.23 0.005 60);
+  --secondary-foreground: oklch(0.96 0.006 80);
+
+  --muted: oklch(0.21 0.004 60);
+  --muted-foreground: oklch(0.7 0.008 75);
+
+  --accent: oklch(0.75 0.088 62);
+  --accent-foreground: oklch(0.15 0.004 60);
+
+  --destructive: oklch(0.6 0.19 25);
+  --destructive-foreground: oklch(0.96 0.006 80);
+
+  --success: oklch(0.7 0.12 152);
+  --success-foreground: oklch(0.15 0.004 60);
+
+  --border: oklch(0.98 0.004 80 / 12%);
+  --input: oklch(0.24 0.005 60);
+  --ring: oklch(0.75 0.088 62);
+
+  --gradient-hero: radial-gradient(
+      circle at 15% -5%,
+      oklch(0.75 0.088 62 / 7%),
+      transparent 55%
+    ),
+    linear-gradient(180deg, oklch(0.135 0.004 60), oklch(0.165 0.005 60));
+  --gradient-orange: linear-gradient(
+    180deg,
+    oklch(0.78 0.082 64),
+    oklch(0.73 0.09 60)
+  );
+  --shadow-glow: 0 1px 0 oklch(1 0 0 / 12%) inset;
+  --shadow-card: 0 24px 60px -32px oklch(0 0 0 / 70%);
+}
+
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-image: var(--gradient-hero);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+
+
+  /* Accessible focus ring on every native interactive that doesn't opt out */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Skip link (visible on focus) */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 0 0.75rem 0;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+  .skip-link:focus-visible {
+    left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@utility text-gradient-orange {
+  background: var(--gradient-orange);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-gradient-orange {
+  background: var(--gradient-orange);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.reveal.is-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  animation: fadeInUp 0.7s ease-out both;
+  animation-delay: 0ms !important;
+}
+.reveal[data-reveal="instant"] {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  animation: none !important;
+}
+
+/* ---- Editorial utilities ---- */
+
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility hairline {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-border),
+    transparent
+  );
+}
+
+@utility link-underline {
+  background-image: linear-gradient(var(--color-primary), var(--color-primary));
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.35s ease;
+}
+
+@utility link-underline-active {
+  background-size: 100% 1px;
+}
+
+@keyframes heroLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-line {
+  animation: heroLineIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-line {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
