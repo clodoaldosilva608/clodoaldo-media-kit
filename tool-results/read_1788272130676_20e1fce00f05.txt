@@ -1,0 +1,1053 @@
+     1→"""
+     2→Gerador de ilustrações matplotlib para os e-books.
+     3→Cada função retorna um caminho de arquivo PNG.
+     4→"""
+     5→import os
+     6→from typing import Dict
+     7→import matplotlib
+     8→matplotlib.use("Agg")
+     9→import matplotlib.pyplot as plt
+    10→import matplotlib.patches as mpatches
+    11→from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle, Rectangle, Wedge
+    12→import numpy as np
+    13→from pdf_base import COLORS, save_illustration, configure_matplotlib
+    14→
+    15→configure_matplotlib()
+    16→ILLUST_DIR = "/home/z/my-project/scripts/ebook-generator/illustrations"
+    17→os.makedirs(ILLUST_DIR, exist_ok=True)
+    18→
+    19→
+    20→def three_act_structure() -> str:
+    21→    """Estrutura de 3 atos aplicada a Reels."""
+    22→    fig, ax = plt.subplots(figsize=(10, 5.5))
+    23→    
+    24→    acts = [
+    25→        ("Ato 1 — Setup", "Gancho + Contexto\n0-3s", "#C8A062", 0),
+    26→        ("Ato 2 — Confronto", "Tensão + Desenvolvimento\n3-12s", "#9B7A45", 1),
+    27→        ("Ato 3 — Resolução", "CTA + Payoff\n12-15s", "#D4A574", 2),
+    28→    ]
+    29→    
+    30→    for label, sub, color, i in acts:
+    31→        rect = FancyBboxPatch(
+    32→            (i * 3.3, 1), 3, 2.5,
+    33→            boxstyle="round,pad=0.1",
+    34→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.85,
+    35→        )
+    36→        ax.add_patch(rect)
+    37→        ax.text(i * 3.3 + 1.5, 3.4, label, ha="center", va="bottom",
+    38→                fontsize=12, fontweight="bold", color="#F5EFE0")
+    39→        ax.text(i * 3.3 + 1.5, 2.25, sub, ha="center", va="center",
+    40→                fontsize=10, color="#1F1A14")
+    41→    
+    42→    # Linha do tempo embaixo
+    43→    ax.annotate("", xy=(10, 0.5), xytext=(0, 0.5),
+    44→                arrowprops=dict(arrowstyle="->", color="#A39684", lw=1.5))
+    45→    ax.text(5, 0.1, "Tempo do vídeo", ha="center", fontsize=9, color="#A39684", style="italic")
+    46→    
+    47→    ax.set_xlim(-0.5, 10)
+    48→    ax.set_ylim(0, 4.5)
+    49→    ax.set_aspect("equal")
+    50→    ax.axis("off")
+    51→    plt.tight_layout()
+    52→    return save_illustration(fig, "three_act_structure")
+    53→
+    54→
+    55→def narrative_arc() -> str:
+    56→    """Arco narrativo: começa baixo, sobe para climax, desce para resolução."""
+    57→    fig, ax = plt.subplots(figsize=(10, 5))
+    58→    
+    59→    x = np.linspace(0, 10, 200)
+    60→    # Curva em sino (clímax no meio)
+    61→    y = 4 * np.exp(-((x - 5) ** 2) / 8) + 0.3
+    62→    
+    63→    ax.fill_between(x, 0, y, color="#C8A062", alpha=0.2)
+    64→    ax.plot(x, y, color="#D4A574", linewidth=3)
+    65→    
+    66→    # Marcadores de estágios
+    67→    stages = [
+    68→        (1, 0.7, "Incidente\nGatilho"),
+    69→        (3.5, 2.5, "Tensão\nCrescente"),
+    70→        (5, 4.3, "Clímax"),
+    71→        (6.5, 2.5, "Ação\nDecisiva"),
+    72→        (9, 0.7, "Resolução"),
+    73→    ]
+    74→    
+    75→    for sx, sy, label in stages:
+    76→        ax.plot(sx, sy, "o", color="#F5EFE0", markersize=10, markeredgecolor="#C8A062", markeredgewidth=2)
+    77→        ax.annotate(label, (sx, sy), xytext=(sx, sy + 0.4 if sy < 4 else sy - 0.7),
+    78→                    ha="center", fontsize=9, color="#F5EFE0", fontweight="bold")
+    79→    
+    80→    ax.set_xlim(0, 10)
+    81→    ax.set_ylim(0, 5.5)
+    82→    ax.set_xlabel("Progressão da narrativa", fontsize=10, color="#A39684")
+    83→    ax.set_ylabel("Tensão / Engajamento", fontsize=10, color="#A39684")
+    84→    ax.set_title("Arco Narrativo Clássico", pad=15, color="#D9B885")
+    85→    ax.grid(True, alpha=0.15, color="#A39684")
+    86→    ax.axis("off")
+    87→    plt.tight_layout()
+    88→    return save_illustration(fig, "narrative_arc")
+    89→
+    90→
+    91→def emotional_hooks_wheel() -> str:
+    92→    """Roda de ganchos emocionais."""
+    93→    fig, ax = plt.subplots(figsize=(8, 8))
+    94→    
+    95→    emotions = [
+    96→        ("Curiosidade", "#C8A062"),
+    97→        ("Surpresa", "#D9B885"),
+    98→        ("Medo/Urgência", "#C97064"),
+    99→        ("Raiva", "#9B7A45"),
+   100→        ("Tristeza", "#7B6A5A"),
+   101→        ("Alegria", "#D4A574"),
+   102→        ("Aspiração", "#C8A062"),
+   103→        ("Pertencimento", "#B8945A"),
+   104→    ]
+   105→    
+   106→    n = len(emotions)
+   107→    angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+   108→    
+   109→    for i, (label, color) in enumerate(emotions):
+   110→        angle = angles[i]
+   111→        wedge = Wedge((0, 0), 1, np.degrees(angle), np.degrees(angles[(i + 1) % n]),
+   112→                      facecolor=color, edgecolor="#1F1A14", linewidth=2, alpha=0.85)
+   113→        ax.add_patch(wedge)
+   114→        
+   115→        mid_angle = (angle + angles[(i + 1) % n]) / 2
+   116→        x = 0.7 * np.cos(mid_angle)
+   117→        y = 0.7 * np.sin(mid_angle)
+   118→        ax.text(x, y, label, ha="center", va="center",
+   119→                fontsize=11, fontweight="bold", color="#1F1A14")
+   120→    
+   121→    # Círculo central
+   122→    central = Circle((0, 0), 0.25, facecolor="#1F1A14", edgecolor="#C8A062", linewidth=2)
+   123→    ax.add_patch(central)
+   124→    ax.text(0, 0, "Ganchos\nEmocionais", ha="center", va="center",
+   125→            fontsize=11, fontweight="bold", color="#C8A062")
+   126→    
+   127→    ax.set_xlim(-1.3, 1.3)
+   128→    ax.set_ylim(-1.3, 1.3)
+   129→    ax.set_aspect("equal")
+   130→    ax.axis("off")
+   131→    ax.set_title("8 Ganchos Emocionais Universais", pad=20, color="#D9B885", fontsize=13)
+   132→    plt.tight_layout()
+   133→    return save_illustration(fig, "emotional_hooks_wheel")
+   134→
+   135→
+   136→def hook_performance_chart() -> str:
+   137→    """Gráfico de performance de ganchos por taxa de retenção."""
+   138→    fig, ax = plt.subplots(figsize=(10, 5))
+   139→    
+   140→    hooks = [
+   141→        "Pergunta\naberta",
+   142→        "Stat\nchocante",
+   143→        "História\npessoal",
+   144→        "Promessa\n Clara",
+   145→        "Conflito\nexplícito",
+   146→        "Mistério\n/ enigma",
+   147→        "CTA\ninverso",
+   148→        "Quebra de\npadrão",
+   149→    ]
+   150→    retention = [78, 85, 92, 88, 81, 90, 75, 87]
+   151→    
+   152→    bars = ax.barh(hooks, retention, color="#C8A062", edgecolor="#F5EFE0", linewidth=0.5)
+   153→    
+   154→    # Destaque o maior
+   155→    max_idx = retention.index(max(retention))
+   156→    bars[max_idx].set_color("#D4A574")
+   157→    
+   158→    for bar, val in zip(bars, retention):
+   159→        ax.text(val + 1, bar.get_y() + bar.get_height() / 2, f"{val}%",
+   160→                va="center", fontsize=10, color="#F5EFE0", fontweight="bold")
+   161→    
+   162→    ax.set_xlim(0, 100)
+   163→    ax.set_xlabel("Taxa de retenção aos 3 segundos (%)", fontsize=10, color="#A39684")
+   164→    ax.set_title("Performance de Ganchos por Taxa de Retenção",
+   165→                 pad=15, color="#D9B885", fontsize=12)
+   166→    ax.invert_yaxis()
+   167→    ax.grid(True, axis="x", alpha=0.2, color="#A39684")
+   168→    ax.set_axisbelow(True)
+   169→    plt.tight_layout()
+   170→    return save_illustration(fig, "hook_performance_chart")
+   171→
+   172→
+   173→def content_framework_diagram() -> str:
+   174→    """Diagrama: Framework de Conteúdo (Estrutura → Gancho → Entrega → CTA)."""
+   175→    fig, ax = plt.subplots(figsize=(10, 6))
+   176→    
+   177→    steps = [
+   178→        ("1. Estrutura", "Defina o arco\n(3 atos, 5 estágios)", "#C8A062"),
+   179→        ("2. Gancho", "Capture atenção\nem 3 segundos", "#D9B885"),
+   180→        ("3. Entrega", "Cumpra a promessa\ncom valor real", "#9B7A45"),
+   181→        ("4. CTA", "Direcione a ação\ncom clareza", "#D4A574"),
+   182→    ]
+   183→    
+   184→    for i, (title, sub, color) in enumerate(steps):
+   185→        x = i * 2.5
+   186→        
+   187→        # Caixa
+   188→        rect = FancyBboxPatch(
+   189→            (x, 2), 2, 2,
+   190→            boxstyle="round,pad=0.1",
+   191→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.85,
+   192→        )
+   193→        ax.add_patch(rect)
+   194→        ax.text(x + 1, 3.4, title, ha="center", va="center",
+   195→                fontsize=12, fontweight="bold", color="#1F1A14")
+   196→        ax.text(x + 1, 2.7, sub, ha="center", va="center",
+   197→                fontsize=9, color="#1F1A14")
+   198→        
+   199→        # Seta para o próximo
+   200→        if i < len(steps) - 1:
+   201→            ax.annotate("", xy=(x + 2.3, 3), xytext=(x + 2, 3),
+   202→                        arrowprops=dict(arrowstyle="->", color="#F5EFE0", lw=2))
+   203→    
+   204→    # Loop feedback
+   205→    ax.annotate("", xy=(0, 1.5), xytext=(8, 1.5),
+   206→                arrowprops=dict(arrowstyle="->", color="#A39684", lw=1.5,
+   207→                                connectionstyle="arc3,rad=-0.3"))
+   208→    ax.text(4, 0.7, "Loop de iteração: analise métricas → ajuste",
+   209→            ha="center", fontsize=10, color="#A39684", style="italic")
+   210→    
+   211→    ax.set_xlim(-0.5, 10)
+   212→    ax.set_ylim(0, 5)
+   213→    ax.set_aspect("equal")
+   214→    ax.axis("off")
+   215→    plt.tight_layout()
+   216→    return save_illustration(fig, "content_framework_diagram")
+   217→
+   218→
+   219→def audience_archetypes() -> str:
+   220→    """Mapa de arquétipos de audiência."""
+   221→    fig, ax = plt.subplots(figsize=(10, 6))
+   222→    
+   223→    archetypes = [
+   224→        ("O Explorador", "Busca novidade\nAprender primeiro", 1, 4, "#C8A062"),
+   225→        ("O Realizador", "Quer resultado\nPrático e rápido", 4, 4, "#D9B885"),
+   226→        ("O Sábio", "Valoriza autoridade\nConteúdo profundo", 7, 4, "#9B7A45"),
+   227→        ("O Caregiver", "Ajuda os outros\nConteúdo útil", 1, 1.5, "#D4A574"),
+   228→        ("O Líber", "Quer liberdade\nIndependência", 4, 1.5, "#B8945A"),
+   229→        ("O Bobo da Corte", "Vive o presente\nHumor e leveza", 7, 1.5, "#C8A062"),
+   230→    ]
+   231→    
+   232→    for name, desc, x, y, color in archetypes:
+   233→        circle = Circle((x, y), 0.9, facecolor=color, edgecolor="#F5EFE0", linewidth=2, alpha=0.85)
+   234→        ax.add_patch(circle)
+   235→        ax.text(x, y + 0.15, name, ha="center", va="center",
+   236→                fontsize=11, fontweight="bold", color="#1F1A14")
+   237→        ax.text(x, y - 0.35, desc, ha="center", va="center",
+   238→                fontsize=8, color="#1F1A14")
+   239→    
+   240→    ax.set_xlim(-0.5, 9)
+   241→    ax.set_ylim(0, 6)
+   242→    ax.set_aspect("equal")
+   243→    ax.axis("off")
+   244→    ax.set_title("6 Arquétipos de Audiência para Storytelling",
+   245→                 pad=15, color="#D9B885", fontsize=12)
+   246→    plt.tight_layout()
+   247→    return save_illustration(fig, "audience_archetypes")
+   248→
+   249→
+   250→def story_vs_pitch_comparison() -> str:
+   251→    """Comparação visual: Story vs Pitch."""
+   252→    fig, ax = plt.subplots(figsize=(10, 5))
+   253→    
+   254→    # Lado esquerdo: Story
+   255→    rect1 = FancyBboxPatch((0, 1), 4, 3, boxstyle="round,pad=0.1",
+   256→                           facecolor="#C8A062", edgecolor="#F5EFE0", linewidth=2, alpha=0.85)
+   257→    ax.add_patch(rect1)
+   258→    ax.text(2, 3.7, "STORY", ha="center", fontsize=14, fontweight="bold", color="#1F1A14")
+   259→    ax.text(2, 3.2, "Começa com pessoa\n→ problema → jornada\n→ transformação → CTA natural",
+   260→            ha="center", va="center", fontsize=10, color="#1F1A14")
+   261→    ax.text(2, 1.4, "Retenção: ~70%", ha="center", fontsize=11,
+   262→            fontweight="bold", color="#1F1A14")
+   263→    
+   264→    # Seta
+   265→    ax.annotate("", xy=(6, 2.5), xytext=(4.3, 2.5),
+   266→                arrowprops=dict(arrowstyle="->", color="#F5EFE0", lw=2.5))
+   267→    ax.text(5.15, 2.7, "VS", ha="center", fontsize=12, color="#A39684", fontweight="bold")
+   268→    
+   269→    # Lado direito: Pitch
+   270→    rect2 = FancyBboxPatch((6, 1), 4, 3, boxstyle="round,pad=0.1",
+   271→                           facecolor="#3A332A", edgecolor="#C97064", linewidth=2, alpha=0.85)
+   272→    ax.add_patch(rect2)
+   273→    ax.text(8, 3.7, "PITCH", ha="center", fontsize=14, fontweight="bold", color="#C97064")
+   274→    ax.text(8, 3.2, "Começa com produto\n→ features → preço\n→ desconto → CTA agressivo",
+   275→            ha="center", va="center", fontsize=10, color="#F5EFE0")
+   276→    ax.text(8, 1.4, "Retenção: ~25%", ha="center", fontsize=11,
+   277→            fontweight="bold", color="#C97064")
+   278→    
+   279→    ax.set_xlim(-0.5, 10.5)
+   280→    ax.set_ylim(0, 5)
+   281→    ax.set_aspect("equal")
+   282→    ax.axis("off")
+   283→    plt.tight_layout()
+   284→    return save_illustration(fig, "story_vs_pitch_comparison")
+   285→
+   286→
+   287→# =====================================================
+   288→# ILUSTRAÇÕES — IA PARA CRIADORES DE CONTEÚDO
+   289→# =====================================================
+   290→
+   291→def ai_stack_diagram() -> str:
+   292→    """Diagrama do stack de ferramentas de IA para criadores."""
+   293→    fig, ax = plt.subplots(figsize=(10, 6))
+   294→    
+   295→    layers = [
+   296→        ("IDEAÇÃO", "ChatGPT · Gemini · Claude · Perplexity", "#C8A062", 5),
+   297→        ("PRODUÇÃO", "Midjourney · DALL·E · Runway · ElevenLabs", "#D9B885", 4),
+   298→        ("EDIÇÃO", "Descript · Adobe Firefly · CapCut AI · Opus Clip", "#9B7A45", 3),
+   299→        ("DISTRIBUIÇÃO", "Buffer AI · Hootsuite · Later · Metricool", "#D4A574", 2),
+   300→        ("ANALYTICS", "VidIQ · Tubebuddy · Sprout Social · GA4", "#B8945A", 1),
+   301→    ]
+   302→    
+   303→    for label, tools, color, y in layers:
+   304→        rect = FancyBboxPatch(
+   305→            (1, y), 8, 0.8,
+   306→            boxstyle="round,pad=0.05",
+   307→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.88,
+   308→        )
+   309→        ax.add_patch(rect)
+   310→        ax.text(1.3, y + 0.4, label, ha="left", va="center",
+   311→                fontsize=11, fontweight="bold", color="#1F1A14")
+   312→        ax.text(5, y + 0.4, tools, ha="center", va="center",
+   313→                fontsize=9, color="#1F1A14")
+   314→    
+   315→    # Seta vertical de pipeline
+   316→    ax.annotate("", xy=(0.5, 1), xytext=(0.5, 5.8),
+   317→                arrowprops=dict(arrowstyle="->", color="#A39684", lw=2))
+   318→    ax.text(0.25, 3.3, "Pipeline", ha="center", va="center", rotation=90,
+   319→            fontsize=10, color="#A39684", fontweight="bold")
+   320→    
+   321→    ax.set_xlim(0, 10)
+   322→    ax.set_ylim(0.5, 6.2)
+   323→    ax.axis("off")
+   324→    ax.set_title("Stack Completo de IA para Criadores", pad=15, color="#D9B885", fontsize=13)
+   325→    plt.tight_layout()
+   326→    return save_illustration(fig, "ai_stack_diagram")
+   327→
+   328→
+   329→def llm_comparison_chart() -> str:
+   330→    """Gráfico comparativo: ChatGPT vs Gemini vs Claude em diferentes tarefas."""
+   331→    fig, ax = plt.subplots(figsize=(10, 5.5))
+   332→    
+   333→    tasks = ["Roteiro\ncriativo", "Análise\nde dados", "Copywriting", "Código\nlongo", "Raciocínio\nlógico", "Visão\n(multimodal)"]
+   334→    chatgpt = [8.5, 7.8, 8.9, 9.0, 8.7, 8.0]
+   335→    gemini = [8.0, 8.6, 8.0, 7.5, 8.2, 9.1]
+   336→    claude = [9.2, 8.0, 9.1, 9.2, 9.3, 7.5]
+   337→    
+   338→    x = np.arange(len(tasks))
+   339→    w = 0.27
+   340→    
+   341→    ax.bar(x - w, chatgpt, w, label="ChatGPT (GPT-4o)", color="#C8A062", edgecolor="#F5EFE0", linewidth=0.5)
+   342→    ax.bar(x, gemini, w, label="Gemini 1.5 Pro", color="#D9B885", edgecolor="#F5EFE0", linewidth=0.5)
+   343→    ax.bar(x + w, claude, w, label="Claude 3.5 Sonnet", color="#9B7A45", edgecolor="#F5EFE0", linewidth=0.5)
+   344→    
+   345→    ax.set_xticks(x)
+   346→    ax.set_xticklabels(tasks, fontsize=9)
+   347→    ax.set_ylim(0, 10.5)
+   348→    ax.set_ylabel("Score (0-10)", fontsize=10, color="#A39684")
+   349→    ax.set_title("ChatGPT vs Gemini vs Claude — Performance por Tarefa",
+   350→                 pad=15, color="#D9B885", fontsize=12)
+   351→    ax.legend(loc="lower right", fontsize=9)
+   352→    ax.grid(True, axis="y", alpha=0.2, color="#A39684")
+   353→    ax.set_axisbelow(True)
+   354→    plt.tight_layout()
+   355→    return save_illustration(fig, "llm_comparison_chart")
+   356→
+   357→
+   358→def ai_workflow_funnel() -> str:
+   359→    """Funil de produtividade com IA — da ideia ao post."""
+   360→    fig, ax = plt.subplots(figsize=(10, 5.5))
+   361→    
+   362→    stages = [
+   363→        ("Ideação", "20 ideias em 10 min", 8.5, "#C8A062"),
+   364→        ("Roteiro", "Roteiro completo em 15 min", 7.0, "#D9B885"),
+   365→        ("Gravação", "Teleprompter + IA prompt", 5.5, "#9B7A45"),
+   366→        ("Edição", "Cortes automáticos + IA", 4.0, "#D4A574"),
+   367→        ("Distribuição", "Auto-post em 5 plataformas", 2.5, "#B8945A"),
+   368→    ]
+   369→    
+   370→    for i, (label, sub, width, color) in enumerate(stages):
+   371→        y = 4 - i
+   372→        x_left = (10 - width) / 2
+   373→        rect = FancyBboxPatch(
+   374→            (x_left, y - 0.4), width, 0.8,
+   375→            boxstyle="round,pad=0.05",
+   376→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.88,
+   377→        )
+   378→        ax.add_patch(rect)
+   379→        ax.text(5, y + 0.15, label, ha="center", va="center",
+   380→                fontsize=11, fontweight="bold", color="#1F1A14")
+   381→        ax.text(5, y - 0.18, sub, ha="center", va="center",
+   382→                fontsize=9, color="#1F1A14", style="italic")
+   383→    
+   384→    # Tempo total
+   385→    ax.text(5, -0.6, "Tempo total: ~2 horas (era 8 horas sem IA)",
+   386→            ha="center", fontsize=11, color="#D9B885", fontweight="bold")
+   387→    
+   388→    ax.set_xlim(-0.5, 10.5)
+   389→    ax.set_ylim(-1.2, 5)
+   390→    ax.axis("off")
+   391→    ax.set_title("Funil de Produção com IA — Ideia → Post", pad=15, color="#D9B885", fontsize=13)
+   392→    plt.tight_layout()
+   393→    return save_illustration(fig, "ai_workflow_funnel")
+   394→
+   395→
+   396→def ai_adoption_growth() -> str:
+   397→    """Crescimento de adoção de IA por criadores."""
+   398→    fig, ax = plt.subplots(figsize=(10, 5))
+   399→    
+   400→    months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+   401→    adoption = [12, 18, 27, 38, 49, 58, 67, 74, 81, 86, 90, 93]
+   402→    
+   403→    ax.fill_between(months, adoption, color="#C8A062", alpha=0.25)
+   404→    ax.plot(months, adoption, color="#D9B885", linewidth=3, marker="o",
+   405→            markerfacecolor="#C8A062", markeredgecolor="#F5EFE0", markersize=8)
+   406→    
+   407→    for i, (m, v) in enumerate(zip(months, adoption)):
+   408→        if i % 2 == 0 or i == len(months) - 1:
+   409→            ax.annotate(f"{v}%", (i, v), xytext=(0, 12), textcoords="offset points",
+   410→                        ha="center", fontsize=9, color="#F5EFE0", fontweight="bold")
+   411→    
+   412→    ax.set_ylim(0, 105)
+   413→    ax.set_ylabel("% de criadores que usam IA", fontsize=10, color="#A39684")
+   414→    ax.set_title("Crescimento da Adoção de IA entre Criadores (2024)",
+   415→                 pad=15, color="#D9B885", fontsize=12)
+   416→    ax.grid(True, alpha=0.2, color="#A39684")
+   417→    ax.set_axisbelow(True)
+   418→    plt.tight_layout()
+   419→    return save_illustration(fig, "ai_adoption_growth")
+   420→
+   421→
+   422→def ai_ethics_radar() -> str:
+   423→    """Radar de dimensões éticas no uso de IA."""
+   424→    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection="polar"))
+   425→    
+   426→    categories = ["Transparência", "Originalidade", "Vieses", "Privacidade",
+   427→                  "Attribuição", "Qualidade", "Consentimento", "Sustentabilidade"]
+   428→    ideal = [9, 8, 9, 10, 8, 9, 9, 7]
+   429→    real = [5, 6, 4, 6, 4, 7, 5, 3]
+   430→    
+   431→    angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+   432→    ideal += ideal[:1]
+   433→    real += real[:1]
+   434→    angles += angles[:1]
+   435→    
+   436→    ax.plot(angles, ideal, color="#7BB081", linewidth=2, label="Ideal")
+   437→    ax.fill(angles, ideal, color="#7BB081", alpha=0.15)
+   438→    ax.plot(angles, real, color="#C97064", linewidth=2, label="Prática real (média)")
+   439→    ax.fill(angles, real, color="#C97064", alpha=0.2)
+   440→    
+   441→    ax.set_xticks(angles[:-1])
+   442→    ax.set_xticklabels(categories, fontsize=10, color="#F5EFE0")
+   443→    ax.set_ylim(0, 10)
+   444→    ax.set_yticks([2, 4, 6, 8, 10])
+   445→    ax.set_yticklabels(["2", "4", "6", "8", "10"], fontsize=8, color="#A39684")
+   446→    ax.set_title("Dimensões Éticas no Uso de IA",
+   447→                 pad=25, color="#D9B885", fontsize=13, fontweight="bold")
+   448→    ax.legend(loc="upper right", bbox_to_anchor=(1.25, 1.10), fontsize=9)
+   449→    ax.grid(True, color="#A39684", alpha=0.3)
+   450→    plt.tight_layout()
+   451→    return save_illustration(fig, "ai_ethics_radar")
+   452→
+   453→
+   454→# =====================================================
+   455→# ILUSTRAÇÕES — PACK DE PROMPTS PREMIUM
+   456→# =====================================================
+   457→
+   458→def prompt_anatomy() -> str:
+   459→    """Anatomia de um prompt eficaz — 5 componentes."""
+   460→    fig, ax = plt.subplots(figsize=(10, 5.5))
+   461→    
+   462→    parts = [
+   463→        ("CONTEXTO\nQuem é você?", "Ex: \"Você é um copywriter\nsênior com 10 anos...\"", "#C8A062"),
+   464→        ("TAREFA\nO que fazer?", "Ex: \"Escreva 5 headlines\npara um Reels sobre...\"", "#D9B885"),
+   465→        ("RESTRIÇÕES\nLimites?", "Ex: \"Máx 8 palavras,\nsem emojis, tom ousado\"", "#9B7A45"),
+   466→        ("FORMATO\nComo entregar?", "Ex: \"Liste em formato\nde tabela com 3 cols\"", "#D4A574"),
+   467→        ("EXEMPLO\nFew-shot?", "Ex: \"Use este padrão:\n[exemplo de ref.]\"", "#B8945A"),
+   468→    ]
+   469→    
+   470→    for i, (label, sub, color) in enumerate(parts):
+   471→        x = i * 2
+   472→        rect = FancyBboxPatch(
+   473→            (x, 2), 1.8, 2.5,
+   474→            boxstyle="round,pad=0.1",
+   475→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.88,
+   476→        )
+   477→        ax.add_patch(rect)
+   478→        ax.text(x + 0.9, 3.9, label, ha="center", va="center",
+   479→                fontsize=10, fontweight="bold", color="#1F1A14")
+   480→        ax.text(x + 0.9, 2.7, sub, ha="center", va="center",
+   481→                fontsize=8, color="#1F1A14", style="italic")
+   482→        
+   483→        if i < len(parts) - 1:
+   484→            ax.annotate("", xy=(x + 1.95, 3.25), xytext=(x + 1.8, 3.25),
+   485→                        arrowprops=dict(arrowstyle="->", color="#F5EFE0", lw=2))
+   486→    
+   487→    ax.set_xlim(-0.3, 10.3)
+   488→    ax.set_ylim(1.5, 5)
+   489→    ax.axis("off")
+   490→    ax.set_title("Anatomia de um Prompt Eficaz — 5 Componentes",
+   491→                 pad=15, color="#D9B885", fontsize=13)
+   492→    plt.tight_layout()
+   493→    return save_illustration(fig, "prompt_anatomy")
+   494→
+   495→
+   496→def prompt_quality_curve() -> str:
+   497→    """Curva: qualidade do output vs especificidade do prompt."""
+   498→    fig, ax = plt.subplots(figsize=(10, 5))
+   499→    
+   500→    x = np.linspace(0, 10, 200)
+   501→    # Curva logarítmica: ganhos rápidos no início, saturação
+   502→    y = 9 * (1 - np.exp(-x / 3))
+   503→    
+   504→    ax.fill_between(x, 0, y, color="#C8A062", alpha=0.2)
+   505→    ax.plot(x, y, color="#D9B885", linewidth=3)
+   506→    
+   507→    # Zonas
+   508→    zones = [
+   509→        (0, 2.5, "Prompts\nvagos", "#C97064"),
+   510→        (2.5, 6, "Prompts\nbons", "#D4A574"),
+   511→        (6, 10, "Prompts\nmaster", "#7BB081"),
+   512→    ]
+   513→    for x1, x2, label, color in zones:
+   514→        ax.axvspan(x1, x2, alpha=0.08, color=color)
+   515→        ax.text((x1 + x2) / 2, 1, label, ha="center", va="center",
+   516→                fontsize=10, color=color, fontweight="bold")
+   517→    
+   518→    ax.set_xlim(0, 10)
+   519→    ax.set_ylim(0, 10)
+   520→    ax.set_xlabel("Especificidade do prompt →", fontsize=10, color="#A39684")
+   521→    ax.set_ylabel("Qualidade do output →", fontsize=10, color="#A39684")
+   522→    ax.set_title("Curva de Especificidade: quanto mais detalhe, melhor o resultado (até saturar)",
+   523→                 pad=15, color="#D9B885", fontsize=11)
+   524→    ax.grid(True, alpha=0.2, color="#A39684")
+   525→    ax.set_axisbelow(True)
+   526→    plt.tight_layout()
+   527→    return save_illustration(fig, "prompt_quality_curve")
+   528→
+   529→
+   530→def prompt_categories_pie() -> str:
+   531→    """Pizza: distribuição de prompts por categoria."""
+   532→    fig, ax = plt.subplots(figsize=(8, 8))
+   533→    
+   534→    cats = [
+   535→        ("Copywriting", 22, "#C8A062"),
+   536→        ("Roteiro de Reels", 18, "#D9B885"),
+   537→        ("SEO / Blog", 14, "#9B7A45"),
+   538→        ("Social Media", 12, "#D4A574"),
+   539→        ("Email Marketing", 10, "#B8945A"),
+   540→        ("Brainstorming", 9, "#C8A062"),
+   541→        ("Análise de Dados", 8, "#7B6A5A"),
+   542→        ("Criativos Avançados", 7, "#D9B885"),
+   543→    ]
+   544→    
+   545→    labels = [f"{c[0]}\n{c[1]} prompts" for c in cats]
+   546→    sizes = [c[1] for c in cats]
+   547→    colors_list = [c[2] for c in cats]
+   548→    
+   549→    wedges, texts, autotexts = ax.pie(
+   550→        sizes, labels=labels, colors=colors_list,
+   551→        autopct="%1.0f%%", startangle=90,
+   552→        wedgeprops=dict(edgecolor="#1F1A14", linewidth=2),
+   553→        textprops=dict(fontsize=9, color="#F5EFE0"),
+   554→    )
+   555→    for at in autotexts:
+   556→        at.set_color("#1F1A14")
+   557→        at.set_fontweight("bold")
+   558→        at.set_fontsize(9)
+   559→    
+   560→    ax.set_title("100+ Prompts por Categoria — Distribuição",
+   561→                 pad=20, color="#D9B885", fontsize=13, fontweight="bold")
+   562→    plt.tight_layout()
+   563→    return save_illustration(fig, "prompt_categories_pie")
+   564→
+   565→
+   566→def prompt_iteration_cycle() -> str:
+   567→    """Ciclo de iteração: prompt → output → análise → refinamento."""
+   568→    fig, ax = plt.subplots(figsize=(8, 8))
+   569→    
+   570→    steps = [
+   571→        ("1. PRIMEIRO\nPROMPT", "Versão inicial\nsimples", "#C8A062", 0),
+   572→        ("2. AVALIAR\nOUTPUT", "Pontuar em\n5 critérios", "#D9B885", 1),
+   573→        ("3. IDENTIFICAR\nGAPS", "O que faltou?\nO que sobrou?", "#9B7A45", 2),
+   574→        ("4. REFINAR\nPROMPT", "Adicionar contexto,\nexemplos, restrições", "#D4A574", 3),
+   575→    ]
+   576→    
+   577→    positions = [
+   578→        (0, 3), (3, 0), (0, -3), (-3, 0)
+   579→    ]
+   580→    
+   581→    for (label, sub, color, _), (x, y) in zip(steps, positions):
+   582→        circle = Circle((x, y), 1.4, facecolor=color, edgecolor="#F5EFE0", linewidth=2, alpha=0.88)
+   583→        ax.add_patch(circle)
+   584→        ax.text(x, y + 0.3, label, ha="center", va="center",
+   585→                fontsize=10, fontweight="bold", color="#1F1A14")
+   586→        ax.text(x, y - 0.5, sub, ha="center", va="center",
+   587→                fontsize=8, color="#1F1A14", style="italic")
+   588→    
+   589→    # Setas circulares
+   590→    arrow_pairs = [((1.4, 3), (3, 1.4)), ((3, -1.4), (1.4, -3)),
+   591→                   ((-1.4, -3), (-3, -1.4)), ((-3, 1.4), (-1.4, 3))]
+   592→    for (x1, y1), (x2, y2) in arrow_pairs:
+   593→        ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+   594→                    arrowprops=dict(arrowstyle="->", color="#A39684", lw=2,
+   595→                                    connectionstyle="arc3,rad=0.2"))
+   596→    
+   597→    # Centro
+   598→    central = Circle((0, 0), 0.7, facecolor="#1F1A14", edgecolor="#C8A062", linewidth=2)
+   599→    ax.add_patch(central)
+   600→    ax.text(0, 0, "CICLO\nDE IA", ha="center", va="center",
+   601→            fontsize=10, fontweight="bold", color="#C8A062")
+   602→    
+   603→    ax.set_xlim(-5.5, 5.5)
+   604→    ax.set_ylim(-5.5, 5.5)
+   605→    ax.set_aspect("equal")
+   606→    ax.axis("off")
+   607→    ax.set_title("Ciclo de Iteração de Prompts — 4 Estágios",
+   608→                 pad=15, color="#D9B885", fontsize=13)
+   609→    plt.tight_layout()
+   610→    return save_illustration(fig, "prompt_iteration_cycle")
+   611→
+   612→
+   613→# =====================================================
+   614→# ILUSTRAÇÕES — 30 GANCHOS PARA REELS
+   615→# =====================================================
+   616→
+   617→def hook_retention_curve() -> str:
+   618→    """Curva de retenção: comparando gancho forte vs fraco."""
+   619→    fig, ax = plt.subplots(figsize=(10, 5))
+   620→    
+   621→    t = np.linspace(0, 15, 100)
+   622→    # Gancho forte: alta retenção inicial, queda suave
+   623→    strong = 100 * np.exp(-t / 25) * (1 - 0.3 * (t / 15))
+   624→    # Gancho fraco: queda acentuada logo no início
+   625→    weak = 100 * np.exp(-t / 4) * (1 - 0.1 * (t / 15))
+   626→    
+   627→    ax.plot(t, strong, color="#7BB081", linewidth=3, label="Gancho forte (top 10%)")
+   628→    ax.fill_between(t, 0, strong, color="#7BB081", alpha=0.15)
+   629→    ax.plot(t, weak, color="#C97064", linewidth=3, label="Gancho fraco (bottom 25%)")
+   630→    ax.fill_between(t, 0, weak, color="#C97064", alpha=0.15)
+   631→    
+   632→    # Linha crítica dos 3 segundos
+   633→    ax.axvline(x=3, color="#D9B885", linewidth=1.5, linestyle="--", alpha=0.7)
+   634→    ax.text(3.2, 95, "3s — decisão\nde continuar", fontsize=9, color="#D9B885",
+   635→            fontweight="bold")
+   636→    
+   637→    ax.set_xlim(0, 15)
+   638→    ax.set_ylim(0, 105)
+   639→    ax.set_xlabel("Segundos", fontsize=10, color="#A39684")
+   640→    ax.set_ylabel("% da audiência assistindo", fontsize=10, color="#A39684")
+   641→    ax.set_title("Curva de Retenção: Gancho Forte vs Fraco",
+   642→                 pad=15, color="#D9B885", fontsize=12)
+   643→    ax.legend(loc="upper right", fontsize=9)
+   644→    ax.grid(True, alpha=0.2, color="#A39684")
+   645→    ax.set_axisbelow(True)
+   646→    plt.tight_layout()
+   647→    return save_illustration(fig, "hook_retention_curve")
+   648→
+   649→
+   650→def hook_categories_grid() -> str:
+   651→    """Grid 6x5 de 30 ganchos agrupados por categoria."""
+   652→    fig, ax = plt.subplots(figsize=(11, 7))
+   653→    
+   654→    cats = [
+   655→        ("PERGUNTA", "#C8A062", ["1. Pergunta aberta", "2. Pergunta polarizante",
+   656→                                  "3. Pergunta sim/não", "4. Pergunta retórica",
+   657→                                  "5. Pergunta hipotética"]),
+   658→        ("STAT", "#D9B885", ["6. Stat chocante", "7. Stat contraditória",
+   659→                              "8. Stat negada", "9. Stat localizada",
+   660→                              "10. Stat + tempo"]),
+   661→        ("HISTÓRIA", "#9B7A45", ["11. Antes/depois", "12. Story pessoal",
+   662→                                  "13. Bastidor", "14. Confissão",
+   663→                                  "15. Falha pública"]),
+   664→        ("PROMESSA", "#D4A574", ["16. Promessa clara", "17. Lista numerada",
+   665→                                  "18. Resultado em X dias", "19. Solução secreta",
+   666→                                  "20. Comparativo direto"]),
+   667→        ("CONFLITO", "#B8945A", ["21. Polêmica declarada", "22. Mito vs verdade",
+   668→                                  "23. Erro comum exposto", "24. Contra senso comum",
+   669→                                  "25. Pegadinha revelada"]),
+   670→        ("CURIOSIDADE", "#7B6A5A", ["26. Mistério parcial", "27. Plot twist",
+   671→                                     "28. Quase revela", "29. Enigma",
+   672→                                     "30. CTA inverso"]),
+   673→    ]
+   674→    
+   675→    for i, (cat_name, color, hooks) in enumerate(cats):
+   676→        col = i % 3
+   677→        row = i // 3
+   678→        x0 = col * 3.4
+   679→        y0 = (1 - row) * 3.4
+   680→        
+   681→        # Cabeçalho da categoria
+   682→        rect = FancyBboxPatch((x0, y0 + 2.5), 3.2, 0.7,
+   683→                              boxstyle="round,pad=0.05",
+   684→                              facecolor=color, edgecolor="#F5EFE0",
+   685→                              linewidth=1.2, alpha=0.9)
+   686→        ax.add_patch(rect)
+   687→        ax.text(x0 + 1.6, y0 + 2.85, cat_name, ha="center", va="center",
+   688→                fontsize=10, fontweight="bold", color="#1F1A14")
+   689→        
+   690→        # Hooks da categoria
+   691→        for j, h in enumerate(hooks):
+   692→            ax.text(x0 + 0.1, y0 + 2.2 - j * 0.4, h, ha="left", va="center",
+   693→                    fontsize=8, color="#F5EFE0")
+   694→    
+   695→    ax.set_xlim(-0.3, 10.3)
+   696→    ax.set_ylim(-0.3, 7)
+   697→    ax.axis("off")
+   698→    ax.set_title("30 Ganchos Agrupados por Categoria (6 famílias × 5 ganchos)",
+   699→                 pad=15, color="#D9B885", fontsize=12)
+   700→    plt.tight_layout()
+   701→    return save_illustration(fig, "hook_categories_grid")
+   702→
+   703→
+   704→def hook_decision_tree() -> str:
+   705→    """Árvore de decisão: qual gancho usar para qual objetivo."""
+   706→    fig, ax = plt.subplots(figsize=(10, 6))
+   707→    
+   708→    # Nó raiz
+   709→    root = FancyBboxPatch((4, 5), 2.5, 0.8, boxstyle="round,pad=0.05",
+   710→                          facecolor="#C8A062", edgecolor="#F5EFE0", linewidth=1.5)
+   711→    ax.add_patch(root)
+   712→    ax.text(5.25, 5.4, "Qual seu objetivo?", ha="center", va="center",
+   713→            fontsize=11, fontweight="bold", color="#1F1A14")
+   714→    
+   715→    # Nós filhos nível 1
+   716→    nodes_l1 = [
+   717→        ("Conscientizar", 1, 3.5, "#D9B885"),
+   718→        ("Vender", 4, 3.5, "#9B7A45"),
+   719→        ("Educar", 7, 3.5, "#D4A574"),
+   720→        ("Entreter", 10, 3.5, "#B8945A"),
+   721→    ]
+   722→    for label, x, y, color in nodes_l1:
+   723→        rect = FancyBboxPatch((x - 0.2, y), 1.8, 0.7, boxstyle="round,pad=0.05",
+   724→                              facecolor=color, edgecolor="#F5EFE0", linewidth=1.2, alpha=0.88)
+   725→        ax.add_patch(rect)
+   726→        ax.text(x + 0.7, y + 0.35, label, ha="center", va="center",
+   727→                fontsize=9, fontweight="bold", color="#1F1A14")
+   728→        ax.annotate("", xy=(x + 0.7, y + 0.7), xytext=(5.25, 5),
+   729→                    arrowprops=dict(arrowstyle="->", color="#A39684", lw=1.2))
+   730→    
+   731→    # Nós folha (ganchos recomendados)
+   732→    leaves = [
+   733→        (1, 2, "Stat chocante\nou Pergunta"),
+   734→        (4, 2, "Promessa clara\nou Resultado"),
+   735→        (7, 2, "Lista numerada\nou Pergunta retórica"),
+   736→        (10, 2, "Plot twist\nou Story pessoal"),
+   737→    ]
+   738→    for x, y, label in leaves:
+   739→        ax.text(x + 0.7, y - 0.3, label, ha="center", va="center",
+   740→                fontsize=9, color="#F5EFE0", style="italic",
+   741→                bbox=dict(boxstyle="round,pad=0.3", facecolor="#2A231C",
+   742→                          edgecolor="#C8A062", linewidth=1))
+   743→        ax.annotate("", xy=(x + 0.7, y + 0.1), xytext=(x + 0.7, y + 0.6),
+   744→                    arrowprops=dict(arrowstyle="->", color="#A39684", lw=1.2))
+   745→    
+   746→    ax.set_xlim(0, 12)
+   747→    ax.set_ylim(0.5, 6.2)
+   748→    ax.axis("off")
+   749→    ax.set_title("Árvore de Decisão — Qual Gancho Usar?",
+   750→                 pad=15, color="#D9B885", fontsize=13)
+   751→    plt.tight_layout()
+   752→    return save_illustration(fig, "hook_decision_tree")
+   753→
+   754→
+   755→def hook_timing_chart() -> str:
+   756→    """Tempo ideal de gancho por plataforma."""
+   757→    fig, ax = plt.subplots(figsize=(10, 5))
+   758→    
+   759→    platforms = ["Instagram\nReels", "TikTok", "YouTube\nShorts", "YouTube\nLongo", "LinkedIn"]
+   760→    ideal_time = [1.5, 1.0, 1.8, 8.0, 4.0]  # segundos
+   761→    max_retain = [85, 90, 82, 65, 70]  # % 
+   762→    
+   763→    x = np.arange(len(platforms))
+   764→    
+   765→    ax2 = ax.twinx()
+   766→    bars = ax.bar(x, ideal_time, color="#C8A062", edgecolor="#F5EFE0",
+   767→                  linewidth=0.5, alpha=0.85, label="Tempo ideal do gancho (s)")
+   768→    ax2.plot(x, max_retain, color="#D9B885", linewidth=3, marker="o",
+   769→             markersize=10, markerfacecolor="#9B7A45",
+   770→             markeredgecolor="#F5EFE0", label="Retenção máxima (%)")
+   771→    
+   772→    for bar, v in zip(bars, ideal_time):
+   773→        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.2, f"{v}s",
+   774→                ha="center", fontsize=10, color="#F5EFE0", fontweight="bold")
+   775→    for xi, v in zip(x, max_retain):
+   776→        ax2.text(xi, v + 2, f"{v}%", ha="center", fontsize=10,
+   777→                 color="#D9B885", fontweight="bold")
+   778→    
+   779→    ax.set_xticks(x)
+   780→    ax.set_xticklabels(platforms, fontsize=9)
+   781→    ax.set_ylim(0, 10)
+   782→    ax2.set_ylim(0, 100)
+   783→    ax.set_ylabel("Tempo ideal (segundos)", fontsize=10, color="#A39684")
+   784→    ax2.set_ylabel("Retenção máxima (%)", fontsize=10, color="#A39684")
+   785→    ax.set_title("Tempo Ideal do Gancho por Plataforma",
+   786→                 pad=15, color="#D9B885", fontsize=12)
+   787→    ax.grid(True, alpha=0.2, color="#A39684", axis="y")
+   788→    ax.set_axisbelow(True)
+   789→    
+   790→    lines1, labels1 = ax.get_legend_handles_labels()
+   791→    lines2, labels2 = ax2.get_legend_handles_labels()
+   792→    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left", fontsize=9)
+   793→    plt.tight_layout()
+   794→    return save_illustration(fig, "hook_timing_chart")
+   795→
+   796→
+   797→# =====================================================
+   798→# ILUSTRAÇÕES — MANUAL DA EDIÇÃO PREMIUM
+   799→# =====================================================
+   800→
+   801→def editing_workflow_diagram() -> str:
+   802→    """Diagrama do workflow de edição premium."""
+   803→    fig, ax = plt.subplots(figsize=(10, 6))
+   804→    
+   805→    steps = [
+   806→        ("1. INGEST", "Importar\nfootage bruto", "#C8A062", 0),
+   807→        ("2. SELEÇÃO", "Pick best takes\norganizar por cena", "#D9B885", 1),
+   808→        ("3. ROUGH CUT", "Montagem inicial\nsequência lógica", "#9B7A45", 2),
+   809→        ("4. REFINO", "Cortes finos\nritmo e pacing", "#D4A574", 3),
+   810→        ("5. COLOR", "Color grading\nLUTs + ajuste", "#B8945A", 4),
+   811→        ("6. SOUND", "Sound design\nmix + master", "#C8A062", 5),
+   812→        ("7. GRAPHICS", "Texto + motion\n+ títulos", "#D9B885", 6),
+   813→        ("8. EXPORT", "Render final\nmultiplataforma", "#9B7A45", 7),
+   814→    ]
+   815→    
+   816→    # Layout em zig-zag
+   817→    positions = []
+   818→    for i in range(len(steps)):
+   819→        if i < 4:
+   820→            positions.append((i * 2.5, 4))
+   821→        else:
+   822→            positions.append(((7 - i) * 2.5, 1.5))
+   823→    
+   824→    for (label, sub, color, idx), (x, y) in zip(steps, positions):
+   825→        rect = FancyBboxPatch(
+   826→            (x, y), 2.2, 1.3,
+   827→            boxstyle="round,pad=0.08",
+   828→            facecolor=color, edgecolor="#F5EFE0", linewidth=1.5, alpha=0.88,
+   829→        )
+   830→        ax.add_patch(rect)
+   831→        ax.text(x + 1.1, y + 1, label, ha="center", va="center",
+   832→                fontsize=10, fontweight="bold", color="#1F1A14")
+   833→        ax.text(x + 1.1, y + 0.4, sub, ha="center", va="center",
+   834→                fontsize=8, color="#1F1A14")
+   835→    
+   836→    # Setas
+   837→    for i in range(len(positions) - 1):
+   838→        x1, y1 = positions[i]
+   839→        x2, y2 = positions[i + 1]
+   840→        # Ajusta para sair da direita e entrar na esquerda da próxima
+   841→        if i == 3:
+   842→            # Seta vertical descendo
+   843→            ax.annotate("", xy=(x2 + 1.1, y2 + 1.4), xytext=(x1 + 1.1, y1),
+   844→                        arrowprops=dict(arrowstyle="->", color="#A39684", lw=2,
+   845→                                        connectionstyle="arc3,rad=0"))
+   846→        else:
+   847→            ax.annotate("", xy=(x2, y2 + 0.65), xytext=(x1 + 2.2, y1 + 0.65),
+   848→                        arrowprops=dict(arrowstyle="->", color="#A39684", lw=2))
+   849→    
+   850→    ax.set_xlim(-0.5, 10.5)
+   851→    ax.set_ylim(0.5, 6)
+   852→    ax.axis("off")
+   853→    ax.set_title("Workflow de Edição Premium — 8 Estágios",
+   854→                 pad=15, color="#D9B885", fontsize=13)
+   855→    plt.tight_layout()
+   856→    return save_illustration(fig, "editing_workflow_diagram")
+   857→
+   858→
+   859→def pacing_chart() -> str:
+   860→    """Gráfico de pacing: cortes por minuto ao longo de formatos."""
+   861→    fig, ax = plt.subplots(figsize=(10, 5))
+   862→    
+   863→    formats = ["Reels 15s", "Reels 30s", "Reels 60s", "Shorts 60s", "YouTube\nLongo 10min", "Podcast\nclip"]
+   864→    cuts_per_min = [40, 32, 22, 18, 12, 8]
+   865→    
+   866→    bars = ax.bar(formats, cuts_per_min, color=["#C8A062", "#D9B885", "#9B7A45",
+   867→                                                  "#D4A574", "#B8945A", "#7B6A5A"],
+   868→                  edgecolor="#F5EFE0", linewidth=0.5)
+   869→    
+   870→    for bar, v in zip(bars, cuts_per_min):
+   871→        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.8, f"{v}/min",
+   872→                ha="center", fontsize=10, color="#F5EFE0", fontweight="bold")
+   873→    
+   874→    ax.set_ylim(0, 50)
+   875→    ax.set_ylabel("Cortes por minuto", fontsize=10, color="#A39684")
+   876→    ax.set_title("Pacing Ideal por Formato — Cortes por Minuto",
+   877→                 pad=15, color="#D9B885", fontsize=12)
+   878→    ax.grid(True, axis="y", alpha=0.2, color="#A39684")
+   879→    ax.set_axisbelow(True)
+   880→    plt.tight_layout()
+   881→    return save_illustration(fig, "pacing_chart")
+   882→
+   883→
+   884→def color_grading_wheel() -> str:
+   885→    """Roda de color grading — looks populares."""
+   886→    fig, ax = plt.subplots(figsize=(9, 8))
+   887→    
+   888→    looks = [
+   889→        ("Teal & Orange", "#1F5A6E", "#D4762A", "Cinema clássico\nSombras frias / pele quente"),
+   890→        ("Bronze Warm", "#9B7A45", "#F5EFE0", "Tom premium\nMarca pessoal"),
+   891→        ("Noir B&W", "#2A231C", "#F5EFE0", "Dramático\nAlto contraste"),
+   892→        ("Vintage Film", "#7B5A3E", "#E8C99B", "Nostálgico\nGrão + fade"),
+   893→        ("Cyber Neon", "#3A1F4E", "#D9A574", "Futurista\nHightlights saturados"),
+   894→        ("Documentário", "#5A4E3A", "#E8DCC4", "Natural\nMinimalista"),
+   895→    ]
+   896→    
+   897→    n = len(looks)
+   898→    angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
+   899→    
+   900→    for i, (name, c1, c2, desc) in enumerate(looks):
+   901→        angle = angles[i]
+   902→        mid = angle + (2 * np.pi / n) / 2
+   903→        
+   904→        # Wedge com gradiente simulado
+   905→        wedge = Wedge((0, 0), 1.2, np.degrees(angle), np.degrees(angles[(i + 1) % n]),
+   906→                      facecolor=c1, edgecolor="#1F1A14", linewidth=2, alpha=0.85)
+   907→        ax.add_patch(wedge)
+   908→        
+   909→        x = 0.85 * np.cos(mid)
+   910→        y = 0.85 * np.sin(mid)
+   911→        ax.text(x, y, name, ha="center", va="center",
+   912→                fontsize=10, fontweight="bold", color=c2)
+   913→        
+   914→        x2 = 1.5 * np.cos(mid)
+   915→        y2 = 1.5 * np.sin(mid)
+   916→        ax.text(x2, y2, desc, ha="center", va="center",
+   917→                fontsize=8, color="#F5EFE0", style="italic")
+   918→    
+   919→    # Centro
+   920→    central = Circle((0, 0), 0.35, facecolor="#1F1A14", edgecolor="#C8A062", linewidth=2)
+   921→    ax.add_patch(central)
+   922→    ax.text(0, 0, "Color\nGrading", ha="center", va="center",
+   923→            fontsize=10, fontweight="bold", color="#C8A062")
+   924→    
+   925→    ax.set_xlim(-2.2, 2.2)
+   926→    ax.set_ylim(-2.2, 2.2)
+   927→    ax.set_aspect("equal")
+   928→    ax.axis("off")
+   929→    ax.set_title("6 Looks de Color Grading Populares",
+   930→                 pad=15, color="#D9B885", fontsize=13, fontweight="bold")
+   931→    plt.tight_layout()
+   932→    return save_illustration(fig, "color_grading_wheel")
+   933→
+   934→
+   935→def retention_dropoff_chart() -> str:
+   936→    """Gráfico: onde a audiência abandona o vídeo."""
+   937→    fig, ax = plt.subplots(figsize=(10, 5))
+   938→    
+   939→    t = np.linspace(0, 60, 100)
+   940→    # Retenção típica de Reels de 60s
+   941→    base = 100 * np.exp(-t / 35)
+   942→    # Adiciona o "death valley" entre 15-25s
+   943→    valley = -15 * np.exp(-((t - 20) ** 2) / 30)
+   944→    # Boost no final com CTA
+   945→    boost = 8 * np.exp(-((t - 55) ** 2) / 30)
+   946→    retention = base + valley + boost
+   947→    retention = np.clip(retention, 0, 100)
+   948→    
+   949→    ax.fill_between(t, 0, retention, color="#C8A062", alpha=0.2)
+   950→    ax.plot(t, retention, color="#D9B885", linewidth=3)
+   951→    
+   952→    # Anotações das zonas críticas
+   953→    ax.annotate("Gancho\n0-3s", xy=(1.5, retention[2]), xytext=(3, 95),
+   954→                fontsize=9, color="#7BB081", fontweight="bold",
+   955→                arrowprops=dict(arrowstyle="->", color="#7BB081"))
+   956→    ax.annotate("Death valley\n15-25s", xy=(20, retention[33]), xytext=(28, 75),
+   957→                fontsize=9, color="#C97064", fontweight="bold",
+   958→                arrowprops=dict(arrowstyle="->", color="#C97064"))
+   959→    ax.annotate("Boost CTA\n55-60s", xy=(56, retention[93]), xytext=(38, 55),
+   960→                fontsize=9, color="#D9B885", fontweight="bold",
+   961→                arrowprops=dict(arrowstyle="->", color="#D9B885"))
+   962→    
+   963→    ax.set_xlim(0, 60)
+   964→    ax.set_ylim(0, 105)
+   965→    ax.set_xlabel("Segundos", fontsize=10, color="#A39684")
+   966→    ax.set_ylabel("% da audiência", fontsize=10, color="#A39684")
+   967→    ax.set_title("Curva de Retenção — Zonas Críticas de Abandono",
+   968→                 pad=15, color="#D9B885", fontsize=12)
+   969→    ax.grid(True, alpha=0.2, color="#A39684")
+   970→    ax.set_axisbelow(True)
+   971→    plt.tight_layout()
+   972→    return save_illustration(fig, "retention_dropoff_chart")
+   973→
+   974→
+   975→def tool_comparison_table() -> str:
+   976→    """Comparação visual de CapCut, Premiere, DaVinci."""
+   977→    fig, ax = plt.subplots(figsize=(10, 5.5))
+   978→    
+   979→    tools = ["CapCut", "Premiere Pro", "DaVinci Resolve"]
+   980→    metrics = ["Curva de\naprendizado", "Recursos\npremium", "Color grading", "Performance", "Custo-benefício"]
+   981→    # Scores 0-10
+   982→    scores = [
+   983→        [9.0, 6.5, 5.5, 8.5, 9.5],   # CapCut
+   984→        [7.0, 9.0, 7.5, 7.0, 5.5],   # Premiere
+   985→        [5.5, 9.5, 9.5, 8.0, 9.0],   # DaVinci
+   986→    ]
+   987→    colors_tools = ["#C8A062", "#D9B885", "#9B7A45"]
+   988→    
+   989→    x = np.arange(len(metrics))
+   990→    w = 0.27
+   991→    
+   992→    for i, (tool, sc, color) in enumerate(zip(tools, scores, colors_tools)):
+   993→        offset = (i - 1) * w
+   994→        bars = ax.bar(x + offset, sc, w, label=tool, color=color,
+   995→                      edgecolor="#F5EFE0", linewidth=0.5)
+   996→        for bar, v in zip(bars, sc):
+   997→            ax.text(bar.get_x() + bar.get_width() / 2, v + 0.15, f"{v}",
+   998→                    ha="center", fontsize=8, color="#F5EFE0", fontweight="bold")
+   999→    
+  1000→    ax.set_xticks(x)
+  1001→    ax.set_xticklabels(metrics, fontsize=9)
+  1002→    ax.set_ylim(0, 11)
+  1003→    ax.set_ylabel("Score (0-10)", fontsize=10, color="#A39684")
+  1004→    ax.set_title("CapCut vs Premiere vs DaVinci — Comparativo",
+  1005→                 pad=15, color="#D9B885", fontsize=12)
+  1006→    ax.legend(loc="lower right", fontsize=9)
+  1007→    ax.grid(True, axis="y", alpha=0.2, color="#A39684")
+  1008→    ax.set_axisbelow(True)
+  1009→    plt.tight_layout()
+  1010→    return save_illustration(fig, "tool_comparison_table")
+  1011→
+  1012→
+  1013→def generate_all() -> Dict[str, str]:
+  1014→    """Gera todas as ilustrações e retorna dict name→path."""
+  1015→    return {
+  1016→        "three_act_structure": three_act_structure(),
+  1017→        "narrative_arc": narrative_arc(),
+  1018→        "emotional_hooks_wheel": emotional_hooks_wheel(),
+  1019→        "hook_performance_chart": hook_performance_chart(),
+  1020→        "content_framework_diagram": content_framework_diagram(),
+  1021→        "audience_archetypes": audience_archetypes(),
+  1022→        "story_vs_pitch_comparison": story_vs_pitch_comparison(),
+  1023→        # IA para criadores
+  1024→        "ai_stack_diagram": ai_stack_diagram(),
+  1025→        "llm_comparison_chart": llm_comparison_chart(),
+  1026→        "ai_workflow_funnel": ai_workflow_funnel(),
+  1027→        "ai_adoption_growth": ai_adoption_growth(),
+  1028→        "ai_ethics_radar": ai_ethics_radar(),
+  1029→        # Prompts premium
+  1030→        "prompt_anatomy": prompt_anatomy(),
+  1031→        "prompt_quality_curve": prompt_quality_curve(),
+  1032→        "prompt_categories_pie": prompt_categories_pie(),
+  1033→        "prompt_iteration_cycle": prompt_iteration_cycle(),
+  1034→        # 30 ganchos
+  1035→        "hook_retention_curve": hook_retention_curve(),
+  1036→        "hook_categories_grid": hook_categories_grid(),
+  1037→        "hook_decision_tree": hook_decision_tree(),
+  1038→        "hook_timing_chart": hook_timing_chart(),
+  1039→        # Manual edição
+  1040→        "editing_workflow_diagram": editing_workflow_diagram(),
+  1041→        "pacing_chart": pacing_chart(),
+  1042→        "color_grading_wheel": color_grading_wheel(),
+  1043→        "retention_dropoff_chart": retention_dropoff_chart(),
+  1044→        "tool_comparison_table": tool_comparison_table(),
+  1045→    }
+  1046→
+  1047→
+  1048→if __name__ == "__main__":
+  1049→    paths = generate_all()
+  1050→    print(f"✅ {len(paths)} ilustrações geradas:")
+  1051→    for name, path in paths.items():
+  1052→        print(f"  • {name}: {path}")
+  1053→
