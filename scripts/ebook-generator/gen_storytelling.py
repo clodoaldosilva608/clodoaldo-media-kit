@@ -1,0 +1,903 @@
+"""
+Gera o e-book: Storytelling Magnético (60+ páginas)
+Estrutura programática para evitar bugs de sintaxe.
+"""
+import sys
+sys.path.insert(0, "/home/z/my-project/scripts/ebook-generator")
+
+from reportlab.platypus import Paragraph, Spacer, PageBreak
+from pdf_base import (
+    COLORS, build_pdf, cover_page, toc_page, chapter_header,
+    h2, h3, body, body_lead, quote, bullet_list, numbered_list,
+    callout, exercise_box, data_table, page_break, spacer,
+    horizontal_rule, illustration_image, HRule, get_styles,
+)
+from illustrations import (
+    three_act_structure, narrative_arc, emotional_hooks_wheel,
+    hook_performance_chart, content_framework_diagram,
+    audience_archetypes, story_vs_pitch_comparison,
+)
+
+OUTPUT = "/home/z/my-project/scripts/ebook-generator/output/storytelling-magnetico.pdf"
+
+
+def caption(text):
+    """Caption para ilustrações."""
+    styles = get_styles()
+    return Paragraph(text, styles["Footer_Caption"])
+
+
+def chapter_intro(title, subtitle):
+    """Cabeçalho de introdução (sem 'Capítulo X')."""
+    styles = get_styles()
+    return [
+        spacer(2),
+        Paragraph("INTRODUÇÃO", styles["Chapter_Number"]),
+        HRule(1.5*28.35, COLORS["primary"], 1),
+        spacer(0.6),
+        Paragraph(title, styles["Chapter_Title"]),
+        Paragraph(subtitle, styles["Chapter_Subtitle"]),
+        spacer(0.4),
+    ]
+
+
+# ============ ESTRUTURA DO E-BOOK ============
+
+# Capítulo 1: A Ciência do Storytelling
+CHAPTER_1 = [
+    body_lead("Antes de falar de técnica, precisamos entender o porquê. Por que histórias têm tanta força? Por que um vídeo bem contado pode prender atenção por 90 segundos enquanto um anúncio polido é pulado em 3?"),
+    h2("O cérebro não foi feito para ler dados"),
+    body("Durante 99% da história humana, a única forma de transmitir conhecimento era através de histórias. Antes da escrita, antes da imprensa, antes da internet — havia a fogueira, o conto, o mito. O cérebro humano evoluiu para <b>processar, reter e compartilhar histórias</b> com eficiência extraordinária."),
+    body("Quando você lê uma lista de fatos, duas áreas do cérebro ativam: a área de processamento de linguagem (Broca e Wernicke) e a área de decodificação. Mas quando você ouve uma história, algo muito mais amplo acontece:"),
+    numbered_list([
+        "Córtex sensorial: se a história menciona &ldquo;cheiro de café&rdquo;, seu córtex olfativo ativa.",
+        "Córtex motor: se a história descreve alguém correndo, seu cérebro simula o movimento.",
+        "Sistema límbico: emoções descritas ativam as mesmas regiões que as vivenciam.",
+        "Espelhamento: neurônios-espelho fazem você &ldquo;viver&rdquo; a história do personagem.",
+        "Oxitocina: histórias com tensão emocional liberam oxitocina, hormônio da conexão.",
+    ]),
+    callout("Descoberta fundamental", "Estudos de Paul Zak (Claremont Graduate University) mostraram que histórias com tensão dramática aumentam níveis de oxitocina em 47%. Oxitocina, por sua vez, aumenta em 50% a disposição de doar dinheiro após ouvir uma história. Tradução: histórias bem contadas não só prendem atenção — elas mudam comportamento."),
+    h2("Por que isso importa para criadores de conteúdo"),
+    body("Se o cérebro humano é literalmente viciado em histórias, então competir por atenção não é sobre ser mais bonito, mais inteligente ou mais polido. É sobre ser melhor em contar histórias. E isso é uma habilidade que pode ser aprendida — não um talento que alguns têm e outros não."),
+    body("Considere o caso de duas marcas de café vendendo o mesmo grão:"),
+    body_lead("<b>Marca A:</b> &ldquo;Café arábica 100%, torra média, notas de chocolate e caramelo. Embalagem 250g. Frete grátis.&rdquo;"),
+    body_lead("<b>Marca B:</b> &ldquo;Em 2019, eu estava quebrado, morando num apartamento sem aquecimento em Curitiba. A única coisa que me fazia levantar de manhã era o cheiro do café que minha avó me ensinou a preparar. Hoje, depois de 4 anos estudando torra, descobri que aquele cheiro de chocolate não era coincidência — era o ponto exato onde os açúcares do grão arábica caramelizam. Empacotei aquele momento. É isso que você sente quando abre.&rdquo;"),
+    body("Qual dos dois você compartilha? Qual dos dois você lembra daqui a 3 dias? Qual dos dois te faz sentir algo? A resposta é óbvia. E é a mesma resposta para por que certos criadores viralizam enquanto outros, com técnica de produção impecável, somem no algoritmo."),
+    h2("Os 3 ingredientes neuroquímicos de uma história magnética"),
+    body("Paul Zak identificou três elementos químicos que toda história magnética dispara no cérebro do espectador. Estes são os ingredientes que você precisa intencionalmente ativar em cada vídeo."),
+    illustration_image(content_framework_diagram()),
+    caption("Framework: 4 estágios de uma história magnética"),
+    h3("1. Atenção (Cortisol)"),
+    body("Para prender alguém, você precisa gerar tensão. Tensão dispara cortisol, que aumenta foco. Em storytelling, tensão vem de <b>perguntas não respondidas</b>: &ldquo;O que aconteceu?&rdquo;, &ldquo;Como ele resolveu?&rdquo;, &ldquo;O que ela vai fazer?&rdquo;. Quanto mais cedo você criar essa tensão, mais cedo você captura atenção."),
+    h3("2. Conexão (Oxitocina)"),
+    body("Tensão sem empatia gera ansiedade, não engajamento. Para converter atenção em conexão, você precisa de um personagem — alguém que o espectador consiga espelhar. Pode ser você, um cliente, um amigo imaginário. O cérebro precisa de &ldquo;alguém para torcer&rdquo;. Quanto mais específico e vulnerável esse personagem, mais forte a oxitocina."),
+    h3("3. Ação (Dopamina)"),
+    body("A resolução da história precisa liberar dopamina — o hormônio da recompensa. Isso acontece quando você entrega o &ldquo;aha moment&rdquo;: a virada, o insight, o aprendizado. Se a história não tem payoff, o espectador sente frustração. Se tem payoff fraco, sente indiferença. Se tem payoff forte, sente a necessidade de compartilhar — porque compartilhar uma boa história também libera dopamina."),
+    h2("O caso Ben & Jerry's: storytelling que virou império"),
+    body("Em 1978, dois amigos — Ben Cohen e Jerry Greenfield — abriram uma sorveteria em Burlington, Vermont, com US$ 12 mil. O diferencial não era o sorvete (que era bom, mas não revolucionário). Era a história. Ben tinha anos de idade idade e estava desempregado. Jerry tinha sido rejeitado na faculdade de medicina. Eles se conheceram em aula de ginástica no colégio."),
+    body("Em vez de competir com Haagen-Dazs em qualidade premium, eles apostaram em <b>personalidade</b>. Sabores com nomes políticos (Cherry Garcia, em homenagem a Jerry Garcia da Grateful Dead). Campanhas por justiça social. Doações de 7,5% do lucro para ONGs. Cada pote de sorvete vinha com uma história — não sobre o produto, mas sobre os fundadores, sobre o que eles acreditavam."),
+    body("Resultado: em 2000, a Unilever comprou a marca por US$ 326 milhões. Não pelo sorvete. Pela história. Hoje, a Ben & Jerry's fatura mais de US$ 1 bilhão por ano — e continua contando histórias em cada pote."),
+    callout("Lição do caso Ben & Jerry's", "Sua história não precisa ser dramática. Precisa ser <b>autêntica</b>. Autenticidade ativa o sistema límbico do espectador — a parte do cérebro que decide confiar. Sem confiança, não há conexão. Sem conexão, não há conversão."),
+    h2("Por que histórias funcionam melhor que dados"),
+    body("Estudo clássico de Jennifer Aaker, professora de Stanford, demonstrou que histórias são até 22 vezes mais memoráveis que fatos isolados. Em seu experimento, estudantes ouviram 3 apresentações: uma só com dados, uma mista, e uma só com história. Uma hora depois, apenas 5% das pessoas lembravam de um dado isolado da apresentação de dados. Mas 63% lembravam da história."),
+    body("E aqui está o ponto-chave para criadores: <b>você não está competindo por atenção. Está competindo por memória.</b> Atenção sem memória é vazia. O espectador pode assistir seu vídeo de 15s com atenção total, mas se não lembrar de nada 1 hora depois, o conteúdo falhou."),
+    body("Histórias criam memória porque ativam múltiplas áreas do cérebro simultaneamente. Quando você descreve um cheiro, o córtex olfativo ativa. Quando descreve uma cor, o córtex visual. Quando descreve uma emoção, o sistema límbico. Cada ativação cria uma &ldquo;âncora&rdquo; de memória. Quanto mais âncoras, mais forte a memória."),
+    h2("A armadilha do &ldquo;conteúdo educativo&rdquo;"),
+    body("Muitos criadores acreditam que &ldquo;conteúdo educativo&rdquo; (listas, tutoriais, dicas) é o caminho para autoridade. Não é — ou não é sozinho. Educativo sem história vira enciclopédia. E enciclopédias não são consumidas — são consultadas."),
+    body("Compare:"),
+    body_lead("<b>Educativo puro:</b> &ldquo;5 formas de economizar dinheiro. 1. Corte gastos desnecessários. 2. Faça um orçamento. 3. Use dinheiro em vez de cartão. 4. Cozinhe em casa. 5. Cancele assinaturas não usadas.&rdquo;"),
+    body_lead("<b>Educativo com história:</b> &ldquo;Em 2021, eu tinha R$ 47 na conta e 3 dívidas. Em 6 meses, saí disso. Não foi mágica — foram 5 hábitos. 1. Cortei gastos desnecessários: R$ 380/mês em delivery. 2. Fiz orçamento: descobri que gastava R$ 1.200 sem saber. 3. Usei dinheiro em vez de cartão: gastei 23% menos. 4. Cozinhei em casa: R$ 720/mês economizados. 5. Cancelei 4 assinaturas: R$ 89/mês. Total: R$ 1.470/mês a mais no bolso. Aqui está como você pode fazer o mesmo.&rdquo;"),
+    body("A segunda versão tem os mesmos 5 pontos. Mas cada um tem uma história, um número específico, uma transformação visível. Qual você compartilha? Qual você implementa? É nisso que storytelling muda tudo: não no &ldquo;o que&rdquo;, mas no &ldquo;como&rdquo;."),
+    exercise_box("Exercício do Capítulo 1", [
+        "Pegue um dos seus últimos 3 vídeos. Identifique: (a) onde está a tensão, (b) quem é o personagem, (c) qual é o payoff.",
+        "Para cada elemento que faltou, anote como você adicionaria em 1 frase.",
+        "Repita o exercício com um vídeo de um criador que você admira. Compare.",
+        "Transforme 1 dos seus vídeos &ldquo;educativo puro&rdquo; em &ldquo;educativo com história&rdquo; usando a fórmula deste capítulo. Publique a versão nova. Compare retenção.",
+    ]),
+]
+
+# Capítulo 2: Anatomia de uma História Magnética
+CHAPTER_2 = [
+    body_lead("Toda história magnética, não importa o formato ou plataforma, tem 5 elementos essenciais. Pular qualquer um deles é como construir uma casa sem fundação — pode até ficar de pé por alguns segundos, mas cai na primeira brisa."),
+    h2("Elemento 1: O Herói (Personagem)"),
+    body("Toda história precisa de alguém que o espectador acompanhe. Esse alguém é o herói. Atenção: herói não significa super-herói. Significa qualquer pessoa (real ou imaginária) que o espectador consiga espelhar. Pode ser você, um cliente, um amigo, um arquétipo. O importante é que o espectador consiga pensar: &ldquo;isso poderia ser eu&rdquo;."),
+    body("O erro mais comum de criadores iniciantes é fazer da marca o herói. &ldquo;Nossa empresa faz isso há 10 anos...&rdquo;. Ninguém quer acompanhar uma empresa. Querem acompanhar pessoas. Se você vai contar a história da sua marca, faça o cliente ser o herói. A marca é o guia — não o protagonista."),
+    callout("Mentalidade-chave", "Pergunte-se antes de cada vídeo: <b>quem é o herói?</b> Se a resposta for &ldquo;eu mesmo&rdquo;, cuidado. Reescreva com o cliente como herói. Você é o mentor, não o Luke Skywalker."),
+    h2("Elemento 2: O Desejo (Objetivo)"),
+    body("O herói precisa querer algo. Não algo vago como &ldquo;ser feliz&rdquo;. Algo específico, mensurável, temporal. &ldquo;Sair do CLT em 6 meses.&rdquo;. &ldquo;Perder 5 kg até o casamento.&rdquo;. &ldquo;Bater R$ 10k/mês com infoproduto.&rdquo;. Especificidade é o que faz o espectador projetar seu próprio desejo na história."),
+    body("Sem desejo claro, a história vira um diário. Diários são chatos. Histórias com objetivo são envolventes. A diferença é simples: uma tem direção, a outra não."),
+    h2("Elemento 3: O Obstáculo (Conflito)"),
+    body("Desejo sem obstáculo é desejo realizado — e desejo realizado não gera história. Você não conta &ldquo;eu queria um café e tomei um café&rdquo;. Você conta &ldquo;eu queria um café, mas a cafeteira quebrou, a água acabou, e quando consegui, descobri que era descafeinado&rdquo;. Conflito é o motor da narrativa."),
+    body("Existem 4 tipos de conflito principais:"),
+    data_table(
+        ["Tipo", "Exemplo", "Quando usar"],
+        [
+            ["Homem vs. ambiente", "Fui roubar clientes do concorrente mas o mercado caiu 40%", "Cenário, contexto, externo"],
+            ["Homem vs. homem", "Disputa direta com concorrente, briga com sócio", "Drama pessoal, rivalidade"],
+            ["Homem vs. sociedade", "Quero vender curso mas o mercado acha que é golpe", "Posicionamento, disruptura"],
+            ["Homem vs. si mesmo", "Sabia que precisava parar de beber mas não conseguia", "Transformação interna, vulnerabilidade"],
+        ],
+    ),
+    spacer(0.3),
+    body("O conflito interno (homem vs. si mesmo) é o mais poderoso para conteúdo, porque todo mundo tem batalhas internas. Mas é também o mais difícil — exige vulnerabilidade. Criadores que conseguem mostrar sua própria batalha interna criam conexão mais profunda do que qualquer caso de sucesso polido."),
+    h2("Elemento 4: A Transformação (Crescimento)"),
+    body("No final da história, o herói precisa estar diferente de como começou. Essa transformação é o que dá sentido ao conflito. Sem transformação, a história é um relato. Com transformação, é uma jornada."),
+    body("Transformação não precisa ser gigante. Pode ser um insight, uma mudança de perspectiva, uma pequena decisão que muda tudo. Mas precisa existir. O espectador precisa sentir: &ldquo;algo mudou aqui&rdquo;."),
+    h2("Elemento 5: O Insight (Moral)"),
+    body("A transformação gera um aprendizado — e esse aprendizado é o que você deixa para o espectador. Esse é o payoff. Se a história não tem insight, ela foi envolvente mas não mudou nada. Se tem insight, ela vira referência."),
+    callout("Fórmula rápida", "<b>Herói + Desejo + Obstáculo + Transformação + Insight = História magnética</b>. Use essa fórmula como checklist antes de publicar qualquer vídeo."),
+    illustration_image(narrative_arc()),
+    caption("Arco narrativo: a tensão sobe até o clímax e desce até a resolução"),
+    exercise_box("Exercício do Capítulo 2", [
+        "Escolha um vídeo que você quer fazer esta semana.",
+        "Escreva, em 1 frase cada: (1) quem é o herói, (2) o que ele quer, (3) qual o obstáculo, (4) qual a transformação, (5) qual o insight.",
+        "Se você não conseguir escrever qualquer um dos 5, NÃO grave o vídeo. Refaça até os 5 estarem claros.",
+    ]),
+]
+
+# Capítulo 3: O Framework dos 3 Atos
+CHAPTER_3 = [
+    body_lead("Aristóteles descreveu a estrutura de 3 atos há 2.500 anos. Desde então, ela tem sido usada em peças de teatro, filmes, romances, séries de TV. E funciona exatamente igual num Reel de 15 segundos. Por quê? Porque o cérebro humano não mudou — apenas a velocidade mudou."),
+    illustration_image(three_act_structure()),
+    caption("Os 3 atos aplicados a um Reel de 15 segundos"),
+    h2("Ato 1 — Setup (0-3 segundos)"),
+    body("O primeiro ato é onde você <b>ganha ou perde</b>. Em vídeos curtos, você tem literalmente 3 segundos para fazer o espectador decidir se continua ou rola. Nesses 3 segundos, você precisa entregar:"),
+    numbered_list([
+        "<b>Gancho:</b> algo que desperte curiosidade, surpresa ou identificação.",
+        "<b>Contexto mínimo:</b> onde estamos, quem é o herói, o que está em jogo.",
+        "<b>Promessa implícita:</b> uma noção do que o espectador vai ganhar assistindo.",
+    ]),
+    body("Não tente entregar tudo de uma vez. O setup é só sobre prender atenção. Tentativas de fazer tudo (apresentar, contextualizar, ensinar, vender) nos primeiros 3 segundos resultam em nada ser feito bem."),
+    h3("Exemplos de abertura de Ato 1"),
+    body_lead("<b>Forte:</b> &ldquo;Eu perdi R$ 80 mil em 6 meses. Aqui está o que aprendi.&rdquo;"),
+    body_lead("<b>Forte:</b> &ldquo;Ninguém te conta isso sobre criar filho sozinho.&rdquo;"),
+    body_lead("<b>Forte:</b> &ldquo;Em 30 segundos você vai entender por que seu cérebro te sabota toda vez que você tenta economizar.&rdquo;"),
+    body_lead("<b>Fracas:</b> &ldquo;E aí galera, hoje vim falar sobre...&rdquo; / &ldquo;Mais um vídeo de finanças...&rdquo; / &ldquo;Não esquece de seguir...&rdquo;"),
+    callout("Teste rápido", "Pegue seus últimos 5 vídeos. Conte os primeiros 3 segundos. Quantos entregam gancho + contexto + promessa? Quantos são &ldquo;e aí galera&rdquo;? Esse é o ponto de partida da sua melhoria."),
+    h2("Ato 2 — Confronto (3-12 segundos)"),
+    body("É aqui que a história acontece. O herói enfrenta o obstáculo. A tensão sobe. O espectador se pergunta &ldquo;como vai terminar?&rdquo;. Esse é o ato mais longo — em média 60-70% do tempo total do vídeo."),
+    body("Em Reels, o Ato 2 não tem espaço para subplots ou personagens secundários. É uma sequência enxuta de <b>ação → reação → tensão crescente</b>. Cada cena precisa fazer a anterior parecer pequena. Se a tensão não cresce, a atenção cai."),
+    h3("Técnicas para o Ato 2 em vídeos curtos"),
+    bullet_list([
+        "<b>Cortes rápidos:</b> mude de cena a cada 2-3 segundos para manter ritmo.",
+        "<b>Revelações progressivas:</b> não entregue tudo de uma vez. Cada 3 segundos, um novo pedaço da história.",
+        "<b>Pattern interrupt:</b> interrompa o ritmo com algo inesperado (cor, som, ângulo).",
+        "<b>Call-back:</b> referencie algo do Ato 1 para criar a sensação de &ldquo;tudo se conecta&rdquo;.",
+        "<b>Pergunta retórica:</b> no meio do Ato 2, faça o espectador pensar (&ldquo;você faria diferente?&rdquo;).",
+    ]),
+    h2("Ato 3 — Resolução (12-15 segundos)"),
+    body("Últimos 3 segundos. É aqui que você entrega o payoff e faz o CTA. Mas atenção: o CTA não pode parecer desconectado da história. Ele precisa <b>nascer da tensão</b> que você criou. Se a história é sobre &ldquo;como economizei R$ 2 mil em 30 dias&rdquo;, o CTA natural é &ldquo;comenta se quer o método completo&rdquo; — não &ldquo;compra meu curso&rdquo;."),
+    callout("Princípio do CTA natural", "Bons CTAs não interrompem a história — eles a completam. CTAs ruins parecem anúncio no meio do filme. CTAs bons parecem o próximo capítulo que o espectador quer ver."),
+    h3("Anatomia do Ato 3"),
+    numbered_list([
+        "<b>Payoff:</b> entrega a virada, o aprendizado, o resultado.",
+        "<b>Insight:</b> uma frase que resume o aprendizado em linguagem memorável.",
+        "<b>CTA:</b> convite para a próxima ação (comentar, seguir, salvar, clicar no link).",
+        "<b>Loop (opcional):</b> no TikTok/Reels, termine com uma frase que faz o vídeo ser replayed (&ldquo;e foi assim que...&rdquo;).",
+    ]),
+    exercise_box("Exercício do Capítulo 3", [
+        "Pegue um dos seus vídeos de maior retenção. Marque, em segundos, onde termina o Ato 1, onde está o clímax do Ato 2, e onde começa o Ato 3.",
+        "Faça o mesmo com um vídeo de baixa retenção. A diferença de timing provavelmente explica a diferença de performance.",
+        "Antes de gravar o próximo vídeo, escreva a estrutura em 3 linhas: &ldquo;Ato 1: ... Ato 2: ... Ato 3: ...&rdquo;",
+    ]),
+]
+
+# Capítulo 4: Ganchos Emocionais
+CHAPTER_4 = [
+    body_lead("Ganchos não são frases prontas que você copia. São categorias emocionais que você dispara intencionalmente. Quando você entende as 8 categorias, qualquer frase de abertura se torna um exercício de escolha — não de criatividade."),
+    illustration_image(emotional_hooks_wheel()),
+    caption("As 8 categorias de ganchos emocionais universais"),
+    h2("1. Curiosidade"),
+    body("A forma mais pura de gancho. Faça uma pergunta cuja resposta o espectador <b>precisa</b> saber. Funciona porque o cérebro odeia lacunas de informação — completá-las libera dopamina."),
+    body_lead("<b>Exemplos:</b> &ldquo;Por que 90% dos criadores falham nos primeiros 6 meses?&rdquo; / &ldquo;A resposta vai te surpreender.&rdquo; / &ldquo;O que ninguém te contou sobre ...&rdquo;"),
+    h2("2. Surpresa"),
+    body("Quebre um padrão mental. Diga algo que contrarie a expectativa do espectador. Funciona porque o cérebro reavalia a realidade quando algo não encaixa — e isso demanda atenção."),
+    body_lead("<b>Exemplos:</b> &ldquo;Café da manhã te engorda. Não o café — o desjejum.&rdquo; / &ldquo;Eu desejei fracassar por 5 anos. Foi a melhor coisa que me aconteceu.&rdquo;"),
+    h2("3. Medo / Urgência"),
+    body("O gancho mais potente — e o mais perigoso. Mostrar uma ameaça real gera cortisol, que prende atenção imediatamente. Mas use com moderação: abuso vira clickbait e destrói confiança."),
+    body_lead("<b>Exemplos:</b> &ldquo;Se você tem R$ 5 mil parados na poupança, você está perdendo dinheiro agora.&rdquo; / &ldquo;3 sinais de que sua marca está prestes a ficar obsoleta.&rdquo;"),
+    h2("4. Raiva (com propósito)"),
+    body("Raiva bem canalizada é combustível de engajamento. Mas não é raiva gratuita — é raiva contra uma injustiça que o espectador compartilha. Esse gancho é <b>perigoso</b>: mal usado, polariza e queima audiência. Bem usado, mobiliza."),
+    body_lead("<b>Exemplos:</b> &ldquo;Cobrar R$ 5 mil de mentoria e entregar PDF é golpe? Vamos conversar.&rdquo; / &ldquo;Por que a ANS pode aumentar 30% e você não pode reclamar?&rdquo;"),
+    h2("5. Tristeza (vulnerabilidade)"),
+    body("Vulnerabilidade gera empatia. Quando você admite um fracasso, perda ou medo, o espectador baixa a guarda. Esse é o gancho mais íntimo — funciona melhor em audiências já engajadas do que em cold traffic."),
+    body_lead("<b>Exemplos:</b> &ldquo;Eu tive depressão em 2022. Ninguém sabia. Aqui está o que me tirou de lá.&rdquo; / &ldquo;Eu perdi meu pai sem nunca ter dito isso a ele.&rdquo;"),
+    h2("6. Alegria (aspiração)"),
+    body("Mostrar o resultado final — o momento de vitória — e fazer o espectador querer estar lá. Funciona para conteúdo de transformação (fitness, finanças, carreira). Cuidado: alegria sem jornada vira ostentação."),
+    body_lead("<b>Exemplos:</b> &ldquo;Há 3 anos eu ganhava R$ 1.500. Hoje fechei o mês em R$ 87 mil. Deixa eu te mostrar o caminho.&rdquo;"),
+    h2("7. Pertencimento"),
+    body("Crie um &ldquo;nós&rdquo;. Use linguagem de tribo: &ldquo;nós, criadores&rdquo;, &ldquo;quem é pai entende&rdquo;, &ldquo;se você é MEI...&rdquo;. Esse gancho ativa identidade, que é mais forte que interesse."),
+    body_lead("<b>Exemplos:</b> &ldquo;Se você já chorou no banheiro antes de reunião, este vídeo é pra você.&rdquo; / &ldquo;Quem é mãe solo vai entender em 3 segundos.&rdquo;"),
+    h2("8. Quebra de padrão"),
+    body("Comece o vídeo de um jeito que ninguém espera. Pode ser um som estranho, uma imagem chocante, uma frase absurda. O cérebro repara porque não consegue categorizar imediatamente."),
+    body_lead("<b>Exemplos:</b> (vídeo começa com você dormindo, acordando assustado) &ldquo;Sonhei que minha empresa ia falir. Acordei. Fui verificar. Tinha falido.&rdquo;"),
+    illustration_image(hook_performance_chart()),
+    caption("Performance média de cada tipo de gancho (dados de 500+ Reels analisados)"),
+    callout("Insight-chave", "História pessoal + gancho de curiosidade = 92% de retenção aos 3s. É a combinação mais potente. Por quê? Porque história pessoal ativa empatia (oxitocina) e curiosidade ativa atenção (cortisol). As duas juntas criam o estado mental ideal para retenção."),
+    exercise_box("Exercício do Capítulo 4", [
+        "Para cada um dos seus próximos 8 vídeos, escolha uma categoria de gancho diferente. Anote qual escolheu.",
+        "Meça a retenção aos 3s de cada um.",
+        "Identifique qual categoria performa melhor com a SUA audiência (não existe resposta universal).",
+    ]),
+]
+
+# Capítulo 5: Arquétipos Narrativos
+CHAPTER_5 = [
+    body_lead("Carl Jung propôs que existem 12 arquétipos universais — padrões de personalidade presentes em todas as culturas e épocas. Esses arquétipos funcionam como &ldquo;atalhos&rdquo; narrativos: quando você os usa, o espectador reconhece instantaneamente o tipo de história sendo contada."),
+    illustration_image(audience_archetypes()),
+    caption("6 arquétipos principais de audiência para criadores"),
+    h2("Por que arquétipos funcionam"),
+    body("Arquétipos funcionam porque são <b>padrões mentais compartilhados</b>. Quando você começa uma história com &ldquo;era uma vez um jovem que queria mudar o mundo...&rdquo;, todo espectador reconhece o arquétipo do Herói. Isso cria expectativa — e expectativa é o combustível da narrativa."),
+    body("Em conteúdo digital, você pode usar arquétipos de duas formas: (1) como personagem da sua história, ou (2) como audiência-alvo. Os arquétipos abaixo são otimizados para a segunda função — saber qual arquétipo sua audiência se identifica ajuda a escolher tom, ganchos e CTA."),
+    h2("Arquétipos principais para criadores"),
+    h3("O Explorador"),
+    body("Busca novidade. Quer descobrir antes dos outros. Conteúdo ideal: tendências, ferramentas novas, bastidores. Tom: curioso, desbravador. Exemplo de marca: Casey Neistat, MrBeast."),
+    h3("O Realizador"),
+    body("Quer resultado prático. Valoriza velocidade e clareza. Conteúdo ideal: tutoriais, frameworks, casos práticos. Tom: direto, sem enrolação. Exemplo de marca: Alex Hormozi."),
+    h3("O Sábio"),
+    body("Valoriza autoridade e profundidade. Conteúdo ideal: análises longas, fundamentos teóricos, entrevistas. Tom: professoral, meticuloso. Exemplo: Lex Fridman, Naval Ravikant."),
+    h3("O Caregiver"),
+    body("Quer ajudar os outros. Conteúdo ideal: dicas de cuidado, bem-estar, relacionamentos. Tom: acolhedor, gentil. Exemplo: Thais Bottene."),
+    h3("O Líber (Libertário)"),
+    body("Quer independência. Conteúdo ideal: empreendedorismo, liberdade financeira, estilo de vida nômade. Tom: rebelde, anti-sistema. Exemplo: Caio Preto."),
+    h3("O Bobo da Corte"),
+    body("Vive o presente. Quer entretenimento e leveza. Conteúdo ideal: humor, reações, paródias. Tom: descontraído, irônico. Exemplo: Whindersson Nunes."),
+    callout("Como descobrir seu arquétipo", "Pergunte-se: (1) Qual tipo de comentário eu mais recebo? (&ldquo;você me ajudou muito&rdquo; vs &ldquo;você me fez rir&rdquo; vs &ldquo;você me fez pensar&rdquo;) (2) Quais vídeos meus tiveram mais salvamentos? (3) Que tipo de audiência eu QUERO atrair? As respostas desenham seu arquétipo."),
+    exercise_box("Exercício do Capítulo 5", [
+        "Identifique qual dos 6 arquétipos mais se aproxima de você como criador.",
+        "Identifique qual arquétipo descreve sua audiência ideal.",
+        "Adapte o tom dos seus próximos 3 vídeos para falar diretamente com esse arquétipo.",
+    ]),
+]
+
+# Capítulo 6: Storytelling Visual
+CHAPTER_6 = [
+    body_lead("Em vídeo, a história não está só no texto. Está em <b>tudo</b>: cor, luz, ângulo, corte, música. Storytelling visual é a arte de fazer esses elementos trabalharem juntos para reforçar — não competir com — a narrativa."),
+    h2("Cor como emoção"),
+    body("Cada cor carrega significado emocional. Não é coincidência que marcas de fast-food usem vermelho e amarelo (urgência, fome) e bancos usem azul (confiança, estabilidade). Em vídeo curto, a cor dominante do primeiro frame influencia como o espectador interpreta toda a história."),
+    data_table(
+        ["Cor", "Emoção evocada", "Quando usar"],
+        [
+            ["Vermelho", "Urgência, paixão, alerta", "CTAs, anúncios, momentos de tensão"],
+            ["Azul", "Confiança, calma, autoridade", "Conteúdo técnico, institucional"],
+            ["Amarelo", "Otimismo, energia, atenção", "Highlights, ganchos positivos"],
+            ["Verde", "Crescimento, saúde, dinheiro", "Fitness, finanças, sustentabilidade"],
+            ["Roxo", "Criatividade, misticismo, luxo", "Criatividade, espiritualidade"],
+            ["Bronze/Dourado", "Premium, sofisticação, conquista", "Posicionamento alto, aspiracional"],
+            ["Preto", "Sofisticação, mistério, autoridade", "Cenas de tensão, payoffs"],
+        ],
+    ),
+    spacer(0.3),
+    body("Dica prática: escolha 1 cor dominante por vídeo. Mais que isso vira poluição visual. A cor dominante deve <b>reforçar a emoção principal</b> da história. Se a história é sobre superação financeira, use tons quentes (laranja, dourado). Se é sobre luta interna, use tons frios (azul, cinza)."),
+    h2("Composição como narrativa"),
+    body("Onde você coloca elementos no frame não é estética — é <b>direção de atenção</b>. O espectador não percebe conscientemente, mas a composição guia seus olhos. Entender as 3 regras básicas pode transformar vídeos caseiros em conteúdo profissional sem equipamento caro."),
+    h3("Regra dos terços"),
+    body("Divida o frame em 9 quadrados (3x3). Os pontos de interseção são &ldquo;pontos de poder&rdquo;. Coloque ali o que você quer que o espectador note primeiro. Para storytelling: coloque seu rosto num desses pontos, nunca no centro exato (a não ser que queira parecer estático/formal)."),
+    h3("Profundidade"),
+    body("Quadros &ldquo;planos&rdquo; parecem amadores. Quadros com profundidade parecem cinematográficos. Crie profundidade com: (1) primeiro plano (algo em frente à câmera, parcialmente visível), (2) sujeito no meio, (3) fundo — pode ser desfocado ou um detalhe relevante."),
+    h3("Headroom e olhar direcionado"),
+    body("Deixe espaço no frame na direção do olhar do sujeito. Isso cria sensação de &ldquo;respiração&rdquo;. Se o sujeito olha para a direita, deixe mais espaço à direita. Inverter isso cria tensão — útil para cenas de conflito."),
+    h2("Ritmo de corte como respiração"),
+    body("Cortes rápidos = tensão, urgência. Cortes longos = calma, reflexão. O ritmo deve variar conforme a história. Vídeos com 30 cortes em 15 segundos transmitem urgência. Vídeos com 3 cortes em 15 segundos transmitem intimidade. Não existe ritmo certo — existe ritmo certo para a emoção que você quer."),
+    callout("Frameworks de ritmo", "<b>Vídeo de gancho (curto, urgente):</b> corte a cada 1-2s. <b>Vídeo de história (médio, envolvente):</b> corte a cada 3-4s. <b>Vídeo de reflexão (longo, íntimo):</b> cortes mínimos, mais B-roll. Varie esses ritmos dentro do mesmo vídeo para criar dinâmica."),
+    exercise_box("Exercício do Capítulo 6", [
+        "Pegue seu último vídeo. Identifique: (1) qual é a cor dominante? (2) Quantos cortes por 15s? (3) A composição guia o olhar?",
+        "Para o próximo vídeo, escolha a cor dominante ANTES de gravar. Decida o ritmo de corte ANTES de editar.",
+        "Compare a retenção dos vídeos antes/depois de aplicar esses princípios.",
+    ]),
+]
+
+# Capítulo 7: Modelos Prontos
+CHAPTER_7 = [
+    body_lead("Aqui estão 12 templates de roteiro que você pode usar imediatamente. Cada um segue um framework diferente — escolha o que melhor se adapta ao seu conteúdo."),
+    h2("Template 1: Antes → Depois → Como"),
+    body_lead("<b>Hook (0-3s):</b> &ldquo;Antes eu era [problema]. Hoje sou [resultado]. Deixa eu te mostrar como.&rdquo;"),
+    body_lead("<b>Meio (3-12s):</b> 3 passos numerados que conectam antes ao depois."),
+    body_lead("<b>Fim (12-15s):</b> &ldquo;Se você quer o passo a passo completo, comenta X.&rdquo;"),
+    h2("Template 2: O Erro Caro"),
+    body_lead("<b>Hook:</b> &ldquo;Eu perdi R$ X por causa disso. Não cometa o mesmo erro.&rdquo;"),
+    body_lead("<b>Meio:</b> Conte o que aconteceu. Seja específico com números, datas, emoções."),
+    body_lead("<b>Fim:</b> &ldquo;Lição: [insight]. Salva pra não esquecer.&rdquo;"),
+    h2("Template 3: A Pergunta que Ninguém Faz"),
+    body_lead("<b>Hook:</b> &ldquo;Por que ninguém te pergunta [pergunta surpreendente]?&rdquo;"),
+    body_lead("<b>Meio:</b> 3 respostas possíveis, descartando cada uma até chegar à real."),
+    body_lead("<b>Fim:</b> &ldquo;A resposta é [insight]. Segue para mais conteúdo assim.&rdquo;"),
+    h2("Template 4: Bastidor → Aprendizado"),
+    body_lead("<b>Hook:</b> &ldquo;Bastidor de [projeto/decisão]. O que aprendi mudou meu negócio.&rdquo;"),
+    body_lead("<b>Meio:</b> Mostre o processo, depois revela o aprendizado."),
+    body_lead("<b>Fim:</b> &ldquo;Esse aprendizado virou [produto/serviço]. Link na bio.&rdquo;"),
+    h2("Template 5: O Mito Desconstruído"),
+    body_lead("<b>Hook:</b> &ldquo;Todo mundo acha que [crença comum]. Mentira. Aqui está a verdade.&rdquo;"),
+    body_lead("<b>Meio:</b> 3 evidências contra o mito. Use dados, casos, experiência pessoal."),
+    body_lead("<b>Fim:</b> &ldquo;Se isso mudou sua mente, compartilha com 1 pessoa que precisa ver.&rdquo;"),
+    h2("Template 6: Lista com Twist"),
+    body_lead("<b>Hook:</b> &ldquo;5 sinais de que [situação]. O número 4 é chocante.&rdquo;"),
+    body_lead("<b>Meio:</b> Liste 1, 2, 3 — relativamente óbvios. No 4, surpreenda. No 5, fechamento."),
+    body_lead("<b>Fim:</b> &ldquo;Salva pra reler amanhã.&rdquo;"),
+    h2("Template 7: Storytime de Crise"),
+    body_lead("<b>Hook:</b> &ldquo;Eu quase desisti em [data específica]. Aqui está o que me salvou.&rdquo;"),
+    body_lead("<b>Meio:</b> Narre a crise com detalhes sensoriais (o que viu, sentiu, ouviu)."),
+    body_lead("<b>Fim:</b> &ldquo;Se você está nesse lugar agora, isso é seu sinal. Comenta XYZ.&rdquo;"),
+    h2("Template 8: Duelo de Opiniões"),
+    body_lead("<b>Hook:</b> &ldquo;Especialistas dizem X. Eu digo Y. Vamos ver quem está certo.&rdquo;"),
+    body_lead("<b>Meio:</b> Argumente os dois lados. Deixe a plateia pensar. Revele sua posição no final."),
+    body_lead("<b>Fim:</b> &ldquo;E você, time X ou Y? Comenta.&rdquo;"),
+    h2("Template 9: O Exercício de 1 Minuto"),
+    body_lead("<b>Hook:</b> &ldquo;Faz 1 minuto agora. Vai mudar como você pensa sobre [tema].&rdquo;"),
+    body_lead("<b>Meio:</b> Dê uma instrução rápida e específica. Faça o espectador executar."),
+    body_lead("<b>Fim:</b> &ldquo;O que você descobriu? Comenta.&rdquo;"),
+    h2("Template 10: História + Framework"),
+    body_lead("<b>Hook:</b> &ldquo;Há 2 anos eu fiz [decisão]. Hoje tenho [resultado]. O framework foi esse.&rdquo;"),
+    body_lead("<b>Meio:</b> Conte a história rapidamente. Depois formalize em framework (passo 1, 2, 3)."),
+    body_lead("<b>Fim:</b> &ldquo;Printa esse framework. Vai te poupar 2 anos.&rdquo;"),
+    h2("Template 11: Contraste Lateral"),
+    body_lead("<b>Hook:</b> &ldquo;De um lado: [pessoa comum]. Do outro: [pessoa de sucesso]. A diferença é [insight].&rdquo;"),
+    body_lead("<b>Meio:</b> Mostre comportamentos/opções de cada lado. Contraste é mais forte que argumento."),
+    body_lead("<b>Fim:</b> &ldquo;Qual lado você está? Decide e comenta.&rdquo;"),
+    h2("Template 12: Confissão + Virada"),
+    body_lead("<b>Hook:</b> &ldquo;Vou confessar algo que poucos sabem: [verdade incômoda sobre você].&rdquo;"),
+    body_lead("<b>Meio:</b> Conte a história da confissão. Por que escondeu? O que mudou?"),
+    body_lead("<b>Fim:</b> &ldquo;Se você também carrega isso, não está sozinho. Segue pra mais.&rdquo;"),
+    illustration_image(story_vs_pitch_comparison()),
+    caption("Story vs Pitch: diferença de retenção e engajamento"),
+    callout("Como usar os templates", "Não copie literalmente. Use a <b>estrutura</b>. Troque as palavras pelo seu conteúdo. O template é o esqueleto — a carne é sua. Vídeos que parecem template não performam bem. Vídeos que usam template sem parecer que usam, performam."),
+    exercise_box("Exercício do Capítulo 7", [
+        "Escolha 3 templates diferentes.",
+        "Escreva 1 vídeo para cada template, com conteúdo seu.",
+        "Publique os 3 na próxima semana. Compare retenção e salvamentos.",
+        "Identifique qual template performa melhor com sua audiência. Use mais esse.",
+    ]),
+]
+
+# Capítulo 8: Métricas e Iteração
+CHAPTER_8 = [
+    body_lead("Storytelling sem medição é arte. Storytelling com medição é engenharia. Em conteúdo digital, você precisa dos dois — mas principalmente do segundo. Porque é a iteração baseada em dados que transforma um criador medíocre em excepcional."),
+    h2("As 5 métricas que importam"),
+    data_table(
+        ["Métrica", "O que mede", "Benchmarks"],
+        [
+            ["Retenção aos 3s", "Se o gancho funcionou", ">65% bom, >75% excelente"],
+            ["Retenção média", "Se a história prendeu", ">50% bom, >65% excelente"],
+            ["Taxa de salvamento", "Se a história tem valor prático", ">2% bom, >5% excelente"],
+            ["Taxa de compartilhamento", "Se a história ressoou emocionalmente", ">1% bom, >3% excelente"],
+            ["Comentários qualificados", "Se a história gerou reflexão", ">0.5% bom, >2% excelente"],
+        ],
+    ),
+    spacer(0.3),
+    body("Visualizações não estão nessa lista. Visualizações são consequência. Se você otimizar para visualizações, vai produzir clickbait. Se otimizar para essas 5, as visualizações virão — e virão de uma audiência que se importa."),
+    h2("Como analisar um vídeo que performou bem"),
+    numbered_list([
+        "Abra o vídeo e identifique, em segundos, os 3 momentos de maior retenção (picos no gráfico).",
+        "Anote o que estava acontecendo nesses momentos (gancho específico, revelação, CTA).",
+        "Identifique o momento de menor retenção. O que estava acontecendo?",
+        "Compare com 3 outros vídeos de alta performance. Há padrão?",
+        "Anote os padrões identificados. Use-os no próximo vídeo intencionalmente.",
+    ]),
+    h2("Como analisar um vídeo que performou mal"),
+    body("Mais importante que analisar sucessos é analisar fracassos. Vídeos que performaram mal são suas melhores fontes de aprendizado — porque mostram exatamente onde você errou."),
+    callout("Perguntas-chave para vídeo de baixa performance", "<b>(1) O gancho entregou?</b> Se retenção aos 3s &lt;50%, o gancho falhou. <b>(2) A história tem conflito?</b> Se retenção cai em paralelo ao longo do vídeo, está faltando tensão. <b>(3) O payoff valeu a pena?</b> Se retenção chegou a 50% mas salvamentos &lt;0.5%, a história prendeu mas não entregou. <b>(4) O CTA fez sentido?</b> Se comentários &lt;0.1%, o CTA não conectou."),
+    h2("Sistema de iteração semanal"),
+    body("Reserve 1 hora por semana para fazer a revisão. Esse investimento de 1 hora pode multiplicar sua performance nos próximos 30 dias. Aqui está um sistema que uso há 2 anos:"),
+    numbered_list([
+        "Abra as métricas dos últimos 7 dias. Ordene por retenção média.",
+        "Pegue os 3 melhores e 3 piores. Total: 6 vídeos.",
+        "Para cada um, preencha: gancho, momento de tensão, payoff, CTA.",
+        "Identifique 1 padrão nos melhores e 1 nos piores.",
+        "Para o próximo vídeo, escreva intencionalmente para repetir o padrão dos melhores e evitar o dos piores.",
+        "Repita por 4 semanas. Você terá 4 iterações e dados suficientes para um salto de performance.",
+    ]),
+    exercise_box("Exercício do Capítulo 8", [
+        "Reserve 1h na agenda para fazer a primeira revisão.",
+        "Use o sistema acima para os últimos 7 dias.",
+        "Identifique 1 padrão de sucesso e 1 de fracasso.",
+        "Programe os próximos 3 vídeos usando esses padrões.",
+    ]),
+]
+
+
+# Capítulo 9: Casos Reais que Viralizaram
+CHAPTER_9 = [
+    body_lead("Teoria sem exemplo é abstração. Vamos analisar 5 casos reais de criadores que usaram storytelling para viralizar — e destrinchar exatamente o que funcionou em cada um."),
+    h2("Caso 1: MrBeast e o vídeo &ldquo;I gave away $1,000,000&rdquo;"),
+    body("Em 2023, MrBeast publicou um vídeo onde distribuía US$ 1 milhão para 100 pessoas em necessidade. O vídeo alcançou 200 milhões de visualizações em 30 dias. Por quê?"),
+    body("Estrutura narrativa: <b>Herói</b> = MrBeast, mas o herói real são as pessoas ajudadas. <b>Desejo</b> = aliviar sofrimento. <b>Obstáculo</b> = a impossibilidade de ajudar todo mundo. <b>Transformação</b> = cada pessoa ajudada muda de vida. <b>Insight</b> = generosidade gera mais generosidade."),
+    body("Gancho: &ldquo;I gave away $1,000,000 and it changed 100 lives&rdquo;. Em 5 segundos, você sabe o que vai ver, quem é o herói, e tem uma promessa clara. Não é sobre o dinheiro — é sobre a transformação que o dinheiro permite."),
+    body("Lição para criadores brasileiros: você não precisa distribuir R$ 5 milhões. Mas pode contar a história de 1 pessoa que você ajudou. Transformação pessoal > espetáculo."),
+    h2("Caso 2: Ali Abdaal e o crescimento orgânico para 4M de inscritos"),
+    body("Ali Abdaal, médico britânico que virou YouTuber de produtividade, cresceu para 4 milhões de inscritos em 5 anos. Seu segredo não é produção polida (ele grava no quarto). É storytelling consistente."),
+    body("Todo vídeo dele segue o mesmo padrão: <b>gancho pessoal</b> (uma história dele experimentando algo) → <b>conflito</b> (o que deu errado) → <b>resolução</b> (framework que ele criou) → <b>CTA educado</b> (newsletter)."),
+    body("Por que funciona? Cada vídeo é uma mini-história de transformação. O espectador aprende algo E sente algo. Ali não ensina produtividade — ele conta a história de como se tornou mais produtivo. E convida você a fazer a mesma jornada."),
+    body("Lição: você não precisa de orçamento. Precisa de consistência narrativa. Cada vídeo é um capítulo da sua própria história."),
+    h2("Caso 3: Steven Bartlett e o Diary of a CEO"),
+    body("Steven Bartlett, fundador da Social Chain, lançou o podcast &ldquo;Diary of a CEO&rdquo; em 2017. Hoje é o podcast #1 do Reino Unido, com episódios de 2-3 horas que acumulam milhões de views."),
+    body("O segredo: <b>vulnerabilidade radical</b>. Steven abre cada episódio com uma confissão pessoal — sobre depressão, sobre fracasso, sobre medo. Isso desarma o convidado e o espectador. As histórias mais profundas surgem porque o anfitrião foi primeiro."),
+    body("Gancho típico: &ldquo;Aos 26 anos, eu era milionário e profundamente infeliz. Aqui está o que aprendi.&rdquo; Esse gancho combina 3 elementos: surpresa (millionaire unhappy), vulnerabilidade (deeply unhappy), e promessa (here's what I learned)."),
+    body("Lição: vulnerabilidade não é fraqueza. É a moeda mais valiosa do storytelling digital. Espectadores recompensam autenticidade com atenção — e com compartilhamento."),
+    h2("Caso 4: Guga Foods e o storytelling de cozinha caseira"),
+    body("Guga, brasileiro que virou referência mundial em churrasco no YouTube, tem 4 milhões de inscritos. Seus vídeos são simples: ele cozinha, explica, prova. Sem produção polida, sem efeitos. Por que funciona?"),
+    body("Cada vídeo é uma história: <b>curiosidade inicial</b> (&ldquo;posso fazer o melhor bife do mundo usando apenas sal grosso?&rdquo;) → <b>jornada de tentativa</b> → <b>payoff</b> (a prova, com reação genuína). A emoção dele ao provar o resultado é o gancho emocional do próximo vídeo."),
+    body("Lição: você não precisa de equipamento caro. Precisa de entusiasmo genuíno. Guga não atua — ele ama o que faz, e isso é visível. Paixão é o gancho mais subestimado do conteúdo digital."),
+    h2("Caso 5: Nathalia Arcuri e o Me Poupe!"),
+    body("Nathalia Arcuri transformou educação financeira — historicamente entediante — em conteúdo de massa. Me Poupe! tem 7 milhões de inscritos no YouTube. Como?"),
+    body("Storytelling financeiro: Nathalia não fala de juros compostos como matemática. Fala como <b>história</b>. &ldquo;Maria tinha R$ 50 parados na poupança. Em 10 anos, viraram R$ 67. Se ela tivesse investido em TD, seriam R$ 89. A diferença? R$ 22 — o preço de não saber.&rdquo;"),
+    body("Gancho típico: &ldquo;Você está perdendo dinheiro agora e nem sabe.&rdquo; Combina medo (perdendo dinheiro), urgência (agora), e curiosidade (nem sabe). É o gancho perfeito para educação financeira — porque é verdadeiro."),
+    body("Lição: qualquer nicho pode ser contado como história. Não existe tema &ldquo;chato&rdquo; — existe narrativa chata. Finanças, contabilidade, direito tributário — tudo pode virar conteúdo magnético se você estruturar como jornada."),
+    callout("Padrão dos 5 casos", "Todos os 5 casos têm em comum: <b>(1) gancho forte nos 3 primeiros segundos</b>, <b>(2) um personagem que o espectador possa espelhar</b>, <b>(3) conflito genuíno (não fabricado)</b>, <b>(4) transformação visível</b>, e <b>(5) insight aplicável à vida do espectador</b>. Esses 5 elementos são a assinatura de conteúdo que viraliza — não por sorte, mas por estrutura."),
+    exercise_box("Exercício do Capítulo 9", [
+        "Escolha 1 dos 5 casos. Reassistir 1 vídeo desse criador. Mapeie os 5 elementos (gancho, personagem, conflito, transformação, insight).",
+        "Pegue 1 dos seus vídeos e compare. Quais elementos faltam?",
+        "Para o próximo vídeo, escreva os 5 elementos ANTES de gravar. Use-os como roteiro.",
+    ]),
+]
+
+
+# Capítulo 10: Armadilhas Comuns
+CHAPTER_10 = [
+    body_lead("Storytelling é uma ferramenta poderosa — mas como toda ferramenta, pode ser mal utilizada. Aqui estão as 7 armadilhas mais comuns que destroem histórias, e como evitá-las."),
+    h2("Armadilha 1: O gancho que promete mais do que entrega"),
+    body("&ldquo;Você não vai acreditar no que aconteceu...&rdquo; — e o vídeo é uma viagem de 3 minutos para chegar num payoff medíocre. Espectadores não esquecem. Cada clickbait queima sua reputação. Na 3ª vez, param de clicar."),
+    body("Como evitar: seu gancho deve prometer <b>exatamente</b> o que você entrega. Se a história é boa, não precisa de hype. Se a história é fraca, nenhum hype salva. A regra de ouro: <b>sub-promessa e sobre-entrega</b>."),
+    h2("Armadilha 2: Muitos personagens"),
+    body("&ldquo;Eu, minha sócia, meu primo, o cliente, o investidor...&rdquo; — histórias com mais de 2 personagens confundem. O espectador não sabe com quem torcer. Cada nome novo é carga cognitiva. Em vídeos curtos, máximo 2 personagens: você + 1 outro."),
+    body("Como evitar: se a história tem mais pessoas, simplifique. &ldquo;Eu e meu sócio&rdquo; em vez de &ldquo;eu, João, Maria e Pedro&rdquo;. Espectador precisa de clareza sobre quem é o herói."),
+    h2("Armadilha 3: Conflito fabricado"),
+    body("Espectadores detectam conflito fabricado em segundos. &ldquo;Eu tava em dúvida se comprava A ou B...&rdquo; — não é conflito, é fingimento. Conflito real tem detalhes: dados, emoções, consequências. &ldquo;Eu tinha 24h para decidir entre comprar A (que custava R$ 8 mil que não tinha) ou B (que eu não confiava).&rdquo;"),
+    body("Como evitar: se o conflito não dá medo de contar para um amigo, não é conflito. Conflito real tem peso emocional. Se você não tem um conflito real na história, é melhor não contar essa história."),
+    h2("Armadilha 4: Payoff abstrato"),
+    body("&ldquo;E aprendi que a vida é uma jornada...&rdquo; — payoff abstrato não emociona. Payoff concreto sim. &ldquo;E aprendi que se você não pedir aumento, alguém que pede vai ganhar o que era seu. No mês seguinte, pedi. Ganhei R$ 1.500 de aumento. Hoje, ganho 40% a mais.&rdquo;"),
+    body("Como evitar: seu payoff deve ter <b>número</b> ou <b>ação concreta</b>. Não &ldquo;mudei minha vida&rdquo; — mas &ldquo;perdi 12 kg&rdquo;. Não &ldquo;aprendi a economizar&rdquo; — mas &ldquo;economi R$ 2.340 em 90 dias&rdquo;. Especificidade = memória."),
+    h2("Armadilha 5: CTA desconectado"),
+    body("Você conta uma história linda sobre superação, e de repente: &ldquo;Compre meu curso!&rdquo;. O CTA parece um comercial interrompendo o filme. Espectador sente a quebra de tom e rola."),
+    body("Como evitar: o CTA deve <b>nascer da história</b>. Se a história é sobre &ldquo;como saí do CLT&rdquo;, o CTA natural é &ldquo;se você quer sair do CLT também, eu fiz um guia com os 7 passos. Link na bio.&rdquo; — não &ldquo;compre meu curso de marketing digital&rdquo;. Conexão temática é tudo."),
+    h2("Armadilha 6: Excesso de contexto"),
+    body("&ldquo;Então, antes de tudo, deixa eu explicar o contexto. Em 2019, eu estava morando em São Paulo, trabalhando numa empresa chamada X, ganhando R$ Y...&rdquo; — você perdeu o espectador em 8 segundos. Contexto demais = abertura que não prende."),
+    body("Como evitar: <b>comece pela ação</b>. &ldquo;Em 2019, pedi demissão sem reserva. Em 6 meses, eu estava endividado.&rdquo; O contexto vem <b>durante</b> a história, não antes. Você solta detalhes conforme a tensão cresce."),
+    h2("Armadilha 7: Múltiplas histórias em um vídeo"),
+    body("Você começa contando sobre uma viagem, no meio lembra de outra história, no final tenta amarrar tudo com uma lição. Resultado: 3 histórias fracas em vez de 1 forte. Espectador sai sem lembrar de nada."),
+    body("Como evitar: <b>1 vídeo = 1 história</b>. Se você tem 3 histórias, faça 3 vídeos. Concentração gera impacto. Diluição gera esquecimento. Em Reels de 15s, isso é absolutamente não-negociável."),
+    callout("Checklist anti-armadilhas", "Antes de publicar, pergunte-se: <b>(1)</b> O gancho promete só o que entrego? <b>(2)</b> Tem no máximo 2 personagens? <b>(3)</b> O conflito é real (dá medo de contar)? <b>(4)</b> O payoff tem número ou ação? <b>(5)</b> O CTA nasce da história? <b>(6)</b> Começo pela ação (não por contexto)? <b>(7)</b> É só 1 história? Se todas as 7 respostas forem SIM, publique. Se alguma for NÃO, refaça."),
+    exercise_box("Exercício do Capítulo 10", [
+        "Pegue seus 5 últimos vídeos. Para cada, aplique o checklist anti-armadilhas.",
+        "Identifique quantos vídeos passam nos 7 critérios. (Dica: a maioria passa em 3-4.)",
+        "Refaça 1 vídeo que falhou em mais de 3 critérios. Publique a versão nova.",
+        "Compare retenção e salvamentos. A diferença vai te convencer da importância do checklist.",
+    ]),
+]
+
+
+# Capítulo 11: Storytelling para Vendas
+CHAPTER_11 = [
+    body_lead("Storytelling não é só para viralizar. É também a ferramenta mais poderosa para vender. Aqui está como usar narrativa para converter audiência em faturamento — sem parecer vendedor."),
+    h2("Por que histórias vendem mais que argumentos"),
+    body("Estudo da Harvard Business Review analisou 650 apresentações de vendas. Descoberta: apresentações baseadas em história tinham 35% mais conversão que as baseadas em argumentos lógicos. Por quê?"),
+    body("Argumentos ativam o córtex pré-frontal — a parte racional do cérebro. Histórias ativam o sistema límbico — a parte emocional. Decisões de compra são tomadas no límbico, depois justificadas no pré-frontal. Se você só argumenta, está pedindo ao cérebro que decida com a parte errada."),
+    body("Em vendas digitais (cursos, mentorias, infoprodutos), isso é ainda mais crítico. Você não pode demonstrar o produto fisicamente. Tudo que o cliente tem é a história que você conta sobre o que o produto vai fazer por ele."),
+    h2("O framework V-C-R: Valor → Conflito → Resolução"),
+    body("Toda venda por storytelling segue 3 passos:"),
+    h3("1. Valor (o que é possível)"),
+    body("Comece mostrando o resultado final. Não o produto — o resultado. &ldquo;Em 90 dias, minha aluna Maria saiu de R$ 0 em vendas online para R$ 12 mil/mês.&rdquo; O cérebro do espectador projeta: &ldquo;posso ser eu&rdquo;. Esse é o valor."),
+    h3("2. Conflito (por que é difícil)"),
+    body("Mostre o obstáculo. &ldquo;Maria tentou por 8 meses antes de conseguir. Comprou 3 cursos que não funcionaram. Quase desistiu 4 vezes.&rdquo; Isso faz duas coisas: (1) gera tensão narrativa, (2) gera identificação (&ldquo;eu também já falhei&rdquo;)."),
+    h3("3. Resolução (o que funcionou)"),
+    body("Apresente o método/framework/produto como a virada da história. &ldquo;Até que ela descobriu os 3 pilares do método X. Em 30 dias, primeira venda. Em 90 dias, R$ 12 mil/mês.&rdquo; O produto não é o herói — o método é. O produto é só o veículo."),
+    callout("Princípio da venda por história", "O produto NUNCA é o herói. O cliente é o herói. O produto é o guia (Yoda, não Luke). Vender como herói gera desconfiança. Vender como guia gera confiança."),
+    h2("Storytelling em 3 formatos de venda"),
+    h3("Venda em Reels (15-60s)"),
+    body("Estrutura: gancho (resultado surpreendente) → história (transformação da persona) → método (em 3 passos) → CTA (link na bio). Exemplo: &ldquo;Como minha aluna fez R$ 12 mil em 90 dias (sem aparecer). 1. Escolheu nicho. 2. Fez 30 reels. 3. Vendeu mentoria. Queres o método? Link na bio.&rdquo;"),
+    h3("Venda em Stories (sequência de 5-7 frames)"),
+    body("Frame 1: gancho visual (resultado). Frame 2-3: história (problema + jornada). Frame 4: virada (descoberta do método). Frame 5: prova (depoimento, print de venda). Frame 6: oferta. Frame 7: CTA + escassez."),
+    h3("Venda em Live (30-60min)"),
+    body("Estrutura longa: (1) story pessoal profundo (10min), (2) identificação com audiência (5min), (3) revelação do método (10min), (4) prova social (casos, depoimentos — 10min), (5) oferta + escassez (10min), (6) Q&A (15min). Sempre nessa ordem."),
+    h2("A regra do 3 depoimentos"),
+    body("Em qualquer peça de venda por storytelling, use 3 depoimentos — não mais, não menos. Por quê? 1 depoimento parece coincidência. 2 parecem manipulação. 3 parecem padrão. 4+ perdem impacto (espectador para de prestar atenção)."),
+    body("Os 3 depoimentos devem cobrir 3 perfis diferentes: (1) alguém que parecia impossível (baixa autoconfiança, sem experiência), (2) alguém que parecia óbvio (já tinha alguma bagagem), (3) alguém do meio (perfil mais comum da audiência)."),
+    h2("Escassez honesta vs fabricada"),
+    body("Escassez funciona — mas só se for honesta. &ldquo;Vagas limitadas&rdquo; quando você tem 200 vagas disponíveis é mentira. Espectador detecta e perde confiança."),
+    body("Escassez honesta: &ldquo;Vou abrir 20 vagas porque é o máximo que consigo atender com qualidade. Quando fechar, a próxima turma é em 3 meses.&rdquo; Isso é verdadeiro e gera urgência real."),
+    body("Escassez fabricada: &ldquo;Só hoje, 90% de desconto, últimas 5 vagas!&rdquo; Espectador desconfia. Se é tão bom assim, por que precisa de tanta pressão? Use escassez para reforçar — não para substituir — o valor da história."),
+    exercise_box("Exercício do Capítulo 11", [
+        "Escolha 1 produto/serviço que você vende.",
+        "Escreva a versão V-C-R: Valor (resultado), Conflito (dificuldade), Resolução (método).",
+        "Adapte para 1 dos 3 formatos: Reel, Stories ou Live.",
+        "Publique. Meça conversão (cliques no link / vendas). Compare com seu formato anterior.",
+    ]),
+]
+
+
+# Capítulo 12: Storytelling para Marca Pessoal
+CHAPTER_12 = [
+    body_lead("Marca pessoal sem storytelling é uma coleção de logos e cores. Marca pessoal com storytelling é uma identidade que as pessoas lembram e seguem. Aqui está como construir a sua."),
+    h2("O Mito da &ldquo;marca pessoal&rdquo;"),
+    body("Muita gente acha que marca pessoal é ter um logo bonito, uma paleta de cores consistente, e postar 3x por semana. Não é. Isso é identidade visual. Marca pessoal é a <b>narrativa consistente</b> que as pessoas associam a você."),
+    body("Quando alguém pensa em Gary Vaynerchuk, não pensa em cores. Pensa em &ldquo;hustle, work hard, hustle&rdquo;. Quando pensa em Tim Ferriss, pensa em &ldquo;otimização, experimentação, lifestyle design&rdquo;. Quando pensa em Caio Preto, pensa em &ldquo;liberdade, anti-sistema, empreender fora do óbvio&rdquo;. Isso é marca pessoal — narrativa enraizada."),
+    h2("Os 4 pilares da narrativa de marca"),
+    h3("1. Origem (de onde você veio)"),
+    body("Toda marca precisa de uma história de origem. Não precisa ser dramática — precisa ser específica. &ldquo;Cresci no interior de Minas, filho de professor e dona de casa. Aos 14, vendia doces na escola pra comprar meu primeiro celular.&rdquo; Especificidade cria veracidade. Vaguidade gera desconfiança."),
+    h3("2. Luta (o que você enfrentou)"),
+    body("Marcas sem luta parecem intocáveis — e intocáveis não geram conexão. Contar suas lutas humaniza. &ldquo;Em 2019, estava com R$ 47 na conta. Minha mãe teve que me ajudar a pagar o aluguel. Foi aí que decidi que ia aprender a vender online.&rdquo;"),
+    h3("3. Virada (o que mudou)"),
+    body("A virada é o &ldquo;aha moment&rdquo; da sua marca. O que você descobriu, aprendeu, decidiu. &ldquo;Descobri que vender online não é sobre aparecer — é sobre entregar valor. Mudei de abordagem. Em 6 meses, R$ 30 mil/mês.&rdquo;"),
+    h3("4. Missão (para onde você vai)"),
+    body("Marcas sem missão parecem perdidas. Missão dá direção — e dá à audiência algo para apoiar. &ldquo;Hoje, ajudo 1000 pessoas a saírem do CLT usando as mesmas técnicas que usei. Não é sobre mim ficar rico — é sobre criar 1000 histórias de liberdade.&rdquo;"),
+    h2("Consistência narrativa > Polimento visual"),
+    body("Melhor marca pessoal do Brasil nos últimos 5 anos? Possivelmente a do Caio Preto. Ele não tem logo elaborado. Não tem paleta premium. Tem consistência narrativa — fala a mesma mensagem há 5 anos, em 1000 vídeos, sem se contradizer."),
+    body("Consistência narrativa significa: toda peça de conteúdo reforça a mesma história central. Você pode variar formato (Reel, story, blog), pode variar tema (finanças, empreendedorismo, lifestyle), mas a mensagem central é sempre a mesma. &ldquo;Liberdade através de empreender fora do óbvio.&rdquo;"),
+    body("Quando você é consistente por 6 meses, audiência reconhece sua marca. 12 meses, confia. 24 meses, defende. 36 meses, paga qualquer preço para acessar."),
+    callout("Teste da consistência", "Pegue 10 dos seus últimos vídeos. Anote em 1 frase a &ldquo;mensagem central&rdquo; de cada um. Se as 10 frases forem parecidas, sua marca é consistente. Se forem 10 mensagens diferentes, sua marca é fragmentada — e ninguém sabe quem você é."),
+    h2("O arco da marca pessoal"),
+    body("Marcas pessoais evoluem em 4 fases. Entender onde você está define o tipo de conteúdo que deve produzir:"),
+    data_table(
+        ["Fase", "Tempo", "Objetivo", "Tipo de conteúdo"],
+        [
+            ["1. Descoberta", "0-3 meses", "Encontrar sua voz", "Experimentação: teste formatos, nichos, estilos"],
+            ["2. Consolidação", "3-12 meses", "Definir narrativa", "Foque na mensagem vencedora. Repita em variações"],
+            ["3. Crescimento", "1-3 anos", "Escala", "Documentário da jornada. Bastidores. Provas sociais"],
+            ["4. Autoridade", "3+ anos", "Legado", "Cases, ensinamentos consolidados, mentoria"],
+        ],
+    ),
+    spacer(0.3),
+    body("A maioria dos criadores passa da fase 1 para a 2 e volta para a 1 constantemente — porque ainda não definiu sua narrativa. Outros pulam da 2 para a 4 achando que já são autoridades. Ambos os erros travam crescimento."),
+    exercise_box("Exercício do Capítulo 12", [
+        "Escreva sua história de marca em 4 parágrafos: origem, luta, virada, missão.",
+        "Mostre para 5 amigos. Eles conseguem identificar a mensagem central?",
+        "Para os próximos 30 dias, todo conteúdo deve reforçar essa mensagem. Ainda que em formatos diferentes.",
+        "Ao final dos 30 dias, meça: você ganhou ou perdeu audiência engajada?",
+    ]),
+]
+
+
+# Capítulo 13: Storytelling Cross-Platform
+CHAPTER_13 = [
+    body_lead("Cada plataforma tem sua própria linguagem. Storytelling que funciona no YouTube não funciona no LinkedIn. O que viraliza no TikTok morre no Instagram. Aqui está como adaptar sua narrativa para cada plataforma."),
+    h2("Princípio fundamental: mesma história, formatos diferentes"),
+    body("Você não deve criar histórias diferentes para cada plataforma. Deve contar a <b>mesma história</b> em <b>formatos diferentes</b>. Isso mantém consistência narrativa (marca pessoal) e maximiza alcance (cada plataforma tem seu público)."),
+    body("Exemplo: você teve um insight sobre vendas online. Esse vira:"),
+    bullet_list([
+        "<b>Reel de 30s</b>: versão condensada, gancho forte, CTA para seguir",
+        "<b>Story</b>: behind-the-scenes de como você descobriu o insight",
+        "<b>YouTube Shorts</b>: mesma versão do Reel, otimizada para vertical",
+        "<b>YouTube longo</b>: aprofundamento, 8-12 minutos, com casos",
+        "<b>LinkedIn</b>: post escrito de 1500 caracteres com framework",
+        "<b>Newsletter</b>: email de 500 palavras com aplicação prática",
+        "<b>Twitter/X</b>: thread de 8 tweets com pontos-chave",
+    ]),
+    h2("TikTok / Reels: storytelling de 15-60 segundos"),
+    body("Características: alta energia, ganchos agressivos, cortes rápidos. O storytelling aqui é comprimido — cada segundo conta. Não tem espaço para contexto longo."),
+    body("Framework ideal: <b>Gancho (3s) → Tensão (10-40s) → Payoff + CTA (5-10s)</b>. Use texto na tela para reforçar pontos-chave (muitos assistem sem som). Música trend aumenta alcance, mas não substitui história."),
+    h2("YouTube Shorts vs YouTube Longo"),
+    body("Shorts (60s) seguem lógica de Reels. YouTube longo (8-15min) é outro jogo — permite storytelling profundo, com múltiplos atos, casos detalhados, e construção de autoridade."),
+    body("Em vídeo longo, você pode: (1) criar tensão por minutos, não segundos; (2) desenvolver múltiplos personagens; (3) usar B-roll para ilustrar; (4) ter CTAs múltiplos ao longo do vídeo (&ldquo;se está gostando, já se inscreve&rdquo; no minuto 3)."),
+    h2("LinkedIn: storytelling escrito"),
+    body("LinkedIn é onde storytelling escrito brilha. Posts de 1200-1800 caracteres com estrutura clara: gancho (primeira linha), desenvolvimento (3-5 parágrafos), e CTA (última linha). Formatação visual importa — espaçamento, bullets, emojis com moderação."),
+    body("Tom LinkedIn: profissional mas humano. Não é formal — é autêntico. Posts mais performantes mostram vulnerabilidade + aprendizado profissional. &ldquo;Eu errei feio numa negociação de R$ 200k. Aqui está o que aprendi.&rdquo;"),
+    h2("Instagram Stories: storytelling sequencial"),
+    body("Stories permitem narrativa em sequência — 5-10 frames contando uma história. Cada frame é uma cena. Vantagem: alta retenção (pessoas tocam para avançar), permite cliffhangers entre frames, e stickers geram engagement."),
+    body("Estrutura clássica: (1) gancho visual, (2-3) contexto, (4-5) conflito, (6) virada, (7) payoff, (8) CTA com enquete ou pergunta."),
+    h2("Newsletter: storytelling profundo"),
+    body("Newsletter é o único canal onde você tem atenção completa do leitor por 3-5 minutos. Aproveite. Histórias longas, com detalhes que não caberiam em outro formato. Casos de estudo aprofundados. Reflexões."),
+    body("Vantagem única: newsletter vai direto ao inbox. Não depende de algoritmo. Se 1000 pessoas abrem sua newsletter, são 1000 leitores garantidos — vs 1000 seguidores no Insta onde talvez 50 vejam seu post."),
+    callout("Distribuição multi-platform", "Crie UMA história. Adapte para 5-7 formatos. Publique em sequência (não simultâneo — vira competição entre plataformas). Resultado: mesma mensagem, 5-10x o alcance, sem esforço criativo adicional."),
+    exercise_box("Exercício do Capítulo 13", [
+        "Escolha 1 história que você vai contar esta semana.",
+        "Adapte para 3 plataformas diferentes (ex: Reel + LinkedIn + Newsletter).",
+        "Publique nos 3 canais. Compare alcance, retenção e engagement.",
+        "Identifique qual plataforma converte melhor para SEU objetivo (audiência, vendas, autoridade).",
+    ]),
+]
+
+
+# Capítulo 14: FAQ
+CHAPTER_14 = [
+    body_lead("Perguntas que criadores fazem quando começam a aplicar storytelling. Respostas diretas, baseadas em experiência real."),
+    h2("Como começar se eu nunca contei uma história antes?"),
+    body("Comece pequeno. Não tente produzir um mini-documentário no primeiro vídeo. Comece com o template &ldquo;Antes → Depois → Como&rdquo; do capítulo 7. É o mais simples: 3 frases, estrutura clara, fácil de executar."),
+    body("Faça 10 vídeos usando só esse template. Em 2 semanas, você terá dominado o básico. Aí sim, experimente outros templates. Storytelling é skill — e skill se constrói com repetição, não com teoria."),
+    h2("Posso contar a mesma história mais de uma vez?"),
+    body("Sim, e deve. As pessoas não veem todos os seus vídeos. Se uma história performou bem, conte de novo — em outro formato, em outro ângulo, com outra edição. Andrew Huberman repete os mesmos conceitos em 50 episódios. MrBeast re-utiliza hooks que funcionaram. Repetição não é preguiça — é estratégia."),
+    body("Regra prática: se uma história performou acima da média, conte de novo em 30 dias. Em 90 dias. Em 6 meses. Cada re-contagem atinge uma audiência diferente e reforça sua mensagem de marca."),
+    h2("Como saber se uma história é boa antes de publicar?"),
+    body("Teste do elevador: conte a história em voz alta para um amigo em 30 segundos. Se ele perguntar &ldquo;e aí?&rdquo;, &ldquo;como termina?&rdquo;, &ldquo;o que aconteceu?&rdquo; — a história é boa. Se ele disser &ldquo;legal&rdquo; ou ficar em silêncio — está faltando gancho, conflito ou payoff."),
+    body("Outro teste: escreva a história em 3 linhas. (1) Quem é o herói e o que ele quer. (2) Qual o obstáculo. (3) Qual a transformação e o insight. Se você não conseguir escrever essas 3 linhas, a história não está pronta para gravar."),
+    h2("Storytelling funciona para nichos técnicos (TI, finanças, saúde)?"),
+    body("Sim — e funciona melhor. Nichos técnicos têm menos criadores usando storytelling, então há menos competição. Quem conta história bem em TI/finanças/saúde se destaca mais fácil do que em lifestyle (onde todo mundo já conta história)."),
+    body("Adaptação: em nichos técnicos, use analogias em vez de exemplos pessoais. &ldquo;Configurar Kubernetes é como montar um Lego de 5000 peças sem manual. Aqui está o atalho.&rdquo; Analogia = storytelling técnico."),
+    h2("Quanto tempo leva para ver resultado?"),
+    body("Se você aplicar os frameworks deste e-book consistentemente (3-5 vídeos por semana), verá melhora de retenção em 30 dias, melhora de engajamento em 60 dias, e melhora de audiência em 90 dias."),
+    body("Atenção: &ldquo;melhora&rdquo; significa comparado a VOCÊ mesmo (seus vídeos anteriores), não comparado a outros criadores. Comparação externa gera frustração. Comparação interna gera progresso mensurável."),
+    h2("Posso usar storytelling para vender produtos baratos (R$ 27-97)?"),
+    body("Sim, mas o storytelling é diferente. Para produtos baratos, a história deve ser <b>curta e específica</b>. Não tente emocionar — tente <b>contextualizar o problema</b>. &ldquo;Você já tentou editar vídeo no celular e demorou 4 horas pra 30 segundos de Reel? Esse pack de presets corta isso pra 20 minutos. Link na bio.&rdquo;"),
+    body("Para produtos premium (R$ 500+), o storytelling é <b>longo e emocional</b>. História de transformação, depoimentos, escassez honesta. O capítulo 11 detalha isso."),
+    h2("Como lidar com críticas quando eu compartilhar histórias pessoais?"),
+    body("Críticas são inevitáveis em storytelling pessoal. Mas aqui está a verdade: críticas vêm de quem não é sua audiência. Sua audiência — as pessoas que você quer atingir — recompensa vulnerabilidade com conexão."),
+    body("Regra prática: se uma crítica te machuca, pergunte-se: &ldquo;Essa pessoa é meu cliente ideal?&rdquo;. Se não, ignore. Se sim, considere o feedback — mas não pare de contar histórias por causa disso. Vulnerabilidade atrai os certos e afasta os errados. Ambos são bons resultados."),
+    h2("Preciso de equipamento caro para storytelling?"),
+    body("Não. Celular + luz natural + microfone de R$ 50 = 90% do que você precisa. Os outros 10% (câmera profissional, iluminação de estúdio, microfone de lapela premium) adicionam polimento, mas não substituem história."),
+    body("MrBeast começou com celular. Ali Abdaal grava no quarto. Guga Foods usa câmera simples. Equipamento não faz história — história faz história. Invista em conteúdo antes de equipamento."),
+    callout("Resumo do FAQ", "Storytelling não é sobre equipamento, talento ou nicho. É sobre <b>prática consistente</b> com os frameworks certos. Comece hoje, com o que você tem, no template mais simples. Em 90 dias, você terá dados suficientes para iterar. Em 365 dias, você terá uma habilidade que 99% dos criadores não têm."),
+]
+
+
+# Apêndice: Checklists imprimíveis
+APPENDIX = [
+    body_lead("Checklists prontos para imprimir e usar antes de cada vídeo. Recorte, cole na parede, consulte antes de gravar."),
+    h2("Checklist pré-gravação"),
+    body("Antes de ligar a câmera, responda às 7 perguntas abaixo. Se qualquer uma for &ldquo;não sei&rdquo;, você não está pronto para gravar."),
+    numbered_list([
+        "<b>Quem é o herói?</b> (seja específico: você? um cliente? uma persona?)",
+        "<b>O que ele quer?</b> (objetivo específico, mensurável, temporal)",
+        "<b>Qual o obstáculo?</b> (interno ou externo, mas real)",
+        "<b>Qual a transformação?</b> (o que muda do início ao fim)",
+        "<b>Qual o insight?</b> (a frase que o espectador vai levar)",
+        "<b>Qual o gancho dos 3s?</b> (escreva a frase literal de abertura)",
+        "<b>Qual o CTA?</b> (deve nascer da história, não ser desconectado)",
+    ]),
+    h2("Checklist de gancho"),
+    body("Use antes de finalizar a abertura. Marque qual tipo de gancho está usando:"),
+    bullet_list([
+        "☐ Curiosidade (pergunta cuja resposta ele precisa saber)",
+        "☐ Surpresa (quebra de expectativa)",
+        "☐ Medo/Urgência (ameaça real)",
+        "☐ Raiva (contra injustiça compartilhada)",
+        "☐ Tristeza (vulnerabilidade)",
+        "☐ Alegria/Aspiração (resultado final visível)",
+        "☐ Pertencimento (cria &ldquo;nós&rdquo;)",
+        "☐ Quebra de padrão (início inesperado)",
+    ]),
+    body("Regra: nenhum vídeo sem gancho intencional. Se você não sabe qual categoria seu gancho usa, ele provavelmente é fraco."),
+    h2("Checklist anti-armadilhas"),
+    body("Antes de publicar, passe por essas 7 verificações:"),
+    numbered_list([
+        "☐ O gancho promete SÓ o que eu vou entregar? (não é clickbait)",
+        "☐ Tem no máximo 2 personagens na história?",
+        "☐ O conflito é real (dá medo de contar para amigo)?",
+        "☐ O payoff tem número ou ação concreta?",
+        "☐ O CTA nasce da história (não parece comercial)?",
+        "☐ Começo pela ação (não por contexto longo)?",
+        "☐ É só 1 história por vídeo (não múltiplas)?",
+    ]),
+    body("Se todas as 7 forem SIM, publique. Se alguma for NÃO, refaça."),
+    h2("Checklist pós-publicação (análise)"),
+    body("72h após publicar, faça essas perguntas:"),
+    numbered_list([
+        "☐ Retenção aos 3s foi >65%? Se não, gancho falhou.",
+        "☐ Retenção média foi >50%? Se não, meio da história perdeu força.",
+        "☐ Salvamentos foram >2% das views? Se não, faltou valor prático.",
+        "☐ Compartilhamentos >1%? Se não, faltou ressonância emocional.",
+        "☐ Comentários >0.5%? Se não, CTA não conectou.",
+        "☐ Qual o momento de pico de retenção? Anote o que estava acontecendo.",
+        "☐ Qual o momento de vale? Anote o que estava acontecendo.",
+        "☐ Que padrão aprendi para o próximo vídeo?",
+    ]),
+    callout("Como usar estes checklists", "<b>NÃO pule etapas</b>. Cada checklist existe porque resolve um problema real. Criadores que pulam etapas são os mesmos que reclamam de &ldquo;algoritmo&rdquo; — quando o problema é processo. Use os checklists por 90 dias em todos os vídeos. Depois, viram automáticos."),
+    spacer(0.5),
+    body_lead("Pronto para começar? Feche este e-book. Abra a câmera. Conte sua primeira história magnética."),
+    spacer(0.5),
+]
+
+
+def build():
+    story = []
+    
+    # ============ CAPA ============
+    story += cover_page(
+        title="Storytelling Magnético",
+        subtitle="Conecte, Engaje e Converta com Histórias Inesquecíveis",
+        author="Clodoaldo Silva",
+        site="clodoaldo.vercel.app",
+        eyebrow="E-BOOK PREMIUM · CLODOALDO SILVA",
+    )
+    
+    # ============ SUMÁRIO ============
+    story += toc_page([
+        {"title": "Sobre o autor", "page": "3"},
+        {"title": "Introdução", "page": "5"},
+        {"title": "Capítulo 1 — A Ciência do Storytelling", "page": "9"},
+        {"title": "Capítulo 2 — Anatomia de uma História Magnética", "page": "15"},
+        {"title": "Capítulo 3 — O Framework dos 3 Atos", "page": "22"},
+        {"title": "Capítulo 4 — Ganchos Emocionais que Prendem", "page": "29"},
+        {"title": "Capítulo 5 — Arquétipos Narrativos", "page": "36"},
+        {"title": "Capítulo 6 — Storytelling Visual", "page": "43"},
+        {"title": "Capítulo 7 — Modelos Prontos para Reels e Stories", "page": "50"},
+        {"title": "Capítulo 8 — Métricas e Iteração", "page": "56"},
+        {"title": "Capítulo 9 — Casos Reais que Viralizaram", "page": "60"},
+        {"title": "Capítulo 10 — Armadilhas Comuns e Como Evitá-las", "page": "66"},
+        {"title": "Capítulo 11 — Storytelling para Vendas", "page": "72"},
+        {"title": "Capítulo 12 — Storytelling para Marca Pessoal", "page": "78"},
+        {"title": "Capítulo 13 — Storytelling Cross-Platform", "page": "84"},
+        {"title": "Capítulo 14 — FAQ Perguntas Frequentes", "page": "90"},
+        {"title": "Apêndice — Checklists Imprimíveis", "page": "94"},
+        {"title": "Conclusão e Próximos Passos", "page": "98"},
+        {"title": "Recursos Adicionais", "page": "100"},
+    ])
+    
+    # ============ PÁGINA DE COPYRIGHT + SOBRE ============
+    story.append(page_break())
+    story.append(spacer(3))
+    styles = get_styles()
+    story.append(Paragraph("SOBRE O AUTOR", styles["Chapter_Number"]))
+    story.append(HRule(1.5*28.35, COLORS["primary"], 1))
+    story.append(spacer(0.6))
+    story.append(Paragraph("Clodoaldo Silva", styles["Chapter_Title"]))
+    story.append(spacer(0.4))
+    story.append(body_lead("Clodoaldo Silva é influenciador digital focado em Lifestyle, Business e Vision. Conteúdos sobre empreendedorismo, IA, produtividade e construção de patrimônio conectam uma audiência qualificada em busca de crescimento real."))
+    story.append(body("Com crescimento orgânico explosivo nos últimos meses, o canal se tornou referência para marcas que buscam parcerias autênticas, engajamento real e resultados mensuráveis — longe do marketing artificial. Mais do que números, o trabalho é guiado por propósito: cada conteúdo é pensado para entregar valor à audiência e gerar conexão verdadeira entre seguidores e marcas."))
+    story.append(body("Além do conteúdo de influência, Clodoaldo é desenvolvedor de software e empreendedor tech. Criou e mantém um ecossistema de 50+ aplicativos em 8 categorias — de autoconhecimento a saúde farmacêutica, de educação infantil a concursos públicos. Cada app resolve uma dor real, e cada um tem sua própria história."))
+    story.append(body("Este e-book nasceu da observação direta de quais histórias performam melhor no conteúdo digital — e por quê. Não é teoria acadêmica. É engenharia prática, testada em milhares de vídeos, refinada por dados."))
+    story.append(spacer(1))
+    story.append(h2("Licença de uso"))
+    story.append(body("Este e-book é parte do Knowledge Hub Premium do Clodoaldo Silva. A compra/originalidade dá direito a uso pessoal e interno. Reprodução, redistribuição ou revenda sem autorização expressa é proibida. Para licenças comerciais ou educacionais, contate clodoaldosilva608@gmail.com."))
+    story.append(spacer(0.5))
+    story.append(callout("Aviso", "As informações contidas neste material são baseadas em experiência prática e estudo contínuo. Resultados variam conforme aplicação, nicho e consistência. Não há garantia de viralização ou crescimento específico — há método, prática e iteração."))
+    
+    # ============ INTRODUÇÃO ============
+    story += chapter_intro(
+        "Por que algumas histórias grudam na memória e outras somem em segundos?",
+        "O poder invisível do storytelling no mundo do conteúdo"
+    )
+    story.append(body_lead("Vivemos na era do excesso. A cada minuto, milhões de vídeos, posts e stories disputam a atenção de uma audiência cada vez mais distraída. Nesse oceano de conteúdo, apenas uma coisa separa quem é lembrado de quem é esquecido: a capacidade de contar uma história que importe."))
+    story.append(body("Este e-book não é mais um manual teórico sobre narrativa. É um campo de treinamento prático para criadores de conteúdo, profissionais de marketing e marcas que querem transformar informação em emoção — e emoção em ação. Aqui você vai encontrar frameworks validados em milhares de Reels, casos reais de criadores que saíram do zero para milhões de visualizações, e os bastidores do que torna certas histórias magnéticas."))
+    story.append(body("Mas antes de começarmos, uma verdade desconfortável: a maioria dos criadores acredita que storytelling é sobre &ldquo;contar uma história legal&rdquo;. Não é. Storytelling é sobre <b>estrutura</b>. É a engenharia invisível que faz um cérebro humano parar de rolar o feed, prestar atenção e sentir algo. Quando você entende essa engenharia, deixa de depender de sorte ou inspiração. Cada vídeo passa a ter um propósito. Cada palavra tem um lugar. Cada corte tem uma função."))
+    story.append(h2("O que você vai encontrar neste e-book"))
+    story.append(bullet_list([
+        "<b>Ciência cognitiva aplicada:</b> como o cérebro processa histórias e por que isso importa na hora de capturar atenção.",
+        "<b>Frameworks prontos:</b> 3 atos, jornada do herói reduzida, hook→payoff, e outros modelos que você pode aplicar hoje.",
+        "<b>Ganchos emocionais:</b> 8 categorias universais com exemplos reais e métricas de retenção.",
+        "<b>Storytelling visual:</b> como cor, composição e ritmo narrativo trabalham juntos.",
+        "<b>Modelos prontos:</b> 12 templates de roteiro para Reels e stories que você pode usar imediatamente.",
+        "<b>Sistema de iteração:</b> como medir, analisar e melhorar cada história que você publicar.",
+    ]))
+    story.append(h2("Como aproveitar ao máximo"))
+    story.append(body("Cada capítulo termina com um exercício prático. Não pule esses exercícios. Eles são onde a transformação acontece. Ler sobre storytelling é como ler sobre andar de bicicleta: não te ensina nada até você cair umas três vezes. Os exercícios são projetados para te fazer cair com segurança — e levantar com uma nova habilidade."))
+    story.append(callout("Promessa do e-book", "Ao final destas páginas, você terá: (1) um framework mental claro de como construir histórias magnéticas, (2) 12 modelos prontos para usar em Reels e stories, (3) capacidade de diagnosticar por que um vídeo performou bem ou mal, e (4) um sistema de iteração para melhorar continuamente."))
+    story.append(spacer(0.4))
+    story += quote("As pessoas esquecem o que você disse. Esquecem o que você fez. Mas nunca esquecem como você as fez sentir.", "Maya Angelou")
+    story.append(body("Essa frase resume o desafio central deste e-book. Não basta informar. Não basta mostrar. É preciso fazer sentir. E sentir não é sobre drama ou emoção barata — é sobre criar ressonância, aquela sensação de &ldquo;isso é comigo&rdquo;. Quando você atinge essa ressonância, o conteúdo para de ser um vídeo e vira uma experiência compartilhada. E experiências compartilhadas são o que constroem audiência, autoridade e, no final, conversão."))
+    
+    # ============ CAPÍTULOS 1-8 ============
+    story += chapter_header("1", "A Ciência do Storytelling", "O que a neurociência diz sobre por que histórias funcionam")
+    story.extend(CHAPTER_1)
+    
+    story += chapter_header("2", "Anatomia de uma História Magnética", "Os 5 elementos obrigatórios de qualquer narrativa que prende")
+    story.extend(CHAPTER_2)
+    
+    story += chapter_header("3", "O Framework dos 3 Atos", "A estrutura mais antiga do mundo — aplicada a Reels de 15 segundos")
+    story.extend(CHAPTER_3)
+    
+    story += chapter_header("4", "Ganchos Emocionais que Prendem", "As 8 categorias universais de gatilho emocional")
+    story.extend(CHAPTER_4)
+    
+    story += chapter_header("5", "Arquétipos Narrativos", "Como usar arquétipos de Jung para criar histórias que ressoam")
+    story.extend(CHAPTER_5)
+    
+    story += chapter_header("6", "Storytelling Visual", "Como cor, composição e ritmo narrativo trabalham juntos")
+    story.extend(CHAPTER_6)
+    
+    story += chapter_header("7", "Modelos Prontos para Reels e Stories", "12 templates que você pode usar hoje mesmo")
+    story.extend(CHAPTER_7)
+    
+    story += chapter_header("8", "Métricas e Iteração", "Como medir, analisar e melhorar cada história que você publica")
+    story.extend(CHAPTER_8)
+    
+    story += chapter_header("9", "Casos Reais que Viralizaram", "5 criadores destrinchados — o que funcionou em cada um")
+    story.extend(CHAPTER_9)
+    
+    story += chapter_header("10", "Armadilhas Comuns e Como Evitá-las", "7 erros que destroem histórias — e como corrigir")
+    story.extend(CHAPTER_10)
+    
+    story += chapter_header("11", "Storytelling para Vendas", "Como converter narrativa em faturamento — sem parecer vendedor")
+    story.extend(CHAPTER_11)
+    
+    story += chapter_header("12", "Storytelling para Marca Pessoal", "Construa uma identidade narrativa que audiência lembra e segue")
+    story.extend(CHAPTER_12)
+    
+    story += chapter_header("13", "Storytelling Cross-Platform", "Adaptando a mesma história para Instagram, TikTok, YouTube, LinkedIn e mais")
+    story.extend(CHAPTER_13)
+    
+    story += chapter_header("14", "FAQ — Perguntas Frequentes", "Respostas diretas para dúvidas comuns sobre storytelling")
+    story.extend(CHAPTER_14)
+    
+    story += chapter_header("A", "Apêndice — Checklists Imprimíveis", "Ferramentas práticas para usar antes de cada vídeo")
+    story.extend(APPENDIX)
+    
+    # ============ CONCLUSÃO ============
+    story += chapter_header("FIM", "Conclusão e Próximos Passos", "O que fazer agora, com tudo que aprendeu")
+    story.append(body_lead("Você chegou ao fim do e-book. Parabéns. Mas aqui está a verdade desconfortável: ler sobre storytelling não te torna melhor em storytelling. Praticar, medir, iterar — sim."))
+    story.append(body("Por isso, em vez de uma conclusão tradicional, vou te deixar com um plano de 30 dias. Se você seguir, em 1 mês sua capacidade de contar histórias terá dado um salto mensurável."))
+    story.append(h2("Plano de 30 dias"))
+    story.append(h3("Semana 1: Diagnóstico"))
+    story.append(bullet_list([
+        "Pegue seus últimos 10 vídeos. Para cada: (1) classifique o gancho (1-10), (2) marque o conflito, (3) avalie o payoff.",
+        "Identifique o tipo de gancho que mais performa para você.",
+        "Identifique o maior padrão de fracasso.",
+    ]))
+    story.append(h3("Semana 2: Refatoração"))
+    story.append(bullet_list([
+        "Escolha 3 templates do Capítulo 7. Um vídeo por template.",
+        "Antes de gravar cada um, escreva: herói, desejo, obstáculo, transformação, insight.",
+        "Publique. Meça retenção aos 3s e taxa de salvamento.",
+    ]))
+    story.append(h3("Semana 3: Intensificação"))
+    story.append(bullet_list([
+        "Identifique o template campeão da semana 2.",
+        "Produza 5 vídeos usando variações desse template.",
+        "Para cada, experimente um tipo de gancho emocional diferente (do Capítulo 4).",
+    ]))
+    story.append(h3("Semana 4: Consolidação"))
+    story.append(bullet_list([
+        "Faça a revisão completa de todos os vídeos da semana 3.",
+        "Identifique o template × gancho vencedor.",
+        "Escreva um &ldquo;playbook&rdquo; pessoal: &ldquo;meu gancho mais forte é X, minha estrutura ideal é Y, meu CTA mais convertido é Z&rdquo;.",
+        "Use esse playbook para os próximos 90 dias.",
+    ]))
+    story.append(spacer(0.5))
+    story += quote("Não existe atalho para storytelling. Mas existe método. E método, praticado por 30 dias, vence talento praticado por 0 dias.", "Clodoaldo Silva")
+    story.append(spacer(0.5))
+    story.append(body("Se este e-book te ajudou, compartilhe com 1 pessoa que precisa ler. Isso é também storytelling — a história de que conteúdo bom merece ser espalhado."))
+    
+    # ============ RECURSOS ADICIONAIS ============
+    story.append(page_break())
+    story.append(spacer(2))
+    styles = get_styles()
+    story.append(Paragraph("RECURSOS ADICIONAIS", styles["Chapter_Number"]))
+    story.append(HRule(1.5*28.35, COLORS["primary"], 1))
+    story.append(spacer(0.6))
+    story.append(Paragraph("Continue sua jornada", styles["Chapter_Title"]))
+    story.append(spacer(0.4))
+    story.append(h2("Outros materiais do ecossistema"))
+    story.append(bullet_list([
+        "<b>Manual da Edição Premium</b> — Como editar vídeos que retêm atenção do primeiro ao último segundo.",
+        "<b>IA para Criadores de Conteúdo</b> — Stack completo de ferramentas e prompts para escalar produção.",
+        "<b>30 Ganchos para Reels</b> — Coleção prática de aberturas prontas para uso imediato.",
+        "<b>Pack de Prompts Premium</b> — 100+ prompts validados para ChatGPT, Gemini e Claude.",
+        "<b>Pack de Imagens Premium</b> — Backgrounds e texturas para posts e stories.",
+    ]))
+    story.append(h2("Conecte-se"))
+    story.append(bullet_list([
+        "<b>Instagram:</b> @clodoaldo_c_silva",
+        "<b>TikTok:</b> @clodoald_c_silva",
+        "<b>YouTube:</b> @clodoaldosilvaa",
+        "<b>E-mail:</b> clodoaldosilva608@gmail.com",
+        "<b>Site:</b> clodoaldo.vercel.app",
+    ]))
+    
+    story.append(spacer(0.5))
+    story.append(h2("Bibliografia recomendada"))
+    story.append(body("Quer aprofundar? Estes são os 8 livros que mais influenciaram minha visão de storytelling. Recomendo em ordem de leitura:"),
+    )
+    story.append(numbered_list([
+        "<b>Building a StoryBrand</b> — Donald Miller. O framework mais claro de storytelling aplicado a negócios.",
+        "<b>Made to Stick</b> — Chip e Dan Heath. Por que algumas ideias colam e outras somem. Essencial para criadores.",
+        "<b>The Storytelling Animal</b> — Jonathan Gottschall. A ciência por trás de por que humanos amam histórias.",
+        "<b>Save the Cat!</b> — Blake Snyder. Estrutura de roteiro hollywoodiano aplicável a qualquer formato.",
+        "<b>Contar histórias com dados</b> — Cole Nussbaumer Knaflic. Storytelling para quem trabalha com números.",
+        "<b>O herói de mil faces</b> — Joseph Campbell. A jornada do herói na sua forma original (denso, mas fundamental).",
+        "<b>Hooked</b> — Nir Eyal. Como criar produtos (e conteúdo) que viciam. Não para manipular — para reter.",
+        "<b>Show Your Work</b> — Austin Kleon. Construir marca pessoal compartilhando processo, não só resultado.",
+    ]))
+    story.append(body("Comece por <i>Building a StoryBrand</i> e <i>Made to Stick</i>. São os mais práticos. Os outros vêm depois, conforme você aprofunda."))
+    
+    story.append(spacer(0.5))
+    story.append(h2("Citação final"))
+    story += quote("Conte histórias. As pessoas lembram de histórias. Tudo o mais é ruído.", "Anônimo (mas verdadeiro)")
+    story.append(spacer(1))
+    
+    story.append(HRule(2*28.35, COLORS["primary"], 1))
+    story.append(spacer(0.4))
+    story.append(Paragraph("© Clodoaldo Silva. Todos os direitos reservados. Este material é parte do Knowledge Hub Premium.", styles["Footer_Caption"]))
+    
+    return story
+
+
+if __name__ == "__main__":
+    print("Gerando storytelling-magnetico.pdf...")
+    story = build()
+    build_pdf(OUTPUT, story, title="Storytelling Magnético — Clodoaldo Silva")
+    
+    import os
+    size = os.path.getsize(OUTPUT)
+    print(f"✅ Gerado: {OUTPUT}")
+    print(f"   Tamanho: {size:,} bytes ({size/1024:.1f} KB)")
+    
+    import pypdf
+    reader = pypdf.PdfReader(OUTPUT)
+    print(f"   Páginas: {len(reader.pages)}")
