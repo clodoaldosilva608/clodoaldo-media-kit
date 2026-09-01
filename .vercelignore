@@ -1,0 +1,10 @@
+# Exclude large/unnecessary files from Vercel upload
+download/
+scripts/ebook-generator/output/
+scripts/ebook-generator/illustrations/
+tool-results/
+.tanstack-old/
+upload/
+*.log
+dev.log
+server.log
