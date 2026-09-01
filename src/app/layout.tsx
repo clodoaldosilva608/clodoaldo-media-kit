@@ -34,7 +34,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
+    apple: "/assets/clodoaldo-logo.png",
   },
+  manifest: "/manifest.webmanifest",
   robots: { index: true, follow: true },
 };
 

@@ -309,3 +309,78 @@ Stage Summary:
 - ✅ Validação extra do carousel: 14 apps na mesma ordem exata em ambas versões.
 - 📸 16 screenshots salvos em /home/z/my-project/download/pixel-perfect/{lovable,nextjs}/
   (desktop: 7 cada, mobile: 1 cada).
+
+---
+Task ID: 9
+Agent: main (GLM)
+Task: Verificar 9 páginas renderizando + validar PWA idêntico ao Lovable
+
+Work Log:
+- Mapeamento das 9 páginas solicitadas pelo usuário:
+  1. Métricas       → /#metricas (anchor)
+  2. Serviços       → /#servicos (anchor)
+  3. Biblioteca     → /biblioteca (rota)
+  4. Knowledge Hub  → /knowledge (rota)
+  5. Apps           → /apps (rota)
+  6. Cases          → /#cases (anchor)
+  7. Sobre          → /sobre (rota)
+  8. FAQ            → /faq (rota)
+  9. Contato        → /#contato (anchor)
+- Status inicial: 4 anchors já funcionavam na home (HTTP 200), mas 5 rotas internas
+  (/sobre, /faq, /biblioteca, /knowledge, /apps) retornavam 404 no Next.js.
+- Portadas 5 novas rotas para Next.js App Router:
+  - src/app/sobre/page.tsx          → Server Component (estática)
+  - src/app/faq/page.tsx           → Client Component (accordion interativo)
+  - src/app/apps/page.tsx           → Client Component (search + filter + grid)
+  - src/app/biblioteca/page.tsx    → Server Component + biblioteca-client.tsx (modal form)
+  - src/app/knowledge/page.tsx     → Server Component (async) com listPublishedKnowledgeItems()
+- Portados componentes auxiliares:
+  - src/components/knowledge/knowledge-card.tsx (Link do next/link)
+  - src/components/knowledge/knowledge-grid.tsx (client, com search e 2 filtros)
+  - src/app/biblioteca/biblioteca-client.tsx (form de captura de lead com modal)
+- Criado src/lib/knowledge.ts com listPublishedKnowledgeItems() usando @supabase/supabase-js
+  (server-only, service_role key via process.env.SUPABASE_SERVICE_ROLE_KEY).
+- Instalado @supabase/supabase-js@2.112.4.
+- Inseridos 8 knowledge_items no banco Supabase novo (via psycopg2):
+  dados idênticos aos do Lovable (slug, title, description, cover_url, category,
+  type, access_type, price_cents, currency, estimated_minutes, difficulty, status).
+  Cover URLs apontam para /assets/* locais em vez do CDN Lovable.
+- PWA:
+  - Copiado manifest.webmanifest do TanStack para public/ (ajustado icon.src para
+    /assets/clodoaldo-logo.png)
+  - Copiado favicon.ico (34429 bytes) e robots.txt
+  - Atualizado layout.tsx com:
+      icons.icon = "/favicon.ico"
+      icons.apple = "/assets/clodoaldo-logo.png"
+      manifest = "/manifest.webmanifest"
+- Validação visual via VLM (z-ai vision glm-5v-turbo) — 5 páginas comparadas:
+  - /sobre       → IDENTICAL ✅
+  - /faq         → IDENTICAL ✅
+  - /biblioteca  → IDENTICAL ✅
+  - /knowledge   → IDENTICAL ✅ (após migrar do services-catalog estático para
+                  buscar do Supabase via listPublishedKnowledgeItems, ordem ficou
+                  idêntica: briefing-viral → 30-ganchos → manual-edicao → storytelling
+                  → ia-criadores → networking → prompts → imagens)
+  - /apps        → IDENTICAL ✅
+- Validação PWA:
+  - manifest.webmanifest servindo com application/manifest+json ✅
+  - favicon.ico servindo com image/x-icon (34429 bytes) ✅
+  - robots.txt servindo com text/plain ✅
+  - /assets/clodoaldo-logo.png (1920x1920 RGBA, 2299064 bytes) — MD5 idêntico ao
+    do Lovable (10879496c6a5e9efe11d203bc6736f97) — exatamente o mesmo arquivo.
+  - VLM confirmou: logo PWA IDENTICAL ✅
+  - Manifest JSON idêntico (apenas o src do ícone mudou de CDN para path local,
+    mas o arquivo servido é o mesmo)
+
+Stage Summary:
+- ✅ Todas as 9 páginas renderizando com HTTP 200:
+    / (com #metricas, #servicos, #cases, #contato), /sobre, /faq, /biblioteca,
+    /knowledge, /apps
+- ✅ 5 páginas internas pixel-perfect idênticas ao Lovable (validadas por VLM)
+- ✅ PWA 100% idêntico: manifest, favicon, logo (MD5 idêntico)
+- ✅ Conexão Supabase funcionando: /knowledge busca 8 itens reais do banco novo
+- ✅ 8 knowledge_items inseridos no Supabase com dados idênticos ao Lovable
+- ⚠️ Próximas rotas a portar (ainda dão 404): /termos, /privacidade, /auth,
+  /criadores-parceiros, /fila/$service, /checkout/$service, /checkout/sucesso,
+  /checkout/cancelado, /apoiar/$app, /sitemap.xml, /api/stripe-webhook,
+  /api/public/downloads/pack-imagens-premium.zip
