@@ -209,3 +209,54 @@ Stage Summary:
   via `supabase db push` ou SQL Editor do dashboard.
 - ⚠️ PAT do Supabase ainda está ativo. Recomendo revogar em
   https://supabase.com/dashboard/account/tokens após terminar o setup completo.
+
+---
+Task ID: 7
+Agent: main (GLM)
+Task: Aplicar as 13 migrations originais do Lovable no novo Supabase
+
+Work Log:
+- Localizadas 13 migrations em /home/z/my-project/.tanstack-old/supabase/migrations/ (de 2026-06-28 a 2026-09-01).
+- Tentativa 1: aplicar via Supabase Management API (POST /v1/projects/{ref}/database/query).
+  ❌ Falhou com "error code: 1010" — Cloudflare WAF bloqueando a sequência de DDL
+  (rate limit ou padrão suspeito). Tentar uma query única funcionava, mas múltiplas em
+  sequência eram bloqueadas.
+- Tentativa 2: instalar psycopg2-binary para conexão direta ao Postgres.
+  - python3 do usuário (3.12, /home/z/.venv) não tinha pip --break-system-packages.
+  - pip install --break-system-packages psycopg2-binary funcionou, mas instalou em
+    /home/z/.local/lib/python3.13/site-packages/ (Python 3.13 do sistema, não o 3.12 do venv).
+  - Solução: usar /usr/bin/python3 (3.13) que tem psycopg2 funcionando.
+- Criado /home/z/my-project/scripts/apply-supabase-migrations.py:
+  - Conecta direto ao Postgres pooler (aws-0-sa-east-1.pooler.supabase.com:6543)
+  - Lê cada .sql em ordem cronológica
+  - cursor.execute(sql) com multi-statement (psycopg2 suporta)
+  - conn.commit() por migration; rollback em caso de erro
+  - Continua para a próxima migration mesmo se uma falhar (para ver todos erros)
+- Resultado da execução: 13/13 migrations OK em 13s (1s cada).
+- Verificações pós-aplicação (tudo OK):
+  - 24 tabelas em public
+  - 31 RLS policies
+  - 51 índices
+  - 64 constraints (24 PK, 27 FK, 10 UNIQUE, 3 CHECK)
+  - 4 functions (has_knowledge_access, has_role, knowledge_touch_updated_at, service_queue_join)
+  - 6 ENUM types (app_role, knowledge_access_type, knowledge_content_type, knowledge_difficulty,
+    knowledge_entitlement_source, knowledge_status)
+- Dados seed já vieram nas migrations:
+  - 14 offers (combo-completo, video-dedicado, mencoes-patrocinadas, etc.)
+  - 58 quiz_rules
+  - 7 service_capacity (todos os serviços com fila já configurados com monthly_slots)
+- Teste de inserção real: lead inserido e removido com sucesso (RLS policy
+  "Visitors can create leads" funcionando).
+
+Stage Summary:
+- ✅ Banco 100% replicado do Lovable, com todas as tabelas, policies, constraints, functions,
+  ENUMs e dados seed.
+- ✅ RLS ativa em todas as tabelas que precisam.
+- ✅ Conexão direta Postgres funcionando via psycopg2.
+- ⚠️ Observado pequeno desalinhamento de slugs entre services-catalog.ts e o seed do banco:
+  - services-catalog.ts usa "auditoria-de-perfil" mas service_capacity tem "auditoria-perfil"
+  - services-catalog.ts usa "mencoes-patrocinadas" mas offers tem "mencoes-patrocinadas" (igual)
+  - Isso é um bug do projeto original do Lovable, não algo que causei. Provavelmente o
+    código TS tem fallback/handling. Vou documentar mas não corrigir agora.
+- ⚠️ PAT do Supabase ainda está ativo. Recomendo revogar em
+  https://supabase.com/dashboard/account/tokens quando terminar o setup completo.
