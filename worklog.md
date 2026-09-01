@@ -93,3 +93,36 @@ Stage Summary:
   3. Rodar stripe listen --forward to localhost:8080/api/public/stripe-webhook para
      simular webhook events em dev.
   4. Comprar via /checkout/$service com cartão de teste Stripe (4242 4242 4242 4242).
+
+---
+Task ID: 4
+Agent: main (GLM)
+Task: Migrar projeto TanStack Start → Next.js 16 para habilitar preview público
+
+Work Log:
+- Inicializado fullstack-dev skill → projeto Next.js 16.1.3 + Turbopack criado em /home/z/my-project/.
+- Caddyfile do ambiente roteia :81 → :3000. URL pública: https://preview-chat-8e0db441-89cb-408f-b4da-aa1e00aa1aff.space-z.ai/
+- Movido app/ (TanStack antigo) para .tanstack-old/ para evitar conflito com src/app/ (Next.js).
+- Baixado 89 assets (PDFs, imagens, e-books, capas de apps) do Lovable CDN → /home/z/my-project/public/assets/.
+  Script: /home/z/my-project/scripts/download-assets.py (gera src/lib/asset-urls.ts com mapeamento slug→URL).
+- Portados componentes media-kit (14 arquivos) + apps-carousel + app-preview-modal para Next.js:
+  - Substituído `Link` do TanStack por `next/link`.
+  - Substituído imports `*.asset.json` por `import { ASSETS } from "@/lib/asset-urls"`.
+  - Adicionado `'use client'` onde necessário (Header, Hero, Metrics, etc.).
+- globals.css: copiada paleta bronze/escuro OKLCH, utilities (eyebrow, hairline, bg-gradient-orange,
+  text-gradient-orange, shadow-glow, shadow-card), animações (fadeInUp, heroLineIn), .reveal class.
+- layout.tsx: PT-BR, fonts Newsreader + Inter Tight, metadata completa (OG, Twitter, etc.).
+- next.config.ts: adicionado allowedDevOrigins para *.space-z.ai (evita warnings de cross-origin).
+- Instalado `embla-carousel-autoplay` (estava no package.json do Lovable mas faltava no scaffold).
+
+Stage Summary:
+- ✅ Home page (media kit) rodando em Next.js 16: HTTP 200, 163KB, título correto.
+- ✅ Preview público funcional: https://preview-chat-8e0db441-89cb-408f-b4da-aa1e00aa1aff.space-z.ai/
+- ✅ 89 assets servindo localmente (sem dependência do CDN do Lovable).
+- ✅ Visual idêntico ao Lovable (paleta bronze/escuro, tipografia, animações).
+- ⚠️ Dev server é instável no sandbox (morre após alguns minutos de inatividade).
+  Solução: /home/z/my-project/scripts/keep-dev-alive.sh (watcher que reinicia se morrer).
+  Ou rodar `bash /home/z/my-project/scripts/start-and-test.sh` para subir tudo de uma vez.
+- ⚠️ Rotas internas (/, /sobre, /biblioteca, /apps, /knowledge, /faq, /termos, /privacidade,
+  /checkout/*, /fila/*, /apoiar/*, /auth) ainda existem como Links no HTML mas só / está implementada.
+  Próximos passos: portar as outras rotas uma a uma.
