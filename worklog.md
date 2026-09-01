@@ -126,3 +126,37 @@ Stage Summary:
 - ⚠️ Rotas internas (/, /sobre, /biblioteca, /apps, /knowledge, /faq, /termos, /privacidade,
   /checkout/*, /fila/*, /apoiar/*, /auth) ainda existem como Links no HTML mas só / está implementada.
   Próximos passos: portar as outras rotas uma a uma.
+
+---
+Task ID: 5
+Agent: main (GLM)
+Task: Criar repositório no GitHub e fazer push do projeto
+
+Work Log:
+- Atualizado .gitignore para excluir: .tanstack-old/, upload/, .zscripts/, .agent-browser/,
+  db/, prisma/, examples/, mini-services/, skills/, .env* (com !.env.example exception).
+- Criado .env.example com placeholders para SUPABASE_*, NEXT_PUBLIC_SUPABASE_*, STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_SITE_URL.
+- Criado README.md com stack, começando, variáveis de ambiente, estrutura de pastas,
+  seções da home, paleta OKLCH, e lista de rotas pendentes a portar.
+- Re-staged todos os arquivos (git rm -r --cached . + git add -A) respeitando novo .gitignore.
+- Commit 1: "feat: migrate Clodoaldo Silva Media Kit from TanStack Start to Next.js 16"
+  - 190 arquivos, 73MB total (89 assets em public/assets/).
+  - Excluiu: .tanstack-old (535MB), upload (1.5MB), node_modules, .next.
+- Commit 2: "docs: add README and .env.example"
+- Token GitHub fornecido pelo usuário (clodoaldosilva608) — usado apenas para criar
+  repo e push; NÃO gravado em nenhum arquivo ou log.
+- Criado repo via API: POST /user/repos com name=clodoaldo-media-kit, private=true,
+  auto_init=false, description completa.
+- Adicionado remote origin (com token embedded temporariamente), push origin main.
+- Após push, substituído remote URL por versão limpa (sem token) para segurança.
+  git remote set-url origin https://github.com/clodoaldosilva608/clodoaldo-media-kit.git
+- Verificado via GitHub API: 5 commits confirmados no remote, 18 itens na raiz,
+  4 arquivos em src/app/, 31 assets em public/assets/.
+
+Stage Summary:
+- ✅ Repo criado: https://github.com/clodoaldosilva608/clodoaldo-media-kit (privado)
+- ✅ 5 commits no remote, branch main, 73MB
+- ✅ Token não persistido em nenhum lugar do projeto
+- ✅ Remote URL limpa (sem token) — futuros pushs precisarão de novo token ou SSH
+- ⚠️ Recomendado: revogar o token em https://github.com/settings/tokens agora
