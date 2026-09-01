@@ -160,3 +160,52 @@ Stage Summary:
 - ✅ Token não persistido em nenhum lugar do projeto
 - ✅ Remote URL limpa (sem token) — futuros pushs precisarão de novo token ou SSH
 - ⚠️ Recomendado: revogar o token em https://github.com/settings/tokens agora
+
+---
+Task ID: 6
+Agent: main (GLM)
+Task: Criar projeto Supabase novo para o Media Kit e configurar .env.local
+
+Work Log:
+- Token Supabase PAT fornecido pelo usuário (sbp_v0_...).
+- Validado via GET /v1/organizations: org "aplicações SAAS" (id xxxsrixvtyncpyxylfkm), plan free.
+- Projetos existentes nesta org: condomipro (INACTIVE), Projeto-OrioN (INACTIVE),
+  projeto-paguemenos (ACTIVE_HEALTHY). Todos em sa-east-1.
+- Gerada senha Postgres aleatória de 32 chars (secrets.choice, alphanumeric).
+- Criado projeto via POST /v1/projects:
+    name: "clodoaldo-media-kit"
+    organization_id: xxxsrixvtyncpyxylfkm
+    db_pass: [oculto, salvo em /tmp/.supabase_db_password temporariamente]
+    region: sa-east-1 (São Paulo — mais perto do usuário em America/Sao_Paulo)
+    plan: free
+- Resposta da criação:
+    ref: jckkbsluvbejioyrlcfo
+    status: ACTIVE_HEALTHY (imediatamente após criação)
+    Postgres: 17.6.1.166
+- Buscadas API keys via GET /v1/projects/{ref}/api-keys:
+    anon (publishable): 208 chars
+    service_role (secret): 219 chars
+    sb_publishable_* (nova formato): 46 chars
+    sb_secret_* (nova formato, mascarada): 41 chars
+- Validações:
+    GET /rest/v1/ com service_role → HTTP 200, swagger PostgREST retornado ✅
+    GET /auth/v1/health com anon → HTTP 200, GoTrue v2.196.0 ✅
+- Criado /home/z/my-project/.env.local com:
+    SUPABASE_PROJECT_ID, SUPABASE_PUBLISHABLE_KEY (anon), SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL, SUPABASE_DB_URL (postgres pooler)
+    NEXT_PUBLIC_SUPABASE_* (variantes públicas)
+    STRIPE_* placeholders (ainda pendente)
+    NEXT_PUBLIC_SITE_URL = http://localhost:3000
+- Confirmado .env.local está no .gitignore (não vai ser commitado).
+- Limpos todos os arquivos temporários /tmp/.supabase_* com credenciais.
+
+Stage Summary:
+- ✅ Projeto Supabase criado: https://supabase.com/dashboard/project/jckkbsluvbejioyrlcfo
+- ✅ Region: sa-east-1 (São Paulo), Plano: Free, Status: ACTIVE_HEALTHY
+- ✅ Credenciais salvas em .env.local (não commitadas ao GitHub)
+- ✅ API + Auth validados e funcionando
+- ⚠️ Banco está VAZIO (sem tabelas, sem schema, sem migrations aplicadas).
+  Próximo passo: aplicar as 14 migrations do TanStack original (em .tanstack-old/supabase/migrations/)
+  via `supabase db push` ou SQL Editor do dashboard.
+- ⚠️ PAT do Supabase ainda está ativo. Recomendo revogar em
+  https://supabase.com/dashboard/account/tokens após terminar o setup completo.
