@@ -193,72 +193,44 @@ export async function createKiwifyCheckout(
     throw new Error("Não foi possível criar o pedido");
   }
 
-  // 2. Get Kiwify product_id
-  const productId = await getKiwifyProductId(service.slug);
-
-  if (!productId) {
-    // No Kiwify product configured — redirect to success with pending flag
-    return {
-      orderId: order.id,
-      url: `${origin}/checkout/sucesso?order=${order.id}&pending=kiwify`,
-    };
-  }
-
-  // 3. Create checkout via Kiwify API
+  // 2. Get Kiwify checkout URL from Supabase (pre-configured link)
+  let checkoutUrl: string | null = null;
   try {
-    const accessToken = await getKiwifyAccessToken();
-    const storeId = getStoreId();
-
-    // Kiwify checkout creation endpoint
-    const resp = await fetch("https://public-api.kiwify.com.br/v1/checkouts", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "x-kiwify-account-id": storeId,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        product_id: productId,
-        customer: {
-          name: input.customer_name,
-          email: input.customer_email,
-        },
-        reference: order.id,
-        return_url: `${origin}/checkout/sucesso?order=${order.id}`,
-        cancel_url: `${origin}/checkout/cancelado?order=${order.id}`,
-        metadata: {
-          order_id: order.id,
-          queue_id: queueId ?? "",
-          item_slug: service.slug,
-          item_kind: service.kind,
-        },
-      }),
-    });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Kiwify checkout API ${resp.status}: ${errText}`);
+    const sb = getSupabase();
+    const { data } = await sb
+      .from("knowledge_items")
+      .select("kiwify_product_id, kiwify_checkout_url")
+      .eq("slug", service.slug)
+      .maybeSingle();
+    if (data?.kiwify_checkout_url) {
+      checkoutUrl = data.kiwify_checkout_url;
     }
+  } catch {
+    // ignore
+  }
 
-    const data = await resp.json();
-    const checkoutUrl = data.checkout_url || data.url || data.payment_url;
-    const sessionId = data.id || data.session_id || data.reference || order.id;
+  // Also check env var as fallback
+  if (!checkoutUrl) {
+    const envKey = `KIWIFY_CHECKOUT_${service.slug.toUpperCase().replace(/-/g, "_")}`;
+    checkoutUrl = process.env[envKey] || null;
+  }
 
-    // Update order with Kiwify session ID
-    await sb
-      .from("orders")
-      .update({ stripe_session_id: sessionId })
-      .eq("id", order.id);
-
-    return { orderId: order.id, url: checkoutUrl };
-  } catch (e) {
-    console.error("[kiwify] checkout creation failed:", e);
-    // Fallback: redirect to success with pending flag
+  if (!checkoutUrl) {
+    // No Kiwify checkout URL configured — redirect to success with pending flag
     return {
       orderId: order.id,
       url: `${origin}/checkout/sucesso?order=${order.id}&pending=kiwify`,
     };
   }
+
+  // 3. Redirect to Kiwify checkout page
+  // Kiwify handles payment, delivery, and webhook notification
+  await sb
+    .from("orders")
+    .update({ stripe_session_id: `kiwify-${order.id}` })
+    .eq("id", order.id);
+
+  return { orderId: order.id, url: checkoutUrl };
 }
 
 export interface FundingInput {
