@@ -1,23 +1,64 @@
-import { createClient } from "@supabase/supabase-js";
-import { SERVICES, type ServiceSlug, type Service } from "./services-catalog";
-import { FUNDING_TIERS, type FundingTierId, type AppItem } from "./apps-catalog";
-
 /**
- * Cria uma sessão de checkout na Kiwify.
+ * Kiwify integration — OAuth flow + checkout + webhook verification.
  *
- * Fluxo:
- * 1. Cria um registro na tabela `orders` (ou `supporters`) com status "pending"
- * 2. Chama a API da Kiwify para criar um link de checkout
- * 3. Retorna { orderId, url } — se KIWIFY_API_TOKEN não configurado, retorna
- *    URL de sucesso com `?pending=kiwify` (modo degradação para desenvolvimento)
+ * Flow:
+ * 1. Get access_token via OAuth (client_id + client_secret → POST /v1/oauth/token)
+ * 2. Use access_token with x-kiwify-account-id header for all API calls
+ * 3. Products CANNOT be created via API — must be created in dashboard
+ * 4. Webhook signature verified with KIWIFY_WEBHOOK_SECRET
  */
 
-interface OriginResolver {
-  (): string;
+import { createClient } from "@supabase/supabase-js";
+import { SERVICES, type ServiceSlug } from "./services-catalog";
+import { FUNDING_TIERS, type FundingTierId } from "./apps-catalog";
+
+// === OAuth Token Cache ===
+let cachedToken: { token: string; expiresAt: number } | null = null;
+
+async function getKiwifyAccessToken(): Promise<string> {
+  // Return cached token if still valid (with 5min buffer)
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 300000) {
+    return cachedToken.token;
+  }
+
+  const clientId = process.env.KIWIFY_CLIENT_ID;
+  const clientSecret = process.env.KIWIFY_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing KIWIFY_CLIENT_ID or KIWIFY_CLIENT_SECRET");
+  }
+
+  const resp = await fetch("https://public-api.kiwify.com.br/v1/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "client_credentials",
+    }),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Kiwify OAuth failed: ${errText}`);
+  }
+
+  const data = await resp.json();
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in || 86400) * 1000,
+  };
+
+  return data.access_token;
+}
+
+function getStoreId(): string {
+  const storeId = process.env.KIWIFY_STORE_ID;
+  if (!storeId) throw new Error("Missing KIWIFY_STORE_ID");
+  return storeId;
 }
 
 function getOrigin(): string {
-  // Server-side: use NEXT_PUBLIC_SITE_URL or env var
   if (typeof window === "undefined") {
     return (
       process.env.NEXT_PUBLIC_SITE_URL ||
@@ -37,6 +78,33 @@ function getSupabase() {
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+/**
+ * Maps service slug → Kiwify product_id.
+ * Reads from env var KIWIFY_PRODUCT_<SLUG_UPPER> or falls back to the
+ * product_id stored in Supabase knowledge_items.kiwify_product_id.
+ */
+async function getKiwifyProductId(slug: string): Promise<string | null> {
+  // Try env var first
+  const envKey = `KIWIFY_PRODUCT_${slug.toUpperCase().replace(/-/g, "_")}`;
+  const envValue = process.env[envKey];
+  if (envValue) return envValue;
+
+  // Try Supabase
+  try {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from("knowledge_items")
+      .select("kiwify_product_id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (data?.kiwify_product_id) return data.kiwify_product_id;
+  } catch {
+    // ignore
+  }
+
+  return null;
 }
 
 export interface CheckoutInput {
@@ -62,8 +130,7 @@ export async function createKiwifyCheckout(
   const origin = getOrigin();
   const sb = getSupabase();
 
-  // Serviços com produção limitada só seguem para o pagamento com uma reserva
-  // válida de fila para o mesmo serviço.
+  // Check queue if needed
   const { data: capacity } = await sb
     .from("service_capacity")
     .select("service_slug, active")
@@ -81,7 +148,7 @@ export async function createKiwifyCheckout(
       .eq("id", input.queue_id)
       .maybeSingle();
     if (!queueRow || queueRow.service_slug !== service.slug || queueRow.status === "cancelled") {
-      throw new Error("Reserva de fila inválida. Volte e reserve sua posição novamente.");
+      throw new Error("Reserva de fila inválida.");
     }
     queueId = queueRow.id;
   }
@@ -99,7 +166,7 @@ export async function createKiwifyCheckout(
     description: bonus.description,
   }));
 
-  // 1. Cria o pedido no Supabase
+  // 1. Create order in Supabase
   const { data: order, error: orderErr } = await sb
     .from("orders")
     .insert({
@@ -126,45 +193,67 @@ export async function createKiwifyCheckout(
     throw new Error("Não foi possível criar o pedido");
   }
 
-  // 2. Tenta criar sessão Kiwify (se configurada)
-  const kiwifyToken = process.env.KIWIFY_API_TOKEN || process.env.KIWIFY_TOKEN;
-  if (!kiwifyToken) {
-    // Modo degradação: sem Kiwify configurada, vai direto para sucesso
+  // 2. Get Kiwify product_id
+  const productId = await getKiwifyProductId(service.slug);
+
+  if (!productId) {
+    // No Kiwify product configured — redirect to success with pending flag
     return {
       orderId: order.id,
       url: `${origin}/checkout/sucesso?order=${order.id}&pending=kiwify`,
     };
   }
 
-  // 3. Cria o link de checkout Kiwify
+  // 3. Create checkout via Kiwify API
   try {
-    const kiwifyUrl = await createKiwifyCheckoutLink({
-      token: kiwifyToken,
-      product_id: getKiwifyProductId(service),
-      customer_name: input.customer_name,
-      customer_email: input.customer_email,
-      amount_cents: totalCents,
-      order_id: order.id,
-      success_url: `${origin}/checkout/sucesso?order=${order.id}`,
-      cancel_url: `${origin}/checkout/cancelado?order=${order.id}`,
-      metadata: {
-        order_id: order.id,
-        queue_id: queueId ?? "",
-        item_slug: service.slug,
-        item_kind: service.kind,
+    const accessToken = await getKiwifyAccessToken();
+    const storeId = getStoreId();
+
+    // Kiwify checkout creation endpoint
+    const resp = await fetch("https://public-api.kiwify.com.br/v1/checkouts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "x-kiwify-account-id": storeId,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        product_id: productId,
+        customer: {
+          name: input.customer_name,
+          email: input.customer_email,
+        },
+        reference: order.id,
+        return_url: `${origin}/checkout/sucesso?order=${order.id}`,
+        cancel_url: `${origin}/checkout/cancelado?order=${order.id}`,
+        metadata: {
+          order_id: order.id,
+          queue_id: queueId ?? "",
+          item_slug: service.slug,
+          item_kind: service.kind,
+        },
+      }),
     });
 
-    // Atualiza o pedido com o ID da transação Kiwify
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Kiwify checkout API ${resp.status}: ${errText}`);
+    }
+
+    const data = await resp.json();
+    const checkoutUrl = data.checkout_url || data.url || data.payment_url;
+    const sessionId = data.id || data.session_id || data.reference || order.id;
+
+    // Update order with Kiwify session ID
     await sb
       .from("orders")
-      .update({ stripe_session_id: kiwifyUrl.session_id })
+      .update({ stripe_session_id: sessionId })
       .eq("id", order.id);
 
-    return { orderId: order.id, url: kiwifyUrl.checkout_url };
+    return { orderId: order.id, url: checkoutUrl };
   } catch (e) {
     console.error("[kiwify] checkout creation failed:", e);
-    // Fallback: redireciona para sucesso com pending=kiwify
+    // Fallback: redirect to success with pending flag
     return {
       orderId: order.id,
       url: `${origin}/checkout/sucesso?order=${order.id}&pending=kiwify`,
@@ -196,7 +285,7 @@ export async function createKiwifyFunding(
       ? Math.max(tier.minCents, Math.min(tier.maxCents ?? Infinity, input.amount_cents))
       : tier.defaultCents;
 
-  // 1. Cria o supporter no Supabase
+  // 1. Create supporter
   const { data: supporter, error } = await sb
     .from("supporters")
     .insert({
@@ -216,39 +305,60 @@ export async function createKiwifyFunding(
     throw new Error("Não foi possível registrar o apoio");
   }
 
-  // 2. Tenta criar sessão Kiwify
-  const kiwifyToken = process.env.KIWIFY_API_TOKEN || process.env.KIWIFY_TOKEN;
-  if (!kiwifyToken) {
+  // 2. Get funding product_id
+  const productId = await getKiwifyProductId("funding");
+
+  if (!productId) {
     return {
       orderId: supporter.id,
       url: `${origin}/apoiar/${input.app_slug}?pending=kiwify`,
     };
   }
 
+  // 3. Create checkout
   try {
-    const kiwifyUrl = await createKiwifyCheckoutLink({
-      token: kiwifyToken,
-      product_id: process.env.KIWIFY_FUNDING_PRODUCT_ID || "funding",
-      customer_name: input.supporter_name,
-      customer_email: input.supporter_email,
-      amount_cents: amountCents,
-      order_id: supporter.id,
-      success_url: `${origin}/apoiar/${input.app_slug}?thanks=1`,
-      cancel_url: `${origin}/apoiar/${input.app_slug}?cancel=1`,
-      metadata: {
-        supporter_id: supporter.id,
-        app_slug: input.app_slug,
-        tier_id: input.tier_id,
-        kind: "funding",
+    const accessToken = await getKiwifyAccessToken();
+    const storeId = getStoreId();
+
+    const resp = await fetch("https://public-api.kiwify.com.br/v1/checkouts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "x-kiwify-account-id": storeId,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        product_id: productId,
+        customer: {
+          name: input.supporter_name,
+          email: input.supporter_email,
+        },
+        reference: supporter.id,
+        return_url: `${origin}/apoiar/${input.app_slug}?thanks=1`,
+        cancel_url: `${origin}/apoiar/${input.app_slug}?cancel=1`,
+        metadata: {
+          supporter_id: supporter.id,
+          app_slug: input.app_slug,
+          tier_id: input.tier_id,
+          kind: "funding",
+        },
+      }),
     });
+
+    if (!resp.ok) {
+      throw new Error(`Kiwify API ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const checkoutUrl = data.checkout_url || data.url || data.payment_url;
+    const sessionId = data.id || data.session_id || supporter.id;
 
     await sb
       .from("supporters")
-      .update({ stripe_session_id: kiwifyUrl.session_id })
+      .update({ stripe_session_id: sessionId })
       .eq("id", supporter.id);
 
-    return { orderId: supporter.id, url: kiwifyUrl.checkout_url };
+    return { orderId: supporter.id, url: checkoutUrl };
   } catch (e) {
     console.error("[kiwify] funding checkout failed:", e);
     return {
@@ -259,76 +369,8 @@ export async function createKiwifyFunding(
 }
 
 /**
- * Chama a API da Kiwify para criar um link de checkout.
- * Docs: https://docs.kiwify.com.br/api/criar-link-de-pagamento
- */
-async function createKiwifyCheckoutLink(params: {
-  token: string;
-  product_id: string;
-  customer_name: string;
-  customer_email: string;
-  amount_cents: number;
-  order_id: string;
-  success_url: string;
-  cancel_url: string;
-  metadata: Record<string, string>;
-}): Promise<{ checkout_url: string; session_id: string }> {
-  // Kiwify API endpoint para criar link de pagamento
-  // Documentação: https://docs.kiwify.com.br/api-reference
-  const endpoint = "https://api.kiwify.com.br/v1/checkout/create";
-
-  const body = {
-    product_id: params.product_id,
-    customer: {
-      name: params.customer_name,
-      email: params.customer_email,
-    },
-    amount: (params.amount_cents / 100).toFixed(2),
-    currency: "BRL",
-    reference: params.order_id,
-    return_url: params.success_url,
-    cancel_url: params.cancel_url,
-    metadata: params.metadata,
-  };
-
-  const resp = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${params.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!resp.ok) {
-    const errText = await resp.text();
-    throw new Error(`Kiwify API ${resp.status}: ${errText}`);
-  }
-
-  const data = await resp.json();
-  return {
-    checkout_url: data.checkout_url || data.url || data.payment_url,
-    session_id: data.id || data.session_id || data.reference || params.order_id,
-  };
-}
-
-/**
- * Mapeia slug de serviço → product_id da Kiwify.
- * Configurável via env vars KIWIFY_PRODUCT_<SLUG_UPPER>.
- * Fallback: usa KIWIFY_DEFAULT_PRODUCT_ID.
- */
-function getKiwifyProductId(service: Service): string {
-  const envKey = `KIWIFY_PRODUCT_${service.slug.toUpperCase().replace(/-/g, "_")}`;
-  return process.env[envKey] || process.env.KIWIFY_DEFAULT_PRODUCT_ID || service.slug;
-}
-
-/**
- * Valida assinatura do webhook da Kiwify.
- *
- * Kiwify envia o webhook com um header `x-kiwify-signature` (HMAC-SHA256 do body
- * usando o webhook secret como chave), ou um campo `signature` no body.
- *
- * Esta função suporta ambos os formatos.
+ * Verifies webhook signature from Kiwify.
+ * Kiwify sends a token/header that can be verified with the webhook secret.
  */
 export function verifyKiwifyWebhookSignature(
   body: string,
@@ -338,17 +380,49 @@ export function verifyKiwifyWebhookSignature(
   if (!secret) return false;
   if (!signature) return false;
 
-  // Kiwify usa HMAC-SHA256 hex
-  const crypto = require("crypto");
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("hex");
+  // Kiwify webhook verification: the signature is typically the
+  // webhook secret or an HMAC of the body. Check both.
+  if (signature === secret) return true;
 
-  // Compara em tempo constante
-  if (signature.length !== expected.length) return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected),
+  // HMAC-SHA256 verification
+  try {
+    const crypto = require("crypto");
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(body)
+      .digest("hex");
+
+    if (signature.length !== expected.length) return false;
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expected),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lists all products from Kiwify (for admin/sync purposes).
+ */
+export async function listKiwifyProducts() {
+  const accessToken = await getKiwifyAccessToken();
+  const storeId = getStoreId();
+
+  const resp = await fetch(
+    "https://public-api.kiwify.com.br/v1/products?page_number=1&page_size=100",
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "x-kiwify-account-id": storeId,
+      },
+    },
   );
+
+  if (!resp.ok) {
+    throw new Error(`Kiwify API ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data.data || [];
 }
