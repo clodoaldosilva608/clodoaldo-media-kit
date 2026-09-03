@@ -921,3 +921,59 @@ Stage Summary:
 - ✅ Função sanitizeCtaHref protege contra futuros bad data no DB
 - ✅ 14 ofertas total: 8 com /checkout/X, 2 com /biboteca e /apps, 4 com /#contato
 - ✅ Deploy production atualizado: https://clodoaldo.vercel.app
+
+---
+Task ID: 19
+Agent: main (GLM)
+Task: Footer com link Admin + página /admin/login exclusiva + página /admin/parceiros
+
+Work Log:
+- Acessado meucorre.vercel.app/admin/parceiros: redirecionou para /admin/login (não tinha credenciais admin)
+- VLM analisou screenshot do login admin MeuCorre: dark theme, logo verde, form centralizado
+- Implementado:
+  1. Footer atualizado (src/components/media-kit/footer.tsx):
+     - Adicionado link "Admin" (ícone Lock) na coluna Institucional
+     - Adicionado link "Quiz de Recomendação" na coluna Explorar
+     - WhatsApp atualizado para número real 5581920051068
+  2. Página /admin/login (src/app/admin/login/):
+     - page.tsx: server component com Suspense + force-dynamic
+     - admin-login-form.tsx: client component com:
+       • Login email/senha via Supabase auth.signInWithPassword
+       • Magic link via signInWithOtp
+       • Verifica role admin após login (signOut se não for admin)
+       • Dark theme inspirado no meucorre (logo Sparkles verde, gradient effects)
+       • Show/hide password toggle
+       • Redirect automático se já logado
+  3. Página /admin/parceiros (src/app/admin/parceiros/page.tsx):
+     - 5 KPIs: Total parceiros, Cliques gerados, Vendas via parceiros, Comissões totais, A pagar
+     - Tabela com 8 colunas: Parceiro, Tipo, Link, Comissão, Métricas, Ganhos, Status, Ações
+     - Filtros: busca + tipo (Creator/Marca/Agência/Freelancer) + status
+     - CRUD completo: modal com 11 campos (nome, email, phone, company, type, slug, comissão,
+       status, website, instagram, notes)
+     - Copy link com 1 clique (/?ref=SLUG)
+     - Link para website externo
+     - Reutiliza tabela affiliates (já existente)
+  4. Admin-shell atualizado:
+     - Adicionado item "Parceiros" no sidebar (grupo Marketing, ícone Handshake)
+     - Redirect de auth mudou de /auth?redirect=/admin para /admin/login?redirect=/admin
+
+- Build: ✅ passa (/admin/login dynamic, /admin/parceiros static)
+- Deploy: ✅ pronto (dpl_8xqRzVhFh2PA8kCxhFa9jCmK9bpe)
+- Validação E2E:
+  • /admin/login → 200 ✅
+  • /admin/parceiros → 200 ✅
+  • /admin (not logged in) → redirect para /admin/login?redirect=/admin ✅
+  • Login com clodoaldo608@gmail.com → redirect para /admin ✅
+  • Sidebar mostra "Parceiros" no grupo Marketing ✅
+  • /admin/parceiros carrega com 1 parceiro (Clodoaldo, 2 cliques, 20% comissão, ACTIVE)
+  • Modal "Novo parceiro" abre com 11 campos ✅
+  • Footer da home tem link "Admin" (ícone cadeado) ✅
+  • Footer WhatsApp atualizado para 5581920051068 ✅
+
+Stage Summary:
+- ✅ Botão Admin no rodapé da landing page (ícone cadeado, discreto)
+- ✅ Página de autenticação exclusiva /admin/login (dark theme, não usa /auth)
+- ✅ Página /admin/parceiros completa (CRUD + KPIs + filtros + copy link)
+- ✅ Item "Parceiros" no sidebar admin
+- ✅ 18 seções admin total (era 17, agora 18 com Parceiros)
+- ✅ Deploy production atualizado
