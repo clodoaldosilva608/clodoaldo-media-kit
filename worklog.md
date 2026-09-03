@@ -876,3 +876,48 @@ Stage Summary:
 - ✅ Sem mais exigência de login no meio do fluxo
 - ✅ 8/8 serviços com checkout Kiwify direto funcionando
 - ✅ Deploy production atualizado: https://clodoaldo.vercel.app
+
+---
+Task ID: 18
+Agent: main (GLM)
+Task: Corrigir 404 "This page could not be found" após finalizar quiz
+
+Work Log:
+- Diagnóstico via screenshot do usuário: página 404 após quiz
+- Investigação: identifiquei que 4 ofertas web tinham cta_href = /briefing?oferta=X
+  mas a rota /briefing NÃO EXISTE no projeto Next.js (causa do 404):
+  • site-institucional → /briefing?oferta=site-institucional
+  • landing-page-conversao → /briefing?oferta=landing-page-conversao
+  • facepage-campanha → /briefing?oferta=facepage-campanha
+  • projeto-sob-medida → /briefing?oferta=projeto-sob-medida
+- Também identifiquei: 4 ofertas ainda apontavam para /fila/X (fila desativada):
+  • video-dedicado, mencoes-patrocinadas, serie-stories, auditoria-de-perfil
+
+- Fix 1 (banco de dados): Atualizei offers table via Supabase API:
+  • 4 ofertas web: /briefing?oferta=X → /#contato
+  • 4 ofertas com fila: /fila/X → /checkout/X
+- Fix 2 (código): Adicionei função sanitizeCtaHref em quiz-client.tsx que:
+  - Substitui /briefing* por /#contato (defensivo, mesmo se DB mudar)
+  - Substitui /fila/* por /checkout/* (defensivo)
+  - Fallback para /checkout/{slug} se href vazio
+- Fix 3 (deploy): O .vercel/project.json foi resetado para my-project (errado)
+  por um mecanismo de sync. Fix manual: escrevi project.json apontando para
+  prj_D1lNOTYyq5HNyPQQEmqopypXvkyz (clodoaldo).
+- Build: ✅ passa
+- Deploy: ✅ pronto em 27s (dpl_7egm1TtDaEnCD9oEAMnXz, commit fab4b5b)
+- URL: https://clodoaldo.vercel.app (production alias)
+
+- Teste E2E com respostas que recomendam "Projeto Sob Medida" (web category):
+  • Quiz respondido → Resultado: "Perfil: Estrutura Digital"
+  • Oferta primária: Projeto Sob Medida (★ Top match)
+  • CTA primária: "Falar sobre meu projeto" → https://clodoaldo.vercel.app/#contato ✅
+  • Oferta secundária: Site Institucional
+  • CTA secundária: "Ver →" → https://clodoaldo.vercel.app/#contato ✅
+  • Click no CTA carrega home com âncora #contato (sem 404)
+
+Stage Summary:
+- ✅ Erro 404 após quiz corrigido
+- ✅ Nenhum link do quiz aponta para rota inexistente
+- ✅ Função sanitizeCtaHref protege contra futuros bad data no DB
+- ✅ 14 ofertas total: 8 com /checkout/X, 2 com /biboteca e /apps, 4 com /#contato
+- ✅ Deploy production atualizado: https://clodoaldo.vercel.app
