@@ -64,13 +64,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
 
-  // Step 2: Use service_role key for database operations (bypasses RLS)
-  if (!serviceKey) {
-    return NextResponse.json({ error: "Server config error" }, { status: 500 });
-  }
-  
-  const sb = createClient(supabaseUrl, serviceKey, {
+  // Step 2: Use user's JWT for database operations (RLS applies)
+  // The service_queue table has RLS policies that allow users to insert
+  // their own entries and service_capacity is publicly readable
+  const sb = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
   const serviceSlug = parsed.data.service;
