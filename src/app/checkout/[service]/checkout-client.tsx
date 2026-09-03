@@ -111,27 +111,50 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
         </Link>
 
         <div className="mt-6 rounded-3xl border border-border bg-card/70 backdrop-blur shadow-card overflow-hidden">
-          <div className="aspect-[16/6] overflow-hidden bg-card">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={service.cover}
-              alt=""
-              loading="eager"
-              decoding="async"
-              className="w-full h-full object-cover"
-            />
+          <div className="grid sm:grid-cols-[200px_1fr] gap-0">
+            {/* Capa do produto */}
+            <div className="aspect-square sm:aspect-auto overflow-hidden bg-card border-b sm:border-b-0 sm:border-r border-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={service.cover}
+                alt={`Capa de ${service.shortName}`}
+                loading="eager"
+                decoding="async"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {/* Info do produto */}
+            <div className="p-6 sm:p-8">
+              <div className="text-xs font-bold uppercase tracking-wider text-primary">
+                {service.tag}
+              </div>
+              <h1 className="mt-2 font-display font-medium text-2xl sm:text-3xl">
+                {service.shortName}
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {service.description}
+              </p>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="font-display font-medium text-2xl text-gradient-orange">
+                  {service.priceLabel}
+                </div>
+                {service.highlight && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-orange px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+                    Mais escolhido
+                  </span>
+                )}
+              </div>
+              {/* Bullets rápidos */}
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {service.bullets.slice(0, 3).map((b) => (
+                  <li key={b} className="inline-flex items-center gap-1">
+                    <Check size={12} className="text-primary" /> {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
           <div className="p-6 sm:p-8">
-            <div className="text-xs font-bold uppercase tracking-wider text-primary">
-              {service.tag}
-            </div>
-            <h1 className="mt-2 font-display font-medium text-2xl sm:text-3xl">
-              {service.shortName}
-            </h1>
-            <div className="mt-2 font-display font-medium text-2xl text-gradient-orange">
-              {service.priceLabel}
-            </div>
-
             <StepIndicator step={step} hasQuestions={showQuestions} />
 
             {step === "questions" && (
