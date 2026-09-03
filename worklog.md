@@ -835,3 +835,44 @@ Stage Summary:
 - ✅ Teste API: todos retornam URL do Kiwify corretamente
 - ✅ Fluxo: quiz → produto recomendado → checkout → Kiwify URL (sem mais pending=kiwify)
 - Total de produtos Kiwify ativos agora: 14 (6 e-books + 8 serviços)
+
+---
+Task ID: 17
+Agent: main (GLM)
+Task: Corrigir erro "Clica Contratar este serviço → /checkout/{slug}"
+
+Work Log:
+- Diagnóstico: Quando quiz recomendava serviço com fila (video-dedicado, auditoria-de-perfil,
+  roteiro-estrategico, etc.), checkout redirecionava para /fila/X que exigia login.
+  Isso quebrava o fluxo quiz → Contratar → checkout.
+- Fix 1: Esvaziei QUEUED_SERVICE_SLUGS em src/lib/services-catalog.ts (array vazio)
+  → requiresQueue() agora retorna false para todos os serviços
+- Fix 2: Desativei service_capacity no Supabase (active=false) para os 7 serviços
+- Bug 3 (crítico): O `vercel deploy` estava indo para o projeto errado (my-project)
+  em vez de clodoaldo! Causa: .vercel/project.json tinha projectId antigo.
+  Fix: rm -rf .vercel && vercel link --project=clodoaldo
+- Após re-link, novo deploy feito para o projeto correto (clodoaldo).
+- Deploy URL: https://clodoaldo-j3rvczd78-clodoaldo608-gmailcoms-projects.vercel.app
+- Alias: https://clodoaldo.vercel.app (production)
+- Commit: 2255b21 "fix: desativar fila de espera para todos os serviços"
+- Teste E2E completo via agent-browser:
+  1. Quiz (/quiz) → 5 perguntas respondidas
+  2. Lead capturado (nome/email/WhatsApp)
+  3. Resultado: "Perfil: Creator Produzindo" → Roteiro Estratégico ★ Top match
+  4. Clicou "Contratar este serviço" → /checkout/roteiro-estrategico ✅
+     (ANTES: redirecionava para /fila/roteiro-estrategico ❌)
+  5. Briefing preenchido (5 campos)
+  6. Continuar → Upsell → Continuar → Review → Ir para pagamento
+  7. Dados de contato preenchidos
+  8. Clicou "Pagar com Kiwify"
+  9. ✅ Redirecionou para https://pay.kiwify.com.br/jYA0IgB
+     (página de pagamento Kiwify mostrando formulário de cartão/PIX/boleto)
+- Todos os 8 serviços testados via API: 8/8 redirecionam para Kiwify corretamente
+
+Stage Summary:
+- ✅ Erro "Clica Contratar este serviço" corrigido
+- ✅ Fluxo completo: quiz → checkout → Kiwify → pagamento real
+- ✅ Sem mais redirect para /fila/X (fila desativada para todos os serviços)
+- ✅ Sem mais exigência de login no meio do fluxo
+- ✅ 8/8 serviços com checkout Kiwify direto funcionando
+- ✅ Deploy production atualizado: https://clodoaldo.vercel.app
