@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { WhatsAppButton } from "@/components/site/whatsapp-button";
+import { CountdownBanner } from "@/components/site/countdown-banner";
+import { PixelLoader } from "@/components/site/pixel-loader";
+import { CookieConsent } from "@/components/site/cookie-consent";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Clodoaldo Silva — Media Kit 2026 | Serviços, E-books e Parcerias",
@@ -54,7 +59,11 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-background text-foreground">
+        <PixelLoader />
+        <CountdownBanner />
         {children}
+        <WhatsAppButton />
+        <CookieConsent />
         <Toaster />
       </body>
     </html>

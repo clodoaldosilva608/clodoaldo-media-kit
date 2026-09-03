@@ -114,6 +114,9 @@ export interface CheckoutInput {
   customer_email: string;
   customer_name: string;
   queue_id?: string;
+  coupon_code?: string;
+  affiliate_slug?: string;
+  total_cents?: number;
 }
 
 export interface CheckoutResult {
@@ -158,8 +161,35 @@ export async function createKiwifyCheckout(
     .filter(Boolean)
     .filter((item) => item.priceCents > 0);
 
-  const totalCents =
+  let totalCents =
     service.priceCents + addonServices.reduce((sum, a) => sum + a.priceCents, 0);
+
+  // Apply coupon if provided
+  let couponData: { id: string; code: string; kind: string; value: number } | null = null;
+  let discountCents = 0;
+  if (input.coupon_code) {
+    const { data: coupon } = await sb
+      .from("coupons")
+      .select("*")
+      .eq("code", input.coupon_code.toUpperCase().trim())
+      .eq("active", true)
+      .maybeSingle();
+    if (coupon) {
+      couponData = coupon;
+      if (coupon.kind === "percent") {
+        discountCents = Math.round(totalCents * (Number(coupon.value) / 100));
+      } else {
+        discountCents = Math.round(Number(coupon.value) * 100);
+      }
+      discountCents = Math.min(discountCents, totalCents);
+      totalCents = totalCents - discountCents;
+    }
+  }
+
+  // Override with client-side total if provided (it already accounts for coupon)
+  if (input.total_cents && input.total_cents > 0) {
+    totalCents = input.total_cents;
+  }
 
   const bonusEbooks = (service.bonusEbooks ?? []).map((bonus) => ({
     title: bonus.title,
@@ -191,6 +221,53 @@ export async function createKiwifyCheckout(
 
   if (orderErr || !order) {
     throw new Error("Não foi possível criar o pedido");
+  }
+
+  // Increment coupon usage
+  if (couponData) {
+    await sb
+      .from("coupons")
+      .update({ used_count: (couponData as any).used_count + 1 })
+      .eq("id", (couponData as any).id)
+      .then(() => {}, () => {});
+  }
+
+  // Register affiliate sale
+  if (input.affiliate_slug) {
+    const { data: aff } = await sb
+      .from("affiliates")
+      .select("id, commission_percent, sales, earnings_cents")
+      .eq("slug", input.affiliate_slug)
+      .eq("status", "active")
+      .maybeSingle();
+    if (aff) {
+      const commissionCents = Math.round(totalCents * (Number(aff.commission_percent) / 100));
+      await sb.from("affiliate_sales").insert({
+        affiliate_id: aff.id,
+        order_id: order.id,
+        customer_email: input.customer_email,
+        commission_cents: commissionCents,
+        status: "pending",
+      }).then(() => {}, () => {});
+      await sb
+        .from("affiliates")
+        .update({
+          sales: (aff.sales || 0) + 1,
+          earnings_cents: (aff.earnings_cents || 0) + commissionCents,
+        })
+        .eq("id", aff.id)
+        .then(() => {}, () => {});
+    }
+  }
+
+  // Mark abandoned cart as recovered
+  const sessionId = input.answers?.session_id || null;
+  if (sessionId) {
+    await sb
+      .from("abandoned_carts")
+      .update({ recovered: true, recovered_order_id: order.id, updated_at: new Date().toISOString() })
+      .eq("session_id", sessionId)
+      .then(() => {}, () => {});
   }
 
   // 2. Get Kiwify checkout URL from Supabase (pre-configured link)

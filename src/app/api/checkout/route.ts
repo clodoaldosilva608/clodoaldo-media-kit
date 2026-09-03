@@ -11,6 +11,9 @@ const checkoutSchema = z.object({
   customer_email: z.string().trim().email().max(254),
   customer_name: z.string().trim().min(1).max(120),
   queue_id: z.string().uuid().optional(),
+  coupon_code: z.string().max(30).optional(),
+  affiliate_slug: z.string().max(30).optional(),
+  total_cents: z.number().int().nonnegative().optional(),
 });
 
 export async function POST(req: NextRequest) {

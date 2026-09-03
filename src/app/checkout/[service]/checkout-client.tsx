@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Gift, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Gift, ShoppingCart, Ticket, X } from "lucide-react";
 import {
   getService,
   requiresQueue,
   SERVICES,
   type ServiceSlug,
 } from "@/lib/services-catalog";
+import { useAbandonedCartTracker, getOrCreateSessionId, getStoredAffiliate } from "@/components/site/abandoned-cart-tracker";
 
 interface CheckoutClientProps {
   slug: string;
@@ -30,9 +31,18 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; discount_cents: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  // Affiliate
+  const [affiliateSlug, setAffiliateSlug] = useState<string | null>(null);
+
   const upsell = service?.upsell ? SERVICES[service.upsell] : null;
 
-  const total = useMemo(() => {
+  const subtotal = useMemo(() => {
     if (!service) return 0;
     const addonsTotal = addons.reduce(
       (sum, s) => sum + (SERVICES[s]?.priceCents ?? 0),
@@ -40,6 +50,72 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
     );
     return service.priceCents + addonsTotal;
   }, [service, addons]);
+
+  const total = useMemo(() => {
+    return Math.max(0, subtotal - (coupon?.discount_cents || 0));
+  }, [subtotal, coupon]);
+
+  // Load affiliate from localStorage
+  useEffect(() => {
+    const aff = getStoredAffiliate();
+    if (aff) setAffiliateSlug(aff.slug);
+  }, []);
+
+  // Track abandoned cart
+  useAbandonedCartTracker({
+    session_id: getOrCreateSessionId(),
+    service_slug: slug,
+    customer_name: name,
+    customer_email: email,
+    addons,
+    answers,
+    total_cents: total,
+    coupon_code: coupon?.code,
+    affiliate_slug: affiliateSlug || undefined,
+  });
+
+  // Fire pixel events
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).trackEvent) {
+      (window as any).trackEvent("ViewContent", { content_name: service?.shortName, value: subtotal / 100, currency: "BRL" });
+    }
+  }, [service, subtotal]);
+
+  useEffect(() => {
+    if (step === "contact" && typeof window !== "undefined" && (window as any).trackEvent) {
+      (window as any).trackEvent("InitiateCheckout", { value: total / 100, currency: "BRL" });
+    }
+  }, [step, total]);
+
+  const applyCoupon = async () => {
+    setCouponError(null);
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    try {
+      const resp = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponInput, total_cents: subtotal, service_slug: slug }),
+      });
+      const result = await resp.json();
+      if (!result.valid) {
+        setCouponError(result.error || "Cupom inválido");
+        setCoupon(null);
+      } else {
+        setCoupon({ code: result.coupon.code, discount_cents: result.discount_cents });
+      }
+    } catch (e) {
+      setCouponError("Erro ao validar cupom");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCoupon(null);
+    setCouponInput("");
+    setCouponError(null);
+  };
 
   if (!service) {
     return (
@@ -83,10 +159,17 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
           customer_email: email,
           customer_name: name,
           queue_id: queueId,
+          coupon_code: coupon?.code,
+          affiliate_slug: affiliateSlug,
+          total_cents: total,
         }),
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error || "Erro ao processar");
+      // Track Purchase event
+      if (typeof window !== "undefined" && (window as any).trackEvent) {
+        (window as any).trackEvent("Purchase", { value: total / 100, currency: "BRL", order_id: result.orderId });
+      }
       if (result.url) {
         window.location.href = result.url;
       } else {
@@ -332,6 +415,24 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
                       </span>
                     </div>
                   ))}
+                  {coupon && (
+                    <div className="flex items-center justify-between gap-3 p-4 bg-emerald-500/5 border-emerald-500/20">
+                      <div className="flex items-center gap-2">
+                        <Ticket size={16} className="text-emerald-600" />
+                        <span className="text-sm font-medium">Cupom {coupon.code}</span>
+                        <button
+                          onClick={removeCoupon}
+                          className="rounded-full p-0.5 text-zinc-400 hover:bg-white/10 hover:text-zinc-700"
+                          aria-label="Remover cupom"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
+                        − R$ {(coupon.discount_cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between p-4 bg-card/60">
                     <span className="font-display font-medium">Total</span>
                     <span className="font-display font-medium text-gradient-orange text-xl whitespace-nowrap">
@@ -339,6 +440,34 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
                     </span>
                   </div>
                 </div>
+
+                {/* Coupon input */}
+                {!coupon && (
+                  <div className="rounded-2xl border border-border bg-background/40 p-4">
+                    <label className="block text-xs font-medium mb-2 flex items-center gap-1.5">
+                      <Ticket size={14} /> Tem um cupom de desconto?
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="PROMO10"
+                        className="flex-1 rounded-lg bg-input border border-border px-3 py-2 text-sm font-mono uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={couponLoading || !couponInput.trim()}
+                        className="rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background hover:bg-foreground/90 disabled:opacity-50"
+                      >
+                        {couponLoading ? "…" : "Aplicar"}
+                      </button>
+                    </div>
+                    {couponError && <p className="mt-2 text-xs text-destructive">{couponError}</p>}
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => setStep(upsell ? "upsell" : "questions")}
