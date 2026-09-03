@@ -428,8 +428,8 @@ function ResultScreen({
 }) {
   const primary = offers[result.primary_offer.slug] || { slug: result.primary_offer.slug, name: result.primary_offer.name };
   const secondary = result.secondary_offer ? offers[result.secondary_offer.slug] : null;
-  const primaryHref = appendAffiliate(primary.cta_href || `/checkout/${primary.slug}`, affiliateSlug);
-  const secondaryHref = secondary ? appendAffiliate(secondary.cta_href || `/checkout/${secondary.slug}`, affiliateSlug) : null;
+  const primaryHref = appendAffiliate(sanitizeCtaHref(primary.cta_href, primary.slug), affiliateSlug);
+  const secondaryHref = secondary ? appendAffiliate(sanitizeCtaHref(secondary.cta_href, secondary.slug), affiliateSlug) : null;
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-zinc-100">
@@ -583,4 +583,27 @@ function appendAffiliate(href: string, slug: string | null): string {
   if (!slug) return href;
   const sep = href.includes("?") ? "&" : "?";
   return `${href}${sep}ref=${encodeURIComponent(slug)}`;
+}
+
+/**
+ * Sanitizes the cta_href from the offers table to ensure it never points to
+ * a non-existent route. Known-bad patterns are replaced with safe fallbacks.
+ *
+ * - /briefing?oferta=X  → /#contato (briefing page doesn't exist)
+ * - /fila/X             → /checkout/X (queue disabled, direct checkout)
+ * - empty/undefined     → /checkout/{slug} as fallback
+ */
+function sanitizeCtaHref(href: string | undefined | null, slug: string): string {
+  if (!href || typeof href !== "string" || href.trim() === "") {
+    return `/checkout/${slug}`;
+  }
+  // Replace /briefing?oferta=X with /#contato
+  if (href.startsWith("/briefing")) {
+    return "/#contato";
+  }
+  // Replace /fila/X with /checkout/X
+  if (href.startsWith("/fila/")) {
+    return href.replace("/fila/", "/checkout/");
+  }
+  return href;
 }
