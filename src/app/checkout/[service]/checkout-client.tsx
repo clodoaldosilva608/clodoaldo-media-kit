@@ -158,10 +158,11 @@ export function CheckoutClient({ slug, queueId }: CheckoutClientProps) {
           answers,
           customer_email: email,
           customer_name: name,
-          queue_id: queueId,
-          coupon_code: coupon?.code,
-          affiliate_slug: affiliateSlug,
+          queue_id: queueId || undefined,
+          coupon_code: coupon?.code || undefined,
+          affiliate_slug: affiliateSlug || undefined,
           total_cents: total,
+          session_id: getOrCreateSessionId(),
         }),
       });
       const result = await resp.json();

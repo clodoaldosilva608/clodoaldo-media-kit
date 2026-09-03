@@ -37,10 +37,11 @@ async function getOrder(orderId: string | undefined) {
 export default async function SuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ order?: string }>;
+  searchParams: Promise<{ order?: string; pending?: string }>;
 }) {
-  const { order: orderId } = await searchParams;
+  const { order: orderId, pending } = await searchParams;
   const order = await getOrder(orderId);
+  const isPending = pending === "kiwify";
 
   const service = order?.service_slug ? SERVICES[order.service_slug as ServiceSlug] : null;
   const addons = Array.isArray(order?.addons)
@@ -62,11 +63,33 @@ export default async function SuccessPage({
           <CheckCircle2 size={48} className="text-success" />
         </div>
         <h1 className="mt-6 font-display font-medium text-3xl sm:text-4xl">
-          Pedido confirmado!
+          {isPending ? "Briefing recebido!" : "Pedido confirmado!"}
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground">
-          Seu pedido entrou na fila de análise. Materiais digitais estão disponíveis para download abaixo; serviços com briefing serão retornados em até 72 horas úteis.
+          {isPending
+            ? "Recebemos seu briefing com sucesso! Em até 24h úteis você receberá um email do Clodoaldo com o link de pagamento personalizado (PIX, cartão ou boleto) e os próximos passos."
+            : "Seu pedido entrou na fila de análise. Materiais digitais estão disponíveis para download abaixo; serviços com briefing serão retornados em até 72 horas úteis."}
         </p>
+
+        {isPending && (
+          <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6 text-left">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+              Resumo do seu pedido
+            </div>
+            <h2 className="mt-2 font-display text-xl sm:text-2xl font-black">
+              {service?.shortName || order?.service_slug || "Serviço"}
+            </h2>
+            {order?.customer_name && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                <strong className="text-foreground">Cliente:</strong> {order.customer_name}
+                {order.customer_email && <> · {order.customer_email}</>}
+              </p>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">
+              ✉️ Fique de olho no seu email (verifique também o spam) e em seu WhatsApp.
+            </p>
+          </div>
+        )}
 
         {downloads.length > 0 && (
           <div className="mt-8 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6 text-left">
@@ -140,7 +163,7 @@ export default async function SuccessPage({
             <Youtube size={16} /> Seguir no YouTube
           </a>
           <a
-            href="https://wa.me/qr/AGB4UOBZXOSAE1"
+            href="https://wa.me/5581920051068?text=Ol%C3%A1!%20Acabei%20de%20enviar%20um%20briefing%20pelo%20site%20e%20gostaria%20de%20confirmar%20o%20recebimento."
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 min-h-11 text-sm font-semibold hover:bg-card"

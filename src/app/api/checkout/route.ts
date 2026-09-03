@@ -7,13 +7,14 @@ const slugRe = /^[a-z0-9-]{1,64}$/;
 const checkoutSchema = z.object({
   service: z.string().regex(slugRe, "slug inválido"),
   addons: z.array(z.string().regex(slugRe)).max(20).default([]),
-  answers: z.record(z.string().max(120), z.string().max(2000)).default({}),
+  answers: z.record(z.string().max(120), z.any()).default({}),
   customer_email: z.string().trim().email().max(254),
   customer_name: z.string().trim().min(1).max(120),
-  queue_id: z.string().uuid().optional(),
-  coupon_code: z.string().max(30).optional(),
-  affiliate_slug: z.string().max(30).optional(),
-  total_cents: z.number().int().nonnegative().optional(),
+  queue_id: z.string().uuid().nullish(),
+  coupon_code: z.string().max(30).nullish(),
+  affiliate_slug: z.string().max(30).nullish(),
+  total_cents: z.number().int().nonnegative().nullish(),
+  session_id: z.string().max(120).nullish(),
 });
 
 export async function POST(req: NextRequest) {

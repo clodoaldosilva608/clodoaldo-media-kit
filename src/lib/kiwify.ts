@@ -110,13 +110,14 @@ async function getKiwifyProductId(slug: string): Promise<string | null> {
 export interface CheckoutInput {
   service: ServiceSlug;
   addons: ServiceSlug[];
-  answers: Record<string, string>;
+  answers: Record<string, any>;
   customer_email: string;
   customer_name: string;
-  queue_id?: string;
-  coupon_code?: string;
-  affiliate_slug?: string;
-  total_cents?: number;
+  queue_id?: string | null;
+  coupon_code?: string | null;
+  affiliate_slug?: string | null;
+  total_cents?: number | null;
+  session_id?: string | null;
 }
 
 export interface CheckoutResult {
@@ -260,8 +261,8 @@ export async function createKiwifyCheckout(
     }
   }
 
-  // Mark abandoned cart as recovered
-  const sessionId = input.answers?.session_id || null;
+  // Mark abandoned cart as recovered (uses top-level session_id from input)
+  const sessionId = input.session_id || null;
   if (sessionId) {
     await sb
       .from("abandoned_carts")
