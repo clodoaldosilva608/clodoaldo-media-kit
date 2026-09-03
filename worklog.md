@@ -749,3 +749,56 @@ Stage Summary:
 - ✅ Lead salvo em quiz_leads + analytics_events
 - ✅ Suporte a afiliado: links do resultado incluem ?ref=SLUG
 - ✅ Tracking de eventos: Lead (start) + CompleteRegistration (result)
+
+---
+Task ID: 15
+Agent: main (GLM)
+Task: Corrigir erro ao finalizar quiz e seguir para produto indicado
+
+Work Log:
+- Reproduzido o erro: quiz → "Contratar este serviço" → /checkout/combo-completo
+  → preenche briefing → "Pagar com Kiwify" → erro "Invalid input"
+- Diagnóstico:
+  1. Bug 1: Schema Zod em /api/checkout usava .optional() que só aceita undefined,
+     não null. Client enviava affiliate_slug: null (state inicial null).
+  2. Bug 2: kiwify.ts procurava session_id dentro de input.answers.session_id,
+     mas session_id não estava sendo passado.
+  3. Bug 3: Serviços (combo-completo, video-dedicado, etc.) não têm Kiwify URL
+     configurada, redirecionavam para /checkout/sucesso?pending=kiwify sem
+     contexto claro.
+- Fixes aplicados:
+  • /api/checkout/route.ts: schema agora usa .nullish() para coupon_code,
+    affiliate_slug, queue_id, total_cents. Adicionado session_id field.
+    answers agora aceita z.any() (não só string).
+  • /lib/kiwify.ts: CheckoutInput interface atualizada com session_id e
+    tipos nullable. Bug fix: abandoned cart recovery agora usa input.session_id
+    (top-level) em vez de input.answers.session_id.
+  • /checkout/[service]/checkout-client.tsx: handleSubmit agora envia
+    `|| undefined` em vez de null para campos opcionais. Passa session_id
+    via getOrCreateSessionId().
+  • /checkout/sucesso/page.tsx: detecta pending=kiwify e mostra "Briefing
+    recebido!" em vez de "Pedido confirmado!". Adiciona resumo do pedido
+    (serviço + cliente + email). WhatsApp link atualizado para número real
+    (5581920051068) com mensagem pré-preenchida.
+- Build: ✅ passa
+- Deploy: ✅ pronto (dpl_9CFZKfNktSJ4Guams4MDvSgDoGdK)
+- Teste E2E completo via agent-browser:
+  • Quiz respondido (5 perguntas) → lead capturado
+  • Resultado: Combo Completo (score 3.7, prioridade 10)
+  • Clicou "Contratar este serviço" → /checkout/combo-completo carregou
+  • Briefing preenchido (7 campos) → Continuar → Upsell → Revisão
+  • Dados de contato preenchidos → "Pagar com Kiwify"
+  • ✅ Redirecionou para /checkout/sucesso?order=...&pending=kiwify
+  • ✅ Página mostra "Briefing recebido!" com resumo do pedido
+  • ✅ Sem erros no console
+
+Stage Summary:
+- ✅ Quiz → checkout → sucesso fluxo 100% funcional
+- ✅ Erro "Invalid input" corrigido (schema Zod aceita null agora)
+- ✅ Página de sucesso contextual para serviços sem Kiwify URL
+- ✅ WhatsApp link com número real 5581920051068
+- ✅ Serviços (combo-completo, etc.) geram pedido e mostram "Briefing recebido!"
+- ⚠️ Serviços ainda não têm URL Kiwify configurada — usuário precisa criar
+  produtos na Kiwify para cada serviço e adicionar as URLs em:
+  /admin/settings → "Knowledge items" via Supabase
+  (Atualmente apenas e-books/packs têm Kiwify URLs configuradas)
