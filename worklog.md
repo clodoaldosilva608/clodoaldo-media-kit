@@ -802,3 +802,36 @@ Stage Summary:
   produtos na Kiwify para cada serviço e adicionar as URLs em:
   /admin/settings → "Knowledge items" via Supabase
   (Atualmente apenas e-books/packs têm Kiwify URLs configuradas)
+
+---
+Task ID: 16
+Agent: main (GLM)
+Task: Verificar produtos criados na Kiwify, extrair links e configurar checkouts
+
+Work Log:
+- Confirmados: 8 produtos de serviço criados na Kiwify pelo usuário
+- Via API (token OAuth), listei 100 produtos e identifiquei os 8 novos:
+  • combo-completo → e9253f40-a7a9-11f1-a481-3331d6ed0c85
+  • video-dedicado → 8cd93f50-a7ab-11f1-91da-b573c68eedcd
+  • mencoes-patrocinadas → 47f93ae0-a7ae-11f1-93d2-6beadd0d755d
+  • serie-stories → b8496850-a7af-11f1-9185-c7fcf4ba7832
+  • roteiro-estrategico → 4f550290-a7b0-11f1-b114-f59443f1f55e
+  • edicao-viral → c0b0a200-a7b0-11f1-a4ea-e3e9421dd02e
+  • pack-criativos → 37a22820-a7b1-11f1-ad4b-bfaeafc503af
+  • auditoria-de-perfil → b7502950-a7b1-11f1-8458-9717ea47ce61
+- Extraídos links de checkout (is_sales_page=false) de cada produto via GET /v1/products/{id}
+- Inseridos 8 registros na tabela knowledge_items do Supabase (com:
+  type=ebook enum, access_type=one_time enum, status=published,
+  price_cents, kiwify_product_id, kiwify_checkout_url)
+- Teste E2E da API /api/checkout para todos os 8 serviços:
+  • combo-completo (sem fila): ✅ redireciona direto para https://pay.kiwify.com.br/f7MNGFq
+  • 7 serviços com fila (video-dedicado, mencoes-patrocinadas, serie-stories,
+    roteiro-estrategico, edicao-viral, pack-criativos, auditoria-de-perfil):
+    ✅ com queue_id válido, todos redirecionam para pay.kiwify.com.br
+
+Stage Summary:
+- ✅ 8/8 serviços com checkout Kiwify configurado e funcionando
+- ✅ URLs salvas no Supabase (knowledge_items)
+- ✅ Teste API: todos retornam URL do Kiwify corretamente
+- ✅ Fluxo: quiz → produto recomendado → checkout → Kiwify URL (sem mais pending=kiwify)
+- Total de produtos Kiwify ativos agora: 14 (6 e-books + 8 serviços)
