@@ -53,20 +53,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Kiwify not configured" }, { status: 503 });
   }
 
-  // Kiwify envia a assinatura no header x-kiwify-signature OU como query param ?token=
+  // Kiwify envia o token de várias formas:
+  // 1. Header x-kiwify-token
+  // 2. Header x-kiwify-signature
+  // 3. Query param ?token=xxx
+  // 4. No body JSON como campo "token"
   const signature =
+    req.headers.get("x-kiwify-token") ||
     req.headers.get("x-kiwify-signature") ||
     req.headers.get("x-signature") ||
     new URL(req.url).searchParams.get("token");
 
   const body = await req.text();
 
-  if (!verifyKiwifyWebhookSignature(body, signature, secret)) {
-    emit("denied", "signature_invalid", {
-      has_sig: !!signature,
-      sig_preview: signature ? signature.slice(0, 12) + "..." : null,
-    });
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  // Também verificar se o token está no body JSON
+  let bodyToken: string | null = null;
+  try {
+    const parsed = JSON.parse(body);
+    bodyToken = parsed?.token || null;
+  } catch {
+    // não é JSON, ok
+  }
+
+  const tokenToCheck = signature || bodyToken;
+
+  if (!tokenToCheck || tokenToCheck !== secret) {
+    // Tentar HMAC como fallback
+    if (!verifyKiwifyWebhookSignature(body, tokenToCheck, secret)) {
+      emit("denied", "signature_invalid", {
+        has_sig: !!tokenToCheck,
+        sig_preview: tokenToCheck ? tokenToCheck.slice(0, 12) + "..." : null,
+      });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
   }
 
   let payload: KiwifyWebhookPayload;
