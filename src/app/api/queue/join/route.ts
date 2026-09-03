@@ -15,15 +15,6 @@ interface QueueStatus {
   queueId: string;
 }
 
-/**
- * Cria uma entrada na fila de espera para o serviço solicitado.
- *
- * Auth: recebe o token do usuário no header Authorization (Bearer).
- * Identifica o user_id via verificação do JWT no Supabase.
- *
- * Idempotência: se o usuário já tem entrada ativa para este serviço,
- * retorna a mesma posição em vez de criar nova.
- */
 export async function POST(req: NextRequest) {
   let body: unknown;
   try {
@@ -46,29 +37,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  // Supabase server client
+  // Get env vars
   const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !supabaseKey) {
+  const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !anonKey) {
     return NextResponse.json({ error: "Server config error" }, { status: 500 });
   }
-  const sb = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
+
+  // Step 1: Verify the user's JWT token using the anon key
+  const userResp = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+    },
   });
 
-  // Verifica o usuário
-  const { data: userData, error: userErr } = await sb.auth.getUser();
-  if (userErr || !userData.user) {
+  if (!userResp.ok) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
-  const userId = userData.user.id;
+
+  const userData = await userResp.json();
+  const userId = userData.id;
+  if (!userId) {
+    return NextResponse.json({ error: "Invalid session" }, { status: 401 });
+  }
+
+  // Step 2: Use service_role key for database operations (bypasses RLS)
+  if (!serviceKey) {
+    return NextResponse.json({ error: "Server config error" }, { status: 500 });
+  }
+  
+  const sb = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   const serviceSlug = parsed.data.service;
 
   try {
-    // 1. Verifica se o serviço tem capacity ativa
+    // 1. Check if service has capacity active
     const { data: capacity } = await sb
       .from("service_capacity")
       .select("service_slug, monthly_slots, active")
@@ -82,10 +90,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Serviço sem fila de espera" }, { status: 400 });
     }
 
-    // 2. Idempotência: verifica se já tem entrada ativa
+    // 2. Idempotency: check if user already has an active queue entry
     const { data: existing } = await sb
       .from("service_queue")
-      .select("id, status, position, created_at")
+      .select("id, status, created_at")
       .eq("service_slug", serviceSlug)
       .eq("user_id", userId)
       .in("status", ["waiting", "paid"])
@@ -98,7 +106,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       queueId = existing.id;
     } else {
-      // 3. Cria nova entrada
+      // 3. Create new queue entry
       const { data: inserted, error: insErr } = await sb
         .from("service_queue")
         .insert({
@@ -119,8 +127,7 @@ export async function POST(req: NextRequest) {
       queueId = inserted.id;
     }
 
-    // 4. Calcula posição (quantas entradas "waiting" ou "paid" existem
-    //    com created_at <= ao meu)
+    // 4. Calculate position
     const { data: queueList } = await sb
       .from("service_queue")
       .select("id, status, created_at")
