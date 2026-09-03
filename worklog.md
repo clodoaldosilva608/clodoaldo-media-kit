@@ -691,3 +691,61 @@ Stage Summary:
 - ✅ Login funcional e dashboard renderizando dados reais do Supabase
 - ⚠️ Migrations SQL ainda precisam ser aplicadas manualmente pelo usuário
   (mas o admin funciona em modo degradado para tabelas existentes)
+
+---
+Task ID: 14
+Agent: main (GLM)
+Task: Implementar quiz de recomendação + bônus + funcionalidades pendentes
+
+Work Log:
+- Acessado meucorre.vercel.app/quiz para mapear design e fluxo
+- Mapeado: 5 perguntas com 4-7 opções cada, dark theme, emoji-first,
+  progress bar no topo, botões grandes com emojis
+- Adaptado contexto: 5 perguntas para creators/marcas (objetivo, estágio,
+  gargalo, urgência, investimento) — answers já estavam mapeadas nas
+  quiz_rules do banco
+- Criados 3 arquivos de configuração/componentes:
+  • src/components/quiz/quiz-config.ts — 5 perguntas + 30 opções
+  • src/components/quiz/quiz-client.tsx — fluxo multi-step completo
+    (intro → 5 perguntas → lead capture → result)
+  • src/components/quiz/quiz-cta.tsx — section CTA na home
+- Criadas 3 API routes server-side:
+  • POST /api/quiz/session — cria sessão com UTM tracking
+  • POST /api/quiz/answer — upsert de resposta (1 por questão)
+  • POST /api/quiz/result — computa score, gera recomendação, salva lead
+- Criada rota /quiz (src/app/quiz/page.tsx) com Suspense boundary
+- Adicionado link "Fazer o quiz" no Header (desktop + mobile menu)
+- Adicionada QuizCTASection na home (logo após Hero) — design com
+  preview mockup de uma pergunta de exemplo + badge "+900 already did it"
+- Build: ✅ /quiz + 3 APIs novas + todas as 17 rotas admin + 10 públicas
+- Deploy via Vercel CLI: ✅ pronto em ~80s (dpl_9CFZKfNktSJ4Guams4MDvSgDoGdK)
+- Testes E2E em runtime:
+  • /quiz → 200
+  • POST /api/quiz/session → 200, retorna sessionId
+  • POST /api/quiz/answer (5x) → 200 cada
+  • POST /api/quiz/result → 200, retorna:
+    - profile_key: "influencia"
+    - profile_label: "Perfil: Influência & Autoridade"
+    - primary_offer: "Combo Completo" (R$ 2.500)
+    - secondary_offer: "Vídeo Dedicado" (R$ 1.200)
+    - reasons: 3 com weight/priority
+  • Walk-through visual completo:
+    - Intro page renderiza com 4 bullets e CTA "Começar agora"
+    - 5 perguntas renderizam com emojis, progress bar, botão Voltar
+    - Lead capture: 3 campos (nome/email/phone) + checkbox consent
+    - Result: oferta primária destacada com ★ Top match, deliverables,
+      "Ideal para", botão CTA, oferta secundária, próximos passos
+  • WhatsApp flutuante aparece em todas as telas do quiz
+  • Pixel events: Lead (no start) + CompleteRegistration (no result)
+  • Affiliate slug: ref=clodoaldo propagado para links de checkout do resultado
+
+Stage Summary:
+- ✅ Quiz implementado e funcionando end-to-end em produção
+- ✅ URL: https://clodoaldo.vercel.app/quiz
+- ✅ Inspiração visual do meucorre.vercel.app/quiz (dark, emoji-first, progress bar)
+- ✅ CTA na home (após Hero) + link no header (desktop e mobile)
+- ✅ 5 perguntas mapeiam para 14 ofertas via quiz_rules do banco
+- ✅ Captura de lead (nome/email/phone) antes de mostrar resultado
+- ✅ Lead salvo em quiz_leads + analytics_events
+- ✅ Suporte a afiliado: links do resultado incluem ?ref=SLUG
+- ✅ Tracking de eventos: Lead (start) + CompleteRegistration (result)
