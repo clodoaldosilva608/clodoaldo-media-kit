@@ -28,6 +28,7 @@ import {
   ExternalLink,
   RefreshCw,
   Sparkles,
+  Handshake,
 } from "lucide-react";
 
 interface NavItem {
@@ -46,6 +47,7 @@ const NAV: NavItem[] = [
   { href: "/admin/briefings", label: "Briefings", icon: FileText, group: "vendas" },
   { href: "/admin/offers", label: "Ofertas", icon: Tags, group: "vendas" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, group: "vendas" },
+  { href: "/admin/parceiros", label: "Parceiros", icon: Handshake, group: "marketing" },
   { href: "/admin/coupons", label: "Cupons", icon: Ticket, group: "marketing" },
   { href: "/admin/testimonials", label: "Depoimentos", icon: MessageSquareQuote, group: "marketing" },
   { href: "/admin/countdown", label: "Contagem Regressiva", icon: Timer, group: "marketing" },
@@ -85,7 +87,7 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        router.replace("/auth?redirect=/admin");
+        router.replace("/admin/login?redirect=/admin");
         return;
       }
       const u = data.session.user;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Instagram, Mail, MessageCircle, Youtube } from "lucide-react";
+import { Instagram, Mail, MessageCircle, Youtube, Lock } from "lucide-react";
 import { Logo } from "./logo";
 
 function TikTokIcon({ size = 16 }: { size?: number }) {
@@ -37,6 +37,7 @@ export function Footer() {
           <div className="eyebrow mb-5">Explorar</div>
           <ul className="space-y-2 text-sm">
             <li><Link href="/" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Início</Link></li>
+            <li><Link href="/quiz" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Quiz de Recomendação</Link></li>
             <li><Link href="/biblioteca" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Biblioteca Digital</Link></li>
             <li><Link href="/knowledge" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Knowledge Hub</Link></li>
             <li><Link href="/apps" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Ecossistema de Apps</Link></li>
@@ -52,6 +53,15 @@ export function Footer() {
             <li><Link href="/faq" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">FAQ</Link></li>
             <li><Link href="/termos" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Termos de Serviço</Link></li>
             <li><Link href="/privacidade" className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">Política de Privacidade</Link></li>
+            <li>
+              <Link
+                href="/admin/login"
+                className="inline-flex items-center gap-1.5 text-muted-foreground/70 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded text-xs"
+                title="Acesso restrito ao painel administrativo"
+              >
+                <Lock size={11} /> Admin
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -64,7 +74,7 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a href="https://wa.me/qr/AGB4UOBZXOSAE1" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+              <a href="https://wa.me/5581920051068?text=Ol%C3%A1!%20Vim%20do%20site%20do%20Clodoaldo%20e%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es." target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
                 <MessageCircle size={14} /> WhatsApp
               </a>
             </li>
