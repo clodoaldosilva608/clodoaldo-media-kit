@@ -621,13 +621,9 @@ export function getService(slug: string): Service | null {
 }
 
 export const QUEUED_SERVICE_SLUGS = [
-  "video-dedicado",
-  "mencoes-patrocinadas",
-  "serie-stories",
-  "roteiro-estrategico",
-  "edicao-viral",
-  "pack-criativos",
-  "auditoria-de-perfil",
+  // Fila desativada para todos os serviços — checkout direto no Kiwify.
+  // Para reativar a fila para um serviço específico, adicione o slug aqui
+  // e ative o registro correspondente em service_capacity no Supabase.
 ] as const;
 
 export function requiresQueue(slug: string): boolean {
