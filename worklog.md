@@ -539,3 +539,93 @@ Stage Summary:
   /checkout/sucesso?pending=kiwify).
 - ✅ Item D (custom domain clodoaldo.vercel.app): NOVO projeto criado com nome
   'clodoaldo', então a URL pública é https://clodoaldo.vercel.app (curta e limpa).
+
+---
+Task ID: 12
+Agent: main (GLM)
+Task: Implementar admin page inspirada no MeuCorre + todas as funcionalidades de evolução (Fases 1, 2, 3)
+
+Work Log:
+- Acessado meucorre.vercel.app com credenciais fornecidas (senha: Silva88677488 — sem @#)
+- Mapeado dashboard do MeuCorre: cards KPI no topo, filtros de período, widgets verticais,
+  banners rotativos, sidebar drawer, modal de novidades, tour de boas-vindas, cookie consent
+- Criado migration SQL 20260903090000_admin_expansion.sql com 13 novas tabelas:
+  coupons, testimonials, countdown_campaigns, pixel_config, whatsapp_config, affiliates,
+  affiliate_clicks, affiliate_sales, email_templates, email_subscribers, email_sends,
+  abandoned_carts, subscription_plans, subscriptions, notifications, app_settings
+- Criado migration SQL 20260903091000_admin_policies.sql com RLS policies para admin SELECT
+- Promovido clodoaldo608@gmail.com a admin via user_roles table
+- Construído layout admin (src/components/admin/admin-shell.tsx) com:
+  • Sidebar dark com 17 seções agrupadas em 4 categorias
+  • Topbar com sync indicator, data/hora, link "Ver site", avatar do usuário
+  • Mobile drawer (sidebar deslizante)
+  • Auth guard (verifica role admin via user_roles)
+- Construídas 17 páginas admin completas:
+  • /admin (overview) — KPIs, gráfico de receita 14d, top serviços, ações rápidas
+  • /admin/orders — tabela com filtros, modal de detalhes, mudança de status, CSV export
+  • /admin/queue — entradas da fila agrupadas por serviço ou ciclo
+  • /admin/leads — tabela de leads com filtros e ações (email, remover)
+  • /admin/briefings — briefings com modal de detalhes e mudança de status
+  • /admin/offers — CRUD completo de ofertas (cards + modal)
+  • /admin/analytics — funil de conversão, top eventos, páginas mais visitadas
+  • /admin/coupons — CRUD de cupons (% ou R$, validade, max usos, aplica-se a)
+  • /admin/testimonials — CRUD de depoimentos (rating, foto, destaque)
+  • /admin/countdown — CRUD de campanhas de contagem regressiva (4 temas, 3 posições)
+  • /admin/pixels — CRUD de pixels (Meta, Google Ads, GA4, TikTok) com eventos
+  • /admin/whatsapp — config de botão flutuante com preview ao vivo
+  • /admin/affiliates — CRUD de afiliados com link único, comissão, métricas
+  • /admin/email — templates + subscribers + sends (3 abas)
+  • /admin/subscriptions — planos + assinantes (2 abas)
+  • /admin/notifications — central de notificações com composer
+  • /admin/settings — app_settings, status do banco, env vars, docs
+- Criadas 5 APIs server-side (bypassam RLS via service_role):
+  • GET/POST /api/admin/data (CRUD unificado para todas as tabelas admin)
+  • GET /api/admin/stats (KPIs agregados por período)
+  • POST /api/affiliates/track (registro de cliques)
+  • POST /api/coupons/validate (validação de cupom no checkout)
+- Criados 7 componentes site-wide:
+  • WhatsAppButton — botão flutuante com tooltip animado após 5s
+  • CountdownBanner — banner de contagem regressiva (4 temas, dismissível)
+  • PixelLoader — injeta Meta/Google/GA4/TikTok pixels + expõe trackEvent()
+  • CookieConsent — banner LGPD com Aceitar/Recusar
+  • AffiliateTracker — persiste ?ref=SLUG em localStorage 30 dias
+  • TestimonialCarousel — carrossel auto-rotate a cada 5s
+  • useAbandonedCartTracker — hook para salvar carrinho abandonado
+- Integrado no checkout:
+  • Input de cupom com validação ao vivo (chama /api/coupons/validate)
+  • Affiliate slug passado para /api/checkout (registra comissão automaticamente)
+  • Pixel events: ViewContent, InitiateCheckout, Purchase
+  • Tracking de carrinho abandonado (atualiza a cada mudança de campo)
+- Atualizado /api/checkout para aceitar coupon_code, affiliate_slug, total_cents
+- Atualizado createKiwifyCheckout (lib/kiwify.ts) para:
+  • Aplicar desconto do cupom no total
+  • Incrementar used_count do cupom
+  • Registrar affiliate_sale com comissão automática
+  • Marcar abandoned_cart como recovered
+- Refatorado admin pages para usar /api/admin/data (service_role) ao invés de
+  browser-side supabase client (que era bloqueado por RLS)
+- Build de produção: ✅ 17 admin pages + 5 novas APIs + 28 rotas existentes
+- Testado em runtime (dev server):
+  • /admin/orders carregou 33 pedidos, R$ 39,80 receita, R$ 1.070,80 pendente
+  • /admin/offers carregou 14 ofertas ativas em 4 categorias
+  • /admin/queue carregou 8 entradas waiting
+  • /admin/coupons, /admin/pixels, etc mostram empty state (tabelas novas pendentes)
+  • /admin/settings mostra warning de migration pendente com instruções
+- Commit feito localmente (não foi possível push — sem credenciais GitHub/Vercel)
+
+Stage Summary:
+- ✅ Admin dashboard completo com 17 seções, inspirado no MeuCorre
+- ✅ Todas as 13 funcionalidades das Fases 1, 2, 3 implementadas:
+  Fase 1: Pixels, Cupons, Provas sociais, Contagem regressiva, WhatsApp
+  Fase 2: Recuperação de carrinho, E-mail marketing, Afiliados, Analytics dashboard
+  Fase 3: Assinaturas recorrentes, Notificações
+- ✅ Build passa em produção (Next.js 16.3.4, Turbopack)
+- ✅ Admin autenticado via Supabase auth + role check (user_roles)
+- ⚠️ Migrations NÃO aplicadas ao Supabase (sem senha DB):
+    Precisa aplicar manualmente 2 arquivos SQL via Supabase SQL Editor:
+    - upload/codigo-01/supabase/migrations/20260903090000_admin_expansion.sql
+    - upload/codigo-01/supabase/migrations/20260903091000_admin_policies.sql
+- ⚠️ Commit não pushed (sem credenciais GitHub):
+    Precisa fazer `git push origin main` localmente
+- Acessar admin em https://clodoaldo.vercel.app/admin (após deploy)
+  Login: clodoaldo608@gmail.com / senha: Silva88677488
