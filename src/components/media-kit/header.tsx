@@ -62,6 +62,12 @@ export function Header() {
 
         <div className="flex items-center gap-2 shrink-0">
           <Link
+            href="/quiz"
+            className="hidden sm:inline-flex items-center justify-center rounded-full bg-gradient-orange px-4 py-2.5 min-h-11 text-xs font-bold text-primary-foreground shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Fazer o quiz
+          </Link>
+          <Link
             href="/biblioteca"
             className="hidden sm:inline-flex items-center justify-center px-4 py-2.5 min-h-11 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -101,6 +107,13 @@ export function Header() {
             ))}
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <Link
+                href="/quiz"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-bold text-primary-foreground shadow-md"
+              >
+                Fazer o quiz
+              </Link>
+              <Link
                 href="/biblioteca"
                 onClick={() => setOpen(false)}
                 className="inline-flex items-center justify-center rounded-full border border-border px-5 py-3 min-h-11 text-sm font-semibold"
@@ -110,7 +123,7 @@ export function Header() {
               <a
                 href="/#servicos"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-center rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground"
+                className="inline-flex items-center justify-center rounded-full border border-primary/60 px-5 py-3 min-h-11 text-sm font-semibold sm:col-span-2"
               >
                 Adquirir Serviços
               </a>

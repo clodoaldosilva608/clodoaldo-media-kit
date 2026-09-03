@@ -13,6 +13,7 @@ import { ShareButton } from "@/components/media-kit/share-button";
 import { YouTubeSection } from "@/components/media-kit/youtube";
 import { TestimonialCarousel } from "@/components/site/testimonial-carousel";
 import { AffiliateTrackerWrapper } from "@/components/site/affiliate-tracker-wrapper";
+import { QuizCTASection } from "@/components/quiz/quiz-cta";
 
 export default function Home() {
   return (
@@ -21,6 +22,8 @@ export default function Home() {
       <Header />
       <main id="main-content">
         <Hero />
+        {/* Quiz CTA — chamada principal para o quiz de recomendação */}
+        <QuizCTASection />
         <Metrics />
         <Audience />
         <Services />
