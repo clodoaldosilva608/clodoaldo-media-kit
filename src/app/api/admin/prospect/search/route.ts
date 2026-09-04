@@ -7,13 +7,29 @@ import { getSupabaseServer } from "@/lib/supabase-server";
  *
  * Fontes (em ordem de prioridade):
  * 1. Google Places API (se NEXT_PUBLIC_GOOGLE_MAPS_API_KEY configurada)
- * 2. OpenStreetMap Overpass API (fallback 100% gratuito, sem key)
- * 3. Demo leads (último recurso)
+ * 2. Proxy via meucorre.vercel.app API (usa Google Maps do meucorre)
+ * 3. OpenStreetMap Overpass API (fallback 100% gratuito, sem key)
+ * 4. Demo leads (último recurso)
  *
  * Inspirado no meucorre.vercel.app/admin/parceiros
  */
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+
+// Proxy JWT for meucorre admin API (allows using their Google Maps quota)
+const MEUCORRE_ADMIN_JWT = process.env.MEUCORRE_ADMIN_JWT || "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJzb3VyY2UiOiJlbnYiLCJzdWIiOiJjbG9kb2FsZG82MDhAZ21haWwuY29tIiwianRpIjoiMWE5ZmM2MGEtOTc5YS00ZTRmLWFmNzMtZTcwYTc4NTZlNjAyIiwiaWF0IjoxNzg4NDk2MTk5LCJleHAiOjE3ODkxMDA5OTl9.DzzXx3vo0kKjY37Nx_HcfDzr9DQy0Vk0AWYp82qzUfA";
+
+// Map clodoaldo niches to meucorre categories
+const MEUCORRE_CATEGORIES: Record<string, string> = {
+  restaurante: "restaurant",
+  pizzaria: "restaurant",
+  hamburgueria: "fast_food",
+  cafeteria: "cafe",
+  farmácia: "pharmacy",
+  "loja de conveniência": "convenience",
+  supermercado: "supermarket",
+  // Other niches map to restaurant as fallback (meucorre only supports 6 categories)
+};
 
 const OSM_CATEGORIES: Record<string, string> = {
   restaurante: "amenity=restaurant",
@@ -118,13 +134,19 @@ export async function POST(req: NextRequest) {
       if (leads.length > 0) source = "google_maps";
     }
 
-    // Tentativa 2: OpenStreetMap Overpass API (FREE fallback)
+    // Tentativa 2: Proxy via meucorre API (usa Google Maps do meucorre)
+    if (leads.length === 0) {
+      leads = await searchViaMeucorre(niche, location, lat, lng, limit);
+      if (leads.length > 0) source = "google_maps";
+    }
+
+    // Tentativa 3: OpenStreetMap Overpass API (FREE fallback)
     if (leads.length === 0) {
       leads = await searchOpenStreetMap(niche, location, lat, lng, radius, limit);
       if (leads.length > 0) source = "openstreetmap";
     }
 
-    // Tentativa 3: Demo leads (último recurso)
+    // Tentativa 4: Demo leads (último recurso)
     if (leads.length === 0) {
       leads = generateDemoLeads(niche, location, lat, lng, limit);
       source = "demo";
@@ -148,6 +170,47 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error("[prospect/search] error:", e);
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });
+  }
+}
+
+// ===== Proxy via meucorre API (usa Google Maps do meucorre) =====
+async function searchViaMeucorre(niche: string, location: string, lat: number, lng: number, limit: number): Promise<Lead[]> {
+  const meucorreCategory = MEUCORRE_CATEGORIES[niche] || "restaurant";
+  const url = `https://meucorre.vercel.app/api/admin/parceiros/prospect?city=${encodeURIComponent(location)}&category=${meucorreCategory}&limit=${limit}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Cookie: `meucorre_admin=${MEUCORRE_ADMIN_JWT}`,
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.ok || !data.leads) return [];
+
+    return (data.leads as any[]).map((l: any) => ({
+      name: l.name || "Sem nome",
+      phone: l.phone || null,
+      whatsapp: l.whatsapp || null,
+      formatted_address: l.address || "",
+      city: location,
+      lat: l.lat || lat,
+      lng: l.lng || lng,
+      category: l.category || niche,
+      niche,
+      website: l.website || null,
+      rating: l.rating || null,
+      user_ratings_total: l.reviews || 0,
+      source: "google_maps",
+      place_id: l.name ? `mc_${Buffer.from(l.name).toString("base64").slice(0, 20)}` : null,
+      search_location: location,
+      hasWebsite: !!l.website,
+      webDevOpportunity: !l.website,
+    }));
+  } catch {
+    return [];
   }
 }
 
