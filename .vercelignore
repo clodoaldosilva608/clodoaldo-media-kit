@@ -8,3 +8,5 @@ upload/
 *.log
 dev.log
 server.log
+.env.local
+.env
