@@ -977,3 +977,32 @@ Stage Summary:
 - ✅ Item "Parceiros" no sidebar admin
 - ✅ 18 seções admin total (era 17, agora 18 com Parceiros)
 - ✅ Deploy production atualizado
+
+---
+Task ID: 20
+Agent: main (GLM)
+Task: Reescrever /admin/parceiros como prospecção de clientes via Google Maps
+
+Work Log:
+- Entendido: usuário quer prospecção de clientes (estabelecimentos comerciais) via Google Maps
+- Criada página /admin/parceiros com 2 abas:
+  1. "Buscar no Maps" — busca estabelecimentos por nicho + cidade + raio
+  2. "Salvos" — lista prospects salvos com gestão comercial
+- Criadas 2 API routes:
+  • POST /api/admin/prospect/search — Google Places API (Nearby Search + Details)
+  • GET/POST/PATCH/DELETE /api/admin/prospects — CRUD completo
+- Criada migration SQL: 20260903220000_prospects.sql
+  (tabela prospects com 25+ campos: place_id, name, category, address, phone, website,
+   rating, status, priority, notes, etc.)
+- Deploy: ✅ pronto
+- API search retorna 503 com instruções claras (GOOGLE_MAPS_API_KEY necessária)
+- API prospects retorna 200 com data: [] (tabela não existe ainda, graceful degradation)
+- Página /admin/parceiros carrega com formulário de busca + 20 nichos pré-configurados
+
+Stage Summary:
+- ✅ Página /admin/parceiros reescrita como prospecção via Google Maps
+- ✅ 2 abas: busca no Maps + prospects salvos
+- ✅ API search (Google Places) + API CRUD (prospects)
+- ✅ Migration SQL criada (pendente aplicação manual)
+- ⚠️ GOOGLE_MAPS_API_KEY precisa ser configurada no Vercel
+- ⚠️ Tabela prospects precisa ser criada no Supabase (SQL migration)
