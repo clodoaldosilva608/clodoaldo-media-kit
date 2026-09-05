@@ -115,7 +115,134 @@ export default function AdminParceirosPage() {
     const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||location))}`;
     const embed = `https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16&output=embed`;
     const n = lead.niche||lead.category||"estabelecimento";
-    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${lead.name}</title><style>*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif}body{color:#333;background:#FFF8E1}.hero{background:linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.7)),url('https://source.unsplash.com/800x400/?${n}');background-size:cover;color:#fff;text-align:center;padding:100px 20px}.hero h1{font-size:2.5rem;margin-bottom:10px}.btn{display:inline-block;padding:14px 32px;border-radius:50px;text-decoration:none;font-weight:700;margin:5px;transition:transform .2s}.btn:hover{transform:scale(1.05)}.btn-wa{background:#25D366;color:#fff}.btn-maps{background:#FF6F00;color:#fff}.section{padding:60px 20px;max-width:1000px;margin:0 auto}.section h2{text-align:center;font-size:2rem;color:#D32F2F;margin-bottom:30px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}.card{background:#fff;border-radius:16px;padding:30px;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,.08)}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.gallery img{width:100%;height:150px;object-fit:cover;border-radius:12px;background:#ddd}.map-section iframe{width:100%;max-width:600px;height:350px;border:0;border-radius:16px;margin:20px 0}.cta-final{background:#D32F2F;color:#fff;text-align:center;padding:80px 20px}.cta-final .btn{background:#fff;color:#D32F2F}.cta-final .btn-wa{background:#25D366;color:#fff}footer{background:#222;color:#999;text-align:center;padding:30px;font-size:.85rem}@media(max-width:600px){.hero h1{font-size:1.8rem}}</style></head><body><div class="hero"><h1>${lead.name}</h1><p>O melhor ${n} de ${lead.city||location}</p>${lead.rating?`<div style="background:rgba(255,255,255,.2);padding:8px 16px;border-radius:20px;display:inline-block;margin:10px">⭐ ${lead.rating} (${lead.user_ratings_total||0})</div>`:""}<div>${wa?`<a href="https://wa.me/${wa}" class="btn btn-wa" target="_blank">💬 WhatsApp</a>`:""}<a href="${maps}" class="btn btn-maps" target="_blank">🗺️ Como Chegar</a></div></div><div class="section"><h2>Sobre Nos</h2><p style="text-align:center;max-width:600px;margin:0 auto;line-height:1.8;color:#555">Bem-vindo ao <strong>${lead.name}</strong>! ${lead.formatted_address||lead.city||location}. ${lead.rating?`Com ${lead.rating} estrelas no Google, `:""}oferecemos qualidade e atendimento excepcional.</p><div class="cards" style="margin-top:40px"><div class="card"><div style="font-size:2.5rem">✅</div><h3 style="color:#D32F2F;margin:10px 0">Qualidade</h3><p style="color:#666">O melhor para nossos clientes</p></div><div class="card"><div style="font-size:2.5rem">❤️</div><h3 style="color:#D32F2F;margin:10px 0">Atendimento</h3><p style="color:#666">Equipe treinada</p></div><div class="card"><div style="font-size:2.5rem">📍</div><h3 style="color:#D32F2F;margin:10px 0">Localizacao</h3><p style="color:#666">Facil acesso</p></div></div></div><div class="section"><h2>Galeria</h2><div class="gallery">${Array.from({length:6}).map((_,i)=>`<img src="https://source.unsplash.com/300x200/?${n},food&sig=${i}" alt="Foto ${i+1}" loading="lazy">`).join("")}</div></div><div class="section map-section" style="text-align:center"><h2>Como Chegar</h2><p style="color:#666;margin-bottom:10px">${lead.formatted_address||lead.city||location}</p><iframe src="${embed}" loading="lazy"></iframe><div style="margin-top:20px"><a href="${maps}" class="btn btn-maps" target="_blank">🗺️ Abrir no Google Maps</a>${wa?`<a href="tel:${wa}" class="btn" style="background:#D32F2F;color:#fff">📞 Ligar</a>`:""}</div></div><div class="cta-final"><h2 style="margin-bottom:30px">Entre em contato!</h2><div>${wa?`<a href="https://wa.me/${wa}" class="btn btn-wa" target="_blank">💬 WhatsApp</a>`:""}${wa?`<a href="tel:${wa}" class="btn" target="_blank">📞 Telefone</a>`:""}<a href="${maps}" class="btn" target="_blank">🗺️ Como Chegar</a></div></div><footer><p><strong>${lead.name}</strong></p><p>${lead.formatted_address||""}</p>${lead.phone?`<p>${lead.phone}</p>`:""}<p style="margin-top:15px">© ${new Date().getFullYear()} ${lead.name}</p><p style="margin-top:5px;font-size:.75rem">Site criado por <a href="https://clodoaldo.vercel.app" target="_blank" style="color:#FF6F00">Clodoaldo Silva</a></p></footer></body></html>`;
+    // Cores por nicho (inspirado no cluvi: laranja + escuro)
+    const colors:Record<string,{primary:string;accent:string;bg:string}> = {
+      restaurante: {primary:"#F77909",accent:"#D32F2F",bg:"1"},
+      pizzaria: {primary:"#E65100",accent:"#FF6F00",bg:"1"},
+      hamburgueria: {primary:"#5D4037",accent:"#FFC107",bg:"1"},
+      cafeteria: {primary:"#4E342E",accent:"#8D6E63",bg:"1"},
+      barbearia: {primary:"#263238",accent:"#FFD600",bg:"0"},
+      academia: {primary:"#1B5E20",accent:"#00C853",bg:"0"},
+      "salao de beleza": {primary:"#880E4F",accent:"#E91E63",bg:"0"},
+      farmacia: {primary:"#0D47A1",accent:"#42A5F5",bg:"0"},
+      "pet shop": {primary:"#2E7D32",accent:"#66BB6A",bg:"0"},
+    };
+    const c = colors[(n||"").toLowerCase()] || {primary:"#F77909",accent:"#FF6F00",bg:"1"};
+    const foodImg = c.bg === "1" ? `background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url('https://source.unsplash.com/1200x800/?${n},food');background-size:cover;background-position:center;background-attachment:fixed;` : `background:linear-gradient(135deg,${c.primary}22,${c.accent}11);`;
+
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${lead.name} | ${n} em ${lead.city||location}</title>
+<meta name="description" content="${lead.name} — ${n} em ${lead.city||location}.${lead.rating?' '+lead.rating+' estrelas no Google.':''} Peça pelo WhatsApp!">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
+body{${foodImg}min-height:100vh;color:#fff}
+/* HERO — inspirado no cluvi: logo + CTA centralizado */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.hero .logo{margin-bottom:30px}
+.hero .logo h1{font-size:2.5rem;font-weight:900;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,.5)}
+.hero .logo .sub{font-size:.9rem;font-weight:400;opacity:.85;letter-spacing:2px;text-transform:uppercase;margin-top:5px}
+.hero .rating{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);padding:8px 20px;border-radius:30px;margin-bottom:25px;font-size:1rem;font-weight:600}
+.hero .btn-main{display:inline-block;padding:16px 48px;border-radius:50px;background:${c.primary};color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;text-transform:uppercase;letter-spacing:1px;box-shadow:0 8px 30px ${c.primary}66;transition:all .3s;border:none;cursor:pointer}
+.hero .btn-main:hover{transform:translateY(-2px);box-shadow:0 12px 40px ${c.primary}88}
+.hero .btn-secondary{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:50px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);color:#fff;text-decoration:none;font-weight:600;font-size:.95rem;margin-top:15px;transition:all .3s}
+.hero .btn-secondary:hover{background:rgba(255,255,255,.25)}
+.hero .social{margin-top:40px}
+.hero .social p{font-size:.85rem;opacity:.7;margin-bottom:10px}
+.hero .social a{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);color:#fff;text-decoration:none;transition:all .3s}
+.hero .social a:hover{background:rgba(255,255,255,.3);transform:scale(1.1)}
+/* SECTIONS */
+.section{padding:60px 20px;max-width:900px;margin:0 auto;background:rgba(255,255,255,.97);color:#333;border-radius:24px 24px 0 0;margin-top:-20px;position:relative}
+.section h2{text-align:center;font-size:1.8rem;font-weight:800;color:${c.primary};margin-bottom:30px}
+.about-text{text-align:center;max-width:600px;margin:0 auto;line-height:1.8;color:#555;font-size:1rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:40px}
+.card{background:#fff;border:1px solid #eee;border-radius:16px;padding:28px 20px;text-align:center;transition:all .3s}
+.card:hover{box-shadow:0 8px 25px rgba(0,0,0,.08);transform:translateY(-3px)}
+.card .icon{font-size:2.5rem;margin-bottom:12px}
+.card h3{color:${c.primary};font-size:1.1rem;margin-bottom:8px}
+.card p{color:#777;font-size:.9rem}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.gallery img{width:100%;height:140px;object-fit:cover;border-radius:12px;background:#ddd;transition:transform .3s}
+.gallery img:hover{transform:scale(1.05)}
+.map-box{text-align:center}
+.map-box iframe{width:100%;max-width:560px;height:320px;border:0;border-radius:16px;margin:15px 0;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.map-box .addr{color:#666;font-size:.9rem;margin-bottom:10px}
+.cta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:20px}
+.cta-bar a{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:.9rem;transition:all .3s}
+.cta-bar .wa{background:#25D366;color:#fff}
+.cta-bar .wa:hover{background:#1da851}
+.cta-bar .call{background:${c.primary};color:#fff}
+.cta-bar .maps{background:${c.accent};color:#fff}
+footer{background:#1a1a1a;color:#888;text-align:center;padding:35px 20px;font-size:.85rem}
+footer a{color:${c.accent};text-decoration:none}
+footer strong{color:#fff}
+@media(max-width:600px){.hero .logo h1{font-size:1.8rem}.hero .btn-main{padding:14px 36px;font-size:1rem}.section{padding:40px 16px;border-radius:20px 20px 0 0}}
+</style>
+</head>
+<body>
+<!-- HERO: full-screen com foto de fundo + dark overlay (estilo cluvi) -->
+<div class="hero">
+  <div class="logo">
+    <h1>${lead.name}</h1>
+    <div class="sub">${n} · ${lead.city||location}</div>
+  </div>
+  ${lead.rating?`<div class="rating">⭐ ${lead.rating} · ${lead.user_ratings_total||0} avaliações no Google</div>`:""}
+  ${wa?`<a href="https://wa.me/${wa}" class="btn-main" target="_blank">📱 Fazer Pedido pelo WhatsApp</a>`:""}
+  <a href="${maps}" class="btn-secondary" target="_blank">🗺️ Como Chegar</a>
+  <div class="social">
+    <p>Siga-nos</p>
+    ${lead.instagram?`<a href="${lead.instagram}" target="_blank" title="Instagram">📷</a>`:""}
+    ${lead.facebook?`<a href="${lead.facebook}" target="_blank" title="Facebook">👍</a>`:""}
+    ${wa?`<a href="https://wa.me/${wa}" target="_blank" title="WhatsApp">💬</a>`:""}
+  </div>
+</div>
+
+<!-- SOBRE -->
+<div class="section">
+  <h2>Sobre Nós</h2>
+  <p class="about-text">Bem-vindo ao <strong>${lead.name}</strong>! Localizado em ${lead.formatted_address||lead.city||location}, somos referência em ${n} na região. ${lead.rating?`Com ${lead.rating} estrelas no Google e ${lead.user_ratings_total||0} avaliações de clientes satisfeitos, `:""}oferecemos qualidade, sabor e atendimento excepcional. Venha nos visitar!</p>
+  <div class="cards">
+    <div class="card"><div class="icon">✅</div><h3>Qualidade</h3><p>Sempre oferecemos o melhor para nossos clientes</p></div>
+    <div class="card"><div class="icon">❤️</div><h3>Atendimento</h3><p>Equipe treinada para receber você com um sorriso</p></div>
+    <div class="card"><div class="icon">📍</div><h3>Localização</h3><p>Localização privilegiada de fácil acesso</p></div>
+  </div>
+</div>
+
+<!-- GALERIA -->
+<div class="section" style="border-radius:0">
+  <h2>Galeria</h2>
+  <div class="gallery">
+    ${Array.from({length:6}).map((_,i)=>`<img src="https://source.unsplash.com/300x200/?${n},food&sig=${i}" alt="Foto ${i+1}" loading="lazy">`).join("\n    ")}
+  </div>
+</div>
+
+<!-- MAPA -->
+<div class="section" style="border-radius:0">
+  <h2>Como Chegar</h2>
+  <div class="map-box">
+    <p class="addr">${lead.formatted_address||lead.city||location}</p>
+    <iframe src="${embed}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="cta-bar">
+      <a href="${maps}" class="maps" target="_blank">🗺️ Abrir no Google Maps</a>
+      ${wa?`<a href="tel:${wa}" class="call">📞 Ligar Agora</a>`:""}
+      ${wa?`<a href="https://wa.me/${wa}" class="wa" target="_blank">💬 WhatsApp</a>`:""}
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p><strong>${lead.name}</strong></p>
+  <p>${lead.formatted_address||""}</p>
+  ${lead.phone?`<p>${lead.phone}</p>`:""}
+  <p style="margin-top:15px">© ${new Date().getFullYear()} ${lead.name}. Todos os direitos reservados.</p>
+  <p style="margin-top:5px;font-size:.75rem">Site criado por <a href="https://clodoaldo.vercel.app" target="_blank">Clodoaldo Silva</a></p>
+</footer>
+</body>
+</html>`;
   }
 
   function openPreview(lead:Lead) {
