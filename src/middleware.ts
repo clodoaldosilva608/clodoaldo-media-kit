@@ -49,6 +49,14 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // ── Rate limiting for cron endpoints (stricter — should only be called by Vercel Cron) ──
+  if (pathname.startsWith("/api/cron/")) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    if (!checkRateLimit(`cron:${ip}`, 5, 60_000)) {
+      return NextResponse.json({ error: "Cron rate limit" }, { status: 429 });
+    }
+  }
+
   // ── Admin auth: protect /admin/* (except /admin/login) and /api/admin/* ──
   const isAdminPage = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
   const isAdminApi = pathname.startsWith("/api/admin/");
@@ -134,5 +142,6 @@ export const config = {
     "/api/funding/:path*",
     "/api/quiz/:path*",
     "/api/affiliates/:path*",
+    "/api/cron/:path*",
   ],
 };
