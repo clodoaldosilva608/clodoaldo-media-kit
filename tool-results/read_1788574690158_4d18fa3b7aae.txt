@@ -1,0 +1,1249 @@
+     1→Seu objetivo é realizar uma auditoria e varredura completa ("Code & Architecture Review") no sistema que criamos até aqui, avaliando sua prontidão para suportar **100.000 usuários ativos**.
+     2→
+     3→Quero que você analise toda a estrutura do projeto sob a ótica de engenharia de software de ponta e me entregue um diagnóstico rigoroso, sem floreios, apontando exatamente onde estão os gargalos, falhas de arquitetura, buracos de segurança e riscos de escalabilidade.
+     4→
+     5→---
+     6→
+     7→### Mapeamento e Análise Requerida
+     8→
+     9→Por favor, faça uma varredura considerando os seguintes pilares:
+    10→
+    11→#### 1. Arquitetura do Sistema e Escalabilidade
+    12→- O modelo atual de arquitetura (Monólito, Microserviços, Serverless, etc.) se sustenta com 100k usuários?
+    13→- Onde estão os **Pontos Únicos de Falha (SPOFs)**?
+    14→- O sistema é *stateless* o suficiente para escalar horizontalmente de forma simples?
+    15→- Quais gargalos de concorrência ou I/O você prevê sob alta carga?
+    16→
+    17→#### 2. Banco de Dados e Camada de Dados
+    18→- Como os modelos e relacionamentos atuais vão se comportar com milhões de registros?
+    19→- Onde faltam índices, e quais queries correm o risco de fazer *table scans* custosos?
+    20→- Há estratégias adequadas de caching (ex: Redis), conexão em pool, réplicas de leitura ou estresse de escrita?
+    21→- Risco de gargalo em transações (*locks* excessivos, condições de corrida)?
+    22→
+    23→#### 3. Código, Padrões e Dívida Técnica
+    24→- O código segue boas práticas de engenharia (SOLID, Clean Architecture, separação clara de responsabilidades)?
+    25→- Existem vazamentos de memória (*memory leaks*), loops ineficientes ou falta de tratamento assíncrono/filas para tarefas pesadas?
+    26→- Qual o nível de acoplamento do código e o quão difícil será dar manutenção no futuro?
+    27→
+    28→#### 4. Segurança e Resiliência
+    29→- Onde estão os riscos de segurança mais críticos (ex: OWASP Top 10, autenticação, autorização/RBAC, vazamento de dados de usuários)?
+    30→- O sistema possui controle de taxa (*rate limiting*) para prevenir ataques DoS ou abuso de APIs?
+    31→- Como o sistema se comporta se um serviço externo/API falhar? Há mecanismos de *circuit breaker*, *retries* ou *degradation* graciosa?
+    32→
+    33→#### 5. Observabilidade e Operação
+    34→- O sistema tem logs, métricas e rastreamento (*tracing*) suficientes para diagnosticarmos um problema rapidamente em produção?
+    35→
+    36→---
+    37→
+    38→### Formato da Resposta Esperada
+    39→
+    40→Estruture sua análise no seguinte formato:
+    41→
+    42→1. **Resumo Executivo:** Diagnóstico geral da saúde do sistema (Nota de 1 a 10 para prontidão de 100k usuários).
+    43→2. **Riscos Críticos (P0 - Blocker):** O que vai quebrar ou derrubar o sistema assim que a carga aumentar (e que precisa ser corrigido imediatamente).
+    44→3. **Riscos Médios (P1 - High):** Ineficiências de código/dados que vão custar caro em infraestrutura ou deixar o sistema lento.
+    45→4. **Melhorias de Arquitetura (P2 - Medium):** Refatorações recomendadas para manter a manutenibilidade a longo prazo.
+    46→5. **Plano de Ação Passo a Passo:** Lista priorizada das primeiras coisas que devemos ajustar no projeto.
+    47→
+    48→Para começar, revise tudo o que construímos até o momento (código, estrutura de pastas, esquemas de banco de dados e fluxos) e apresente seu relatório detalhado.
+    49→
+    50→# AUDITORIA COMPLETA DE ENGENHARIA — (COLOQUE AQUI O NOME DO SEU PROJETO)
+    51→
+    52→Quero que você faça uma **auditoria técnica completa, profunda e independente de todo o sistema do (nome do projeto)**.
+    53→
+    54→Você deve atuar como um **Principal Software Architect + Principal Engineer + especialista em sistemas distribuídos, segurança, bancos de dados, escalabilidade, performance, SRE/DevOps e engenharia de software**, com nível técnico equivalente ao de um pesquisador PhD de uma das melhores universidades do mundo e, principalmente, com experiência prática em sistemas SaaS de grande escala.
+    55→
+    56→Não quero uma revisão superficial de código.
+    57→
+    58→Quero descobrir **o que existe hoje, como o sistema realmente funciona, onde estão as falhas, quais são os riscos ocultos e o que precisa ser feito para que o Painel do Dia possa crescer até 100.000 usuários sem precisarmos reconstruir tudo às pressas.**
+    59→
+    60→---
+    61→
+    62→# ⚠️ REGRA ABSOLUTA: NÃO ALTERE NADA
+    63→
+    64→Nesta primeira etapa você está em:
+    65→
+    66→**MODO SOMENTE LEITURA / AUDITORIA**
+    67→
+    68→NÃO:
+    69→
+    70→* altere arquivos;
+    71→* refatore código;
+    72→* corrija problemas;
+    73→* instale dependências;
+    74→* atualize dependências;
+    75→* execute migrations;
+    76→* altere banco de dados;
+    77→* altere configurações;
+    78→* faça deploy;
+    79→* remova arquivos;
+    80→* crie arquivos;
+    81→* altere variáveis de ambiente;
+    82→* faça qualquer mudança permanente no projeto.
+    83→
+    84→Você pode executar comandos **não destrutivos** para inspeção, análise, testes e diagnóstico.
+    85→
+    86→Primeiro investigue.
+    87→
+    88→Depois entregue o diagnóstico.
+    89→
+    90→**Não faça nenhuma correção nesta etapa, mesmo que encontre um problema crítico.**
+    91→
+    92→---
+    93→
+    94→# OBJETIVO PRINCIPAL
+    95→
+    96→Faça uma varredura completa do (Nome do sistema).
+    97→
+    98→Não analise arquivos isoladamente.
+    99→
+   100→Primeiro entenda o sistema como um organismo inteiro.
+   101→
+   102→Reconstrua como funciona o fluxo:
+   103→
+   104→**usuário → frontend → autenticação → backend → API → regras de negócio → banco → serviços externos → processamento assíncrono → armazenamento → logs → infraestrutura → deploy**
+   105→
+   106→Quero que você descubra como o sistema **realmente funciona hoje**, e não como você imagina que ele deveria funcionar.
+   107→
+   108→Não presuma.
+   109→
+   110→Procure evidências no código.
+   111→
+   112→---
+   113→
+   114→# ETAPA 1 — INVENTÁRIO COMPLETO DO PROJETO
+   115→
+   116→Comece examinando toda a estrutura do repositório.
+   117→
+   118→Identifique:
+   119→
+   120→* estrutura de diretórios;
+   121→* frontend;
+   122→* backend;
+   123→* APIs;
+   124→* banco;
+   125→* migrations;
+   126→* schemas;
+   127→* ORM;
+   128→* autenticação;
+   129→* autorização;
+   130→* serviços;
+   131→* componentes;
+   132→* hooks;
+   133→* middlewares;
+   134→* controllers;
+   135→* services;
+   136→* repositories;
+   137→* funções server-side;
+   138→* jobs;
+   139→* workers;
+   140→* cron jobs;
+   141→* filas;
+   142→* cache;
+   143→* storage;
+   144→* uploads;
+   145→* webhooks;
+   146→* integrações externas;
+   147→* pagamentos;
+   148→* e-mails;
+   149→* WhatsApp;
+   150→* APIs de terceiros;
+   151→* IA;
+   152→* analytics;
+   153→* logs;
+   154→* monitoramento;
+   155→* testes;
+   156→* scripts;
+   157→* CI/CD;
+   158→* Docker;
+   159→* infraestrutura;
+   160→* configurações;
+   161→* variáveis de ambiente;
+   162→* secrets;
+   163→* documentação.
+   164→
+   165→Leia os arquivos de configuração relevantes.
+   166→
+   167→Examine:
+   168→
+   169→* package.json;
+   170→* lockfiles;
+   171→* tsconfig;
+   172→* configurações do framework;
+   173→* configurações de build;
+   174→* configurações de banco;
+   175→* migrations;
+   176→* schemas;
+   177→* arquivos de infraestrutura;
+   178→* Dockerfiles;
+   179→* workflows;
+   180→* arquivos de deployment;
+   181→* configurações de autenticação;
+   182→* configurações de segurança.
+   183→
+   184→Não pule arquivos importantes simplesmente porque o projeto parece grande.
+   185→
+   186→---
+   187→
+   188→# ETAPA 2 — IDENTIFIQUE A STACK
+   189→
+   190→Determine exatamente:
+   191→
+   192→1. Framework frontend
+   193→2. Framework backend
+   194→3. Linguagem
+   195→4. Banco de dados
+   196→5. ORM
+   197→6. Sistema de autenticação
+   198→7. Sistema de autorização
+   199→8. Hosting
+   200→9. CDN
+   201→10. Storage
+   202→11. Cache
+   203→12. Filas
+   204→13. Workers
+   205→14. Serviços externos
+   206→15. Serviços de e-mail
+   207→16. Serviços de WhatsApp
+   208→17. Serviços de pagamento
+   209→18. Serviços de IA
+   210→19. Monitoramento
+   211→20. Analytics
+   212→21. CI/CD
+   213→22. Gerenciamento de secrets
+   214→
+   215→Para cada item, informe:
+   216→
+   217→**Tecnologia → onde aparece no projeto → função → riscos**
+   218→
+   219→---
+   220→
+   221→# ETAPA 3 — MAPEAR A ARQUITETURA ATUAL
+   222→
+   223→Depois de entender o projeto, reconstrua a arquitetura.
+   224→
+   225→Quero saber:
+   226→
+   227→* quais são os principais componentes;
+   228→* como eles conversam;
+   229→* onde entram as requisições;
+   230→* onde são processadas;
+   231→* onde os dados são armazenados;
+   232→* onde acontecem regras de negócio;
+   233→* onde ficam as validações;
+   234→* onde ocorre autenticação;
+   235→* onde ocorre autorização;
+   236→* quais partes dependem de terceiros;
+   237→* quais partes são síncronas;
+   238→* quais são assíncronas;
+   239→* onde estão os pontos únicos de falha.
+   240→
+   241→Crie um diagrama em Mermaid quando possível.
+   242→
+   243→Exemplo conceitual:
+   244→
+   245→Usuário
+   246→↓
+   247→Frontend
+   248→↓
+   249→Auth
+   250→↓
+   251→API
+   252→↓
+   253→Business Logic
+   254→↓
+   255→Database
+   256→
+   257→Mas NÃO copie esse exemplo.
+   258→
+   259→Construa o diagrama de acordo com o sistema real.
+   260→
+   261→---
+   262→
+   263→# ETAPA 4 — ANALISAR A ARQUITETURA DE SOFTWARE
+   264→
+   265→Avalie:
+   266→
+   267→* separação de responsabilidades;
+   268→* coesão;
+   269→* acoplamento;
+   270→* modularidade;
+   271→* organização das regras de negócio;
+   272→* dependências entre módulos;
+   273→* duplicação;
+   274→* abstrações;
+   275→* complexidade;
+   276→* dívida técnica;
+   277→* código morto;
+   278→* código difícil de testar;
+   279→* pontos frágeis;
+   280→* decisões arquiteturais questionáveis.
+   281→
+   282→Não critique simplesmente por preferência estética.
+   283→
+   284→Pergunte:
+   285→
+   286→**“Isso representa um risco real para crescimento, segurança, performance, manutenção ou disponibilidade?”**
+   287→
+   288→---
+   289→
+   290→# ETAPA 5 — BANCO DE DADOS
+   291→
+   292→Faça uma auditoria profunda do banco.
+   293→
+   294→Analise:
+   295→
+   296→* tabelas;
+   297→* relacionamentos;
+   298→* foreign keys;
+   299→* constraints;
+   300→* índices;
+   301→* índices ausentes;
+   302→* índices redundantes;
+   303→* tipos de dados;
+   304→* queries;
+   305→* joins;
+   306→* filtros;
+   307→* ordenações;
+   308→* paginação;
+   309→* N+1 queries;
+   310→* full table scans;
+   311→* queries potencialmente lentas;
+   312→* transações;
+   313→* locks;
+   314→* deadlocks;
+   315→* race conditions;
+   316→* concorrência;
+   317→* consistência;
+   318→* integridade;
+   319→* crescimento das tabelas;
+   320→* retenção;
+   321→* dados históricos;
+   322→* dados duplicados;
+   323→* registros que podem crescer indefinidamente.
+   324→
+   325→Analise também:
+   326→
+   327→**O que acontece quando as tabelas deixam de ter milhares de registros e passam a ter milhões ou centenas de milhões?**
+   328→
+   329→Identifique consultas que provavelmente funcionarão hoje, mas poderão se tornar gargalos em escala.
+   330→
+   331→Avalie também:
+   332→
+   333→* backups;
+   334→* recuperação;
+   335→* disaster recovery;
+   336→* read replicas;
+   337→* particionamento;
+   338→* connection pooling;
+   339→* limites de conexão;
+   340→* migrations;
+   341→* possibilidade de downtime durante migrations.
+   342→
+   343→---
+   344→
+   345→# ETAPA 6 — MULTI-TENANCY
+   346→
+   347→Esta análise é CRÍTICA.
+   348→
+   349→Determine exatamente como o (nome do seu sistema) separa os dados dos diferentes usuários/contas/empresas.
+   350→
+   351→Descubra:
+   352→
+   353→* o que representa um tenant;
+   354→* como o tenant é identificado;
+   355→* como essa identificação chega ao backend;
+   356→* como ela chega às queries;
+   357→* se existe isolamento efetivo;
+   358→* se o frontend participa indevidamente da segurança;
+   359→* se as queries sempre filtram pelo tenant correto;
+   360→* se existem endpoints que podem esquecer o filtro;
+   361→* se IDs são previsíveis;
+   362→* se existe possibilidade de enumeração;
+   363→* se existe acesso administrativo perigoso.
+   364→
+   365→Faça esta pergunta em todas as áreas críticas:
+   366→
+   367→> **“O usuário A consegue acessar, descobrir, alterar ou excluir dados do usuário B?”**
+   368→
+   369→Se houver qualquer possibilidade:
+   370→
+   371→**CLASSIFIQUE COMO CRÍTICO.**
+   372→
+   373→---
+   374→
+   375→# ETAPA 7 — SEGURANÇA
+   376→
+   377→Faça uma auditoria de segurança completa.
+   378→
+   379→Procure especificamente:
+   380→
+   381→* SQL Injection;
+   382→* XSS;
+   383→* CSRF;
+   384→* SSRF;
+   385→* IDOR;
+   386→* broken access control;
+   387→* privilege escalation;
+   388→* authentication bypass;
+   389→* authorization bypass;
+   390→* mass assignment;
+   391→* secrets expostos;
+   392→* tokens expostos;
+   393→* JWT mal configurado;
+   394→* cookies inseguros;
+   395→* CORS;
+   396→* rate limiting;
+   397→* brute force;
+   398→* abuso de API;
+   399→* uploads inseguros;
+   400→* validação insuficiente;
+   401→* sanitização insuficiente;
+   402→* exposição de dados;
+   403→* informações sensíveis em logs;
+   404→* mensagens de erro reveladoras;
+   405→* endpoints administrativos;
+   406→* webhooks sem validação;
+   407→* webhooks sem assinatura;
+   408→* replay attacks;
+   409→* dependências vulneráveis;
+   410→* configurações inseguras de produção.
+   411→
+   412→Procure também falhas que não tenham nomes óbvios de vulnerabilidades.
+   413→
+   414→Pense como um atacante.
+   415→
+   416→---
+   417→
+   418→# ETAPA 8 — AUTENTICAÇÃO E AUTORIZAÇÃO
+   419→
+   420→Analise profundamente:
+   421→
+   422→* login;
+   423→* logout;
+   424→* sessões;
+   425→* tokens;
+   426→* refresh tokens;
+   427→* expiração;
+   428→* recuperação de senha;
+   429→* troca de senha;
+   430→* verificação de e-mail;
+   431→* permissões;
+   432→* roles;
+   433→* acesso administrativo;
+   434→* acesso entre contas;
+   435→* endpoints protegidos;
+   436→* middleware;
+   437→* autorização no backend.
+   438→
+   439→Nunca considere o frontend como camada de segurança.
+   440→
+   441→Determine:
+   442→
+   443→**Quais regras são realmente aplicadas no servidor?**
+   444→
+   445→---
+   446→
+   447→# ETAPA 9 — APIs
+   448→
+   449→Faça um inventário das APIs/endpoints.
+   450→
+   451→Para cada endpoint importante, avalie:
+   452→
+   453→* autenticação;
+   454→* autorização;
+   455→* validação;
+   456→* rate limiting;
+   457→* custo;
+   458→* queries executadas;
+   459→* dependências externas;
+   460→* volume de dados retornado;
+   461→* paginação;
+   462→* tratamento de erros;
+   463→* timeout;
+   464→* retry;
+   465→* idempotência;
+   466→* risco de abuso.
+   467→
+   468→Identifique endpoints que podem virar gargalos em escala.
+   469→
+   470→---
+   471→
+   472→# ETAPA 10 — PERFORMANCE
+   473→
+   474→Analise:
+   475→
+   476→## FRONTEND
+   477→
+   478→* bundle;
+   479→* rendering;
+   480→* componentes pesados;
+   481→* carregamento inicial;
+   482→* lazy loading;
+   483→* imagens;
+   484→* chamadas duplicadas;
+   485→* polling;
+   486→* cache;
+   487→* paginação;
+   488→* requests excessivos;
+   489→* re-renderizações;
+   490→* consumo de memória.
+   491→
+   492→## BACKEND
+   493→
+   494→* endpoints lentos;
+   495→* operações síncronas;
+   496→* queries caras;
+   497→* N+1;
+   498→* processamento desnecessário;
+   499→* chamadas externas;
+   500→* ausência de cache;
+   501→* ausência de filas;
+   502→* processamento dentro da request;
+   503→* concorrência.
+   504→
+   505→Identifique o que pode funcionar com 100 usuários mas começar a degradar com 10.000, 50.000 ou 100.000.
+   506→
+   507→---
+   508→
+   509→# ETAPA 11 — ESCALABILIDADE
+   510→
+   511→Agora pense especificamente em:
+   512→
+   513→**100.000 usuários.**
+   514→
+   515→Não quero uma resposta genérica dizendo “use cache e load balancer”.
+   516→
+   517→Quero descobrir:
+   518→
+   519→**Qual componente quebra primeiro?**
+   520→
+   521→Analise:
+   522→
+   523→* CPU;
+   524→* RAM;
+   525→* banco;
+   526→* conexões;
+   527→* requests;
+   528→* throughput;
+   529→* latência;
+   530→* storage;
+   531→* bandwidth;
+   532→* APIs externas;
+   533→* filas;
+   534→* workers;
+   535→* cache;
+   536→* sessões;
+   537→* logs;
+   538→* processamento assíncrono.
+   539→
+   540→Faça uma análise para:
+   541→
+   542→### 1.000 usuários
+   543→
+   544→### 10.000 usuários
+   545→
+   546→### 50.000 usuários
+   547→
+   548→### 100.000 usuários
+   549→
+   550→Para cada escala, explique quais problemas provavelmente aparecem.
+   551→
+   552→---
+   553→
+   554→# ETAPA 12 — CONCORRÊNCIA E RACE CONDITIONS
+   555→
+   556→Procure situações onde:
+   557→
+   558→* duas requisições podem alterar o mesmo registro;
+   559→* o usuário pode clicar duas vezes;
+   560→* webhook pode chegar duas vezes;
+   561→* jobs podem ser executados novamente;
+   562→* duas operações podem sobrescrever dados;
+   563→* operações podem acontecer fora de ordem.
+   564→
+   565→Avalie:
+   566→
+   567→* locks;
+   568→* transactions;
+   569→* idempotency keys;
+   570→* unique constraints;
+   571→* optimistic locking;
+   572→* pessimistic locking;
+   573→* retries;
+   574→* filas.
+   575→
+   576→Determine onde existem riscos reais.
+   577→
+   578→---
+   579→
+   580→# ETAPA 13 — RESILIÊNCIA
+   581→
+   582→Imagine que cada dependência comece a falhar.
+   583→
+   584→O que acontece se:
+   585→
+   586→* banco ficar lento;
+   587→* banco cair;
+   588→* API externa ficar lenta;
+   589→* API externa ficar indisponível;
+   590→* serviço retornar timeout;
+   591→* webhook falhar;
+   592→* webhook chegar duas vezes;
+   593→* servidor reiniciar;
+   594→* worker morrer;
+   595→* fila crescer;
+   596→* usuário atualizar a página no meio de uma operação;
+   597→* request for repetida;
+   598→* processamento for interrompido no meio.
+   599→
+   600→Analise:
+   601→
+   602→* timeouts;
+   603→* retries;
+   604→* exponential backoff;
+   605→* circuit breaker;
+   606→* idempotência;
+   607→* dead letter queue;
+   608→* graceful degradation;
+   609→* compensating transactions;
+   610→* recuperação.
+   611→
+   612→---
+   613→
+   614→# ETAPA 14 — FILAS E PROCESSAMENTO ASSÍNCRONO
+   615→
+   616→Identifique tudo que deveria ou poderia ser assíncrono.
+   617→
+   618→Pergunte:
+   619→
+   620→**Estamos fazendo dentro da requisição algo que deveria ser feito por worker?**
+   621→
+   622→Procure:
+   623→
+   624→* envio de e-mail;
+   625→* WhatsApp;
+   626→* processamento pesado;
+   627→* IA;
+   628→* geração de arquivos;
+   629→* integrações externas;
+   630→* tarefas demoradas.
+   631→
+   632→Determine o impacto disso em 100.000 usuários.
+   633→
+   634→---
+   635→
+   636→# ETAPA 15 — OBSERVABILIDADE
+   637→
+   638→Determine se conseguimos operar esse sistema profissionalmente.
+   639→
+   640→Analise:
+   641→
+   642→* logs;
+   643→* logs estruturados;
+   644→* métricas;
+   645→* traces;
+   646→* request ID;
+   647→* correlation ID;
+   648→* monitoramento;
+   649→* alertas;
+   650→* monitoramento do banco;
+   651→* monitoramento das filas;
+   652→* monitoramento de APIs externas;
+   653→* error tracking.
+   654→
+   655→Pergunte:
+   656→
+   657→> Se o (nome do seu sistema) parar de funcionar para 5.000 usuários às 3h da manhã, saberíamos?
+   658→
+   659→E:
+   660→
+   661→> Saberíamos qual componente causou o problema?
+   662→
+   663→Se não, explique exatamente o que falta.
+   664→
+   665→---
+   666→
+   667→# ETAPA 16 — CUSTOS
+   668→
+   669→Analise a arquitetura pensando no crescimento.
+   670→
+   671→Identifique o que pode gerar explosão de custo:
+   672→
+   673→* banco;
+   674→* storage;
+   675→* bandwidth;
+   676→* API;
+   677→* IA;
+   678→* WhatsApp;
+   679→* e-mail;
+   680→* logs;
+   681→* observabilidade;
+   682→* servidores;
+   683→* filas;
+   684→* cache;
+   685→* serviços de terceiros.
+   686→
+   687→Não invente preços.
+   688→
+   689→Se não houver dados suficientes para estimar custos, diga:
+   690→
+   691→**“Não há dados suficientes para estimar o custo.”**
+   692→
+   693→Depois liste quais métricas precisariam ser coletadas.
+   694→
+   695→---
+   696→
+   697→# ETAPA 17 — DEPENDÊNCIAS
+   698→
+   699→Analise todos os package files e lockfiles.
+   700→
+   701→Procure:
+   702→
+   703→* dependências vulneráveis;
+   704→* versões antigas;
+   705→* dependências abandonadas;
+   706→* dependências duplicadas;
+   707→* dependências desnecessárias;
+   708→* dependências que aumentam muito o bundle;
+   709→* dependências críticas;
+   710→* vendor lock-in.
+   711→
+   712→Não atualize nada.
+   713→
+   714→Somente diagnostique.
+   715→
+   716→---
+   717→
+   718→# ETAPA 18 — TESTES
+   719→
+   720→Avalie:
+   721→
+   722→* testes unitários;
+   723→* integração;
+   724→* E2E;
+   725→* testes de autenticação;
+   726→* testes de autorização;
+   727→* testes multi-tenant;
+   728→* testes de banco;
+   729→* testes de API;
+   730→* testes de concorrência;
+   731→* testes de carga;
+   732→* testes de falha.
+   733→
+   734→Determine:
+   735→
+   736→**O que está protegido por testes e o que está completamente descoberto?**
+   737→
+   738→Crie:
+   739→
+   740→| Área | Cobertura | Risco | Teste recomendado |
+   741→| ---- | --------- | ----- | ----------------- |
+   742→
+   743→---
+   744→
+   745→# ETAPA 19 — ATAQUE ADVERSARIAL
+   746→
+   747→Agora abandone o pensamento de desenvolvedor.
+   748→
+   749→Pense como:
+   750→
+   751→## HACKER
+   752→
+   753→Como eu atacaria o (nome do seu sistema)?
+   754→
+   755→## USUÁRIO MALICIOSO
+   756→
+   757→Como eu abusaria das regras do sistema?
+   758→
+   759→## USUÁRIO NORMAL
+   760→
+   761→Como eu poderia quebrar alguma coisa sem intenção?
+   762→
+   763→## 100.000 USUÁRIOS
+   764→
+   765→Qual recurso acabaria primeiro?
+   766→
+   767→## BANCO COM 100 MILHÕES DE REGISTROS
+   768→
+   769→Qual query começaria a morrer?
+   770→
+   771→## API EXTERNA FORA DO AR
+   772→
+   773→Qual fluxo quebraria?
+   774→
+   775→## CRESCIMENTO 10X
+   776→
+   777→Qual decisão atual se tornaria um problema?
+   778→
+   779→---
+   780→
+   781→# ETAPA 20 — ENCONTRE OS “BURACOS”
+   782→
+   783→Crie uma seção chamada:
+   784→
+   785→# BURACOS ENCONTRADOS
+   786→
+   787→Liste tudo que estiver:
+   788→
+   789→* faltando;
+   790→* incompleto;
+   791→* frágil;
+   792→* improvisado;
+   793→* perigoso;
+   794→* dependente de configuração manual;
+   795→* dependente de comportamento implícito;
+   796→* difícil de escalar;
+   797→* difícil de monitorar;
+   798→* difícil de recuperar;
+   799→* difícil de testar;
+   800→* vulnerável a erro humano.
+   801→
+   802→Não seja diplomático.
+   803→
+   804→Se uma decisão arquitetural estiver errada, diga claramente:
+   805→
+   806→**“Esta decisão está errada.”**
+   807→
+   808→E explique tecnicamente.
+   809→
+   810→---
+   811→
+   812→# ETAPA 21 — CLASSIFICAÇÃO DOS RISCOS
+   813→
+   814→Classifique cada problema:
+   815→
+   816→🔴 **CRÍTICO**
+   817→Pode causar vazamento, perda de dados, indisponibilidade grave ou inviabilizar crescimento.
+   818→
+   819→🟠 **ALTO**
+   820→Provavelmente causará problemas relevantes conforme o sistema crescer.
+   821→
+   822→🟡 **MÉDIO**
+   823→Não impede crescimento imediato, mas precisa ser resolvido.
+   824→
+   825→🟢 **BAIXO**
+   826→Melhoria recomendada, sem impacto relevante imediato.
+   827→
+   828→Para cada problema, informe:
+   829→
+   830→1. Severidade
+   831→2. Arquivo
+   832→3. Linha, quando possível
+   833→4. Componente
+   834→5. Problema
+   835→6. Evidência encontrada
+   836→7. Por que é perigoso
+   837→8. Impacto
+   838→9. Impacto em 100.000 usuários
+   839→10. Solução recomendada
+   840→11. Prioridade
+   841→12. Complexidade aproximada da correção
+   842→
+   843→---
+   844→
+   845→# ETAPA 22 — O QUE QUEBRA PRIMEIRO?
+   846→
+   847→Imagine que o Painel do Dia cresça rapidamente nos próximos meses.
+   848→
+   849→Diga:
+   850→
+   851→### 1º COMPONENTE A QUEBRAR
+   852→
+   853→Explique.
+   854→
+   855→### 2º COMPONENTE
+   856→
+   857→Explique.
+   858→
+   859→### 3º COMPONENTE
+   860→
+   861→Explique.
+   862→
+   863→### 4º COMPONENTE
+   864→
+   865→Explique.
+   866→
+   867→### 5º COMPONENTE
+   868→
+   869→Explique.
+   870→
+   871→Não quero especulação genérica.
+   872→
+   873→Baseie-se na arquitetura encontrada.
+   874→
+   875→---
+   876→
+   877→# ETAPA 23 — ROADMAP DE ESCALA
+   878→
+   879→Crie um roadmap pragmático.
+   880→
+   881→## AGORA
+   882→
+   883→O que precisa ser corrigido imediatamente?
+   884→
+   885→## ANTES DE 1.000 USUÁRIOS
+   886→
+   887→O que precisa estar preparado?
+   888→
+   889→## ANTES DE 10.000
+   890→
+   891→O que precisa mudar?
+   892→
+   893→## ANTES DE 50.000
+   894→
+   895→O que precisa ser reforçado?
+   896→
+   897→## ANTES DE 100.000
+   898→
+   899→O que precisa existir?
+   900→
+   901→Não faça overengineering.
+   902→
+   903→Não proponha microserviços só porque “escala”.
+   904→
+   905→Se um monólito modular for suficiente, diga isso.
+   906→
+   907→Se PostgreSQL for suficiente, diga isso.
+   908→
+   909→Se Redis não for necessário ainda, diga isso.
+   910→
+   911→Se Kubernetes for desnecessário, diga isso.
+   912→
+   913→Quero a arquitetura **mais simples capaz de suportar o crescimento**, e não a arquitetura mais sofisticada.
+   914→
+   915→---
+   916→
+   917→# ETAPA 24 — ARQUITETURA ALVO
+   918→
+   919→Depois de entender o sistema atual, proponha uma arquitetura futura para o (nome do seu sistema) capaz de suportar aproximadamente:
+   920→
+   921→**100.000 usuários**
+   922→
+   923→Avalie:
+   924→
+   925→* frontend;
+   926→* backend;
+   927→* banco;
+   928→* cache;
+   929→* filas;
+   930→* workers;
+   931→* storage;
+   932→* CDN;
+   933→* load balancer;
+   934→* autenticação;
+   935→* autorização;
+   936→* rate limiting;
+   937→* observabilidade;
+   938→* backups;
+   939→* disaster recovery;
+   940→* deploy;
+   941→* CI/CD.
+   942→
+   943→Para cada componente, diga:
+   944→
+   945→**Precisamos agora?**
+   946→
+   947→ou
+   948→
+   949→**Podemos esperar?**
+   950→
+   951→Isso é importante para evitar gastar dinheiro antes da hora.
+   952→
+   953→---
+   954→
+   955→# ETAPA 25 — O QUE NÃO DEVEMOS FAZER
+   956→
+   957→Crie uma seção:
+   958→
+   959→# OVERENGINEERING A EVITAR
+   960→
+   961→Identifique coisas que seriam prematuras, como:
+   962→
+   963→* microserviços;
+   964→* Kubernetes;
+   965→* arquitetura distribuída;
+   966→* event-driven sem necessidade;
+   967→* infraestrutura cara;
+   968→* abstrações excessivas;
+   969→* refatorações gigantes;
+   970→* tecnologias desnecessárias.
+   971→
+   972→Não quero construir uma empresa de 100 milhões de usuários antes de termos 1.000.
+   973→
+   974→Quero preparação inteligente.
+   975→
+   976→---
+   977→
+   978→# FORMATO FINAL DO RELATÓRIO
+   979→
+   980→Entregue exatamente nesta estrutura:
+   981→
+   982→# 1. RESUMO EXECUTIVO
+   983→
+   984→Máximo 15 linhas.
+   985→
+   986→Comece respondendo:
+   987→
+   988→**“Se eu fosse responsável por colocar 100.000 usuários neste sistema, minha avaliação seria:”**
+   989→
+   990→---
+   991→
+   992→# 2. NOTA DA ENGENHARIA ATUAL
+   993→
+   994→Dê uma nota de 0 a 10:
+   995→
+   996→* Arquitetura
+   997→* Segurança
+   998→* Banco de dados
+   999→* Escalabilidade
+  1000→* Performance
+  1001→* Resiliência
+  1002→* Observabilidade
+  1003→* Testes
+  1004→* Manutenibilidade
+  1005→* DevOps/Deploy
+  1006→
+  1007→Depois:
+  1008→
+  1009→## NOTA GERAL
+  1010→
+  1011→Explique.
+  1012→
+  1013→---
+  1014→
+  1015→# 3. ARQUITETURA ATUAL
+  1016→
+  1017→Explique como o sistema funciona.
+  1018→
+  1019→---
+  1020→
+  1021→# 4. DIAGRAMA
+  1022→
+  1023→Use Mermaid.
+  1024→
+  1025→---
+  1026→
+  1027→# 5. TOP 20 PROBLEMAS
+  1028→
+  1029→Use:
+  1030→
+  1031→| # | Severidade | Problema | Evidência | Impacto | Prioridade |
+  1032→| - | ---------- | -------- | --------- | ------- | ---------- |
+  1033→
+  1034→---
+  1035→
+  1036→# 6. BURACOS ENCONTRADOS
+  1037→
+  1038→Liste os problemas estruturais.
+  1039→
+  1040→---
+  1041→
+  1042→# 7. SEGURANÇA
+  1043→
+  1044→Relatório completo.
+  1045→
+  1046→---
+  1047→
+  1048→# 8. MULTI-TENANCY
+  1049→
+  1050→Relatório completo.
+  1051→
+  1052→---
+  1053→
+  1054→# 9. BANCO DE DADOS
+  1055→
+  1056→Relatório completo.
+  1057→
+  1058→---
+  1059→
+  1060→# 10. ESCALABILIDADE
+  1061→
+  1062→Explique:
+  1063→
+  1064→**1.000 → 10.000 → 50.000 → 100.000 usuários**
+  1065→
+  1066→---
+  1067→
+  1068→# 11. PERFORMANCE
+  1069→
+  1070→Gargalos encontrados.
+  1071→
+  1072→---
+  1073→
+  1074→# 12. RESILIÊNCIA
+  1075→
+  1076→Como o sistema reage às falhas.
+  1077→
+  1078→---
+  1079→
+  1080→# 13. OBSERVABILIDADE
+  1081→
+  1082→O que conseguimos enxergar e o que não conseguimos.
+  1083→
+  1084→---
+  1085→
+  1086→# 14. CUSTOS
+  1087→
+  1088→Onde os custos podem explodir.
+  1089→
+  1090→---
+  1091→
+  1092→# 15. O QUE QUEBRA PRIMEIRO?
+  1093→
+  1094→Sua previsão técnica.
+  1095→
+  1096→---
+  1097→
+  1098→# 16. ROADMAP
+  1099→
+  1100→### 🔴 AGORA
+  1101→
+  1102→### 🟠 ANTES DE 1.000
+  1103→
+  1104→### 🟡 ANTES DE 10.000
+  1105→
+  1106→### 🔵 ANTES DE 50.000
+  1107→
+  1108→### 🟢 ANTES DE 100.000
+  1109→
+  1110→---
+  1111→
+  1112→# 17. ARQUITETURA RECOMENDADA
+  1113→
+  1114→Como deveria evoluir.
+  1115→
+  1116→---
+  1117→
+  1118→# 18. OVERENGINEERING A EVITAR
+  1119→
+  1120→O que NÃO devemos construir agora.
+  1121→
+  1122→---
+  1123→
+  1124→# 19. PLANO DE AÇÃO
+  1125→
+  1126→## 🔴 FAZER IMEDIATAMENTE
+  1127→
+  1128→1.
+  1129→2.
+  1130→3.
+  1131→4.
+  1132→5.
+  1133→
+  1134→## 🟠 FAZER EM SEGUIDA
+  1135→
+  1136→1.
+  1137→2.
+  1138→3.
+  1139→4.
+  1140→5.
+  1141→
+  1142→## 🟡 PODE ESPERAR
+  1143→
+  1144→1.
+  1145→2.
+  1146→3.
+  1147→4.
+  1148→5.
+  1149→
+  1150→## 🟢 NÃO MEXER AGORA
+  1151→
+  1152→1.
+  1153→2.
+  1154→3.
+  1155→4.
+  1156→5.
+  1157→
+  1158→---
+  1159→
+  1160→# 20. VEREDITO FINAL
+  1161→
+  1162→Responda objetivamente:
+  1163→
+  1164→### PERGUNTA 1
+  1165→
+  1166→**O sistema atual está tecnicamente preparado para crescer 10x?**
+  1167→
+  1168→Sim / Não / Parcialmente.
+  1169→
+  1170→Explique.
+  1171→
+  1172→### PERGUNTA 2
+  1173→
+  1174→**Ele está preparado para 100.000 usuários?**
+  1175→
+  1176→Sim / Não / Com modificações.
+  1177→
+  1178→Explique.
+  1179→
+  1180→### PERGUNTA 3
+  1181→
+  1182→**Quais são os 5 maiores riscos para o negócio?**
+  1183→
+  1184→Liste.
+  1185→
+  1186→### PERGUNTA 4
+  1187→
+  1188→**Qual é o menor conjunto de mudanças que precisamos fazer agora para tornar o sistema significativamente mais preparado para crescer?**
+  1189→
+  1190→Liste em ordem de prioridade.
+  1191→
+  1192→---
+  1193→
+  1194→# REGRAS ABSOLUTAS DA AUDITORIA
+  1195→
+  1196→1. Não faça elogios genéricos.
+  1197→2. Não diga “está bom” sem evidência.
+  1198→3. Não presuma que algo funciona. Verifique.
+  1199→4. Não invente infraestrutura.
+  1200→5. Não invente métricas.
+  1201→6. Diferencie claramente:
+  1202→
+  1203→   * fato observado;
+  1204→   * inferência;
+  1205→   * hipótese;
+  1206→   * recomendação.
+  1207→7. Sempre que possível, cite arquivo e linha.
+  1208→8. Priorize segurança, escala, custo, disponibilidade e manutenção.
+  1209→9. Não proponha reescrever tudo sem necessidade.
+  1210→10. Não faça alterações no projeto.
+  1211→11. Não instale nada.
+  1212→12. Não atualize nada.
+  1213→13. Não faça migrations.
+  1214→14. Não faça deploy.
+  1215→15. Não tente me agradar.
+  1216→16. Se algo estiver errado, diga que está errado.
+  1217→17. Se algo estiver perigoso, diga que está perigoso.
+  1218→18. Se algo estiver excelente, explique tecnicamente por quê.
+  1219→19. Se não houver dados suficientes para concluir, escreva:
+  1220→    **“NÃO FOI POSSÍVEL DETERMINAR COM OS DADOS DISPONÍVEIS.”**
+  1221→20. Não confunda “funciona hoje” com “está preparado para escala”.
+  1222→
+  1223→---
+  1224→
+  1225→# PERGUNTA FINAL
+  1226→
+  1227→Depois de toda a auditoria, quero uma resposta extremamente objetiva para:
+  1228→
+  1229→> **“Se o (nome do seu sistema) crescer 10x nos próximos meses, quais são os 5 problemas que mais podem colocar o negócio em risco?”**
+  1230→
+  1231→E:
+  1232→
+  1233→> **“Qual é o menor conjunto de mudanças que devemos fazer AGORA para reduzir drasticamente esses riscos sem fazer overengineering?”**
+  1234→
+  1235→---
+  1236→
+  1237→## COMECE AGORA
+  1238→
+  1239→Primeiro faça a inspeção completa do repositório.
+  1240→
+  1241→Não altere absolutamente nada.
+  1242→
+  1243→Não me dê uma resposta superficial baseada apenas na estrutura das pastas.
+  1244→
+  1245→Estamos seguro o bastante para crescermos de forma esponencial e com segurança virtual?
+  1246→
+  1247→**Leia o código necessário para compreender como o sistema realmente funciona antes de emitir o diagnóstico.**
+  1248→
+  1249→Realizar todas as 25 etapas.
