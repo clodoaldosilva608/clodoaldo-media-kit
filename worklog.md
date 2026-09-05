@@ -1180,3 +1180,117 @@ Pendências manuais do usuário:
 3. (Opcional) Fazer upgrade para Vercel Pro para cron mais frequente
    (atualmente 1x/dia; Pro = até 1/min).
 
+
+---
+Task ID: 23
+Agent: main (GLM)
+Task: Implementar Telegram + Dashboard Recuperação + A/B test de mensagens
+
+Work Log:
+- Created src/lib/telegram.ts:
+  • sendTelegram(message) — envia via Bot API oficial (gratuito)
+  • notifyCartRecovery() — push para Clodoaldo com botões inline:
+    - [💬 Recuperar no WhatsApp] → abre wa.me com msg personalizada
+    - [🔗 Ver checkout] → abre página do checkout
+  • notifyPaidOrder() — push "💰 Nova venda!" quando webhook Kiwify confirma
+  • HTML parse mode + escape de user input (anti-XSS no Telegram)
+
+- Created src/lib/recovery-variants.ts:
+  • 3 variantes A/B/C com abordagens psicológicas distintas:
+    - A (gentle_help): "Posso te ajudar com alguma dúvida?" — solidária
+    - B (scarcity): "Sua vaga pode expirar em 24h" — urgência
+    - C (discount): "Cupom exclusivo VOLTA10 — 10% OFF" — incentivo
+  • assignVariant(sessionId) — hash determinístico por session_id
+    (mesma sessão = mesma variante, evita bias e duplicidade)
+  • renderTemplate() + buildWaLink() para gerar wa.me personalizado
+
+- Atualizado /api/cron/recover-carts/route.ts:
+  • Atribui variant A/B/C por cart (determinístico)
+  • Gera wa.me link com template da variant
+  • Envia push Telegram com 2 botões inline (WhatsApp + Checkout)
+  • Armazena recovery_variant, recovery_link, recovery_attempted_at
+  • Log estruturado com variant_counts {A:n, B:n, C:n}
+  • Resiliente a colunas faltantes (fallback silencioso)
+
+- Adicionado Telegram notify no webhook-kiwify/route.ts:
+  • Quando order é marcada como paid, envia notifyPaidOrder()
+  • Falha Telegram não bloqueia webhook ACK (try/catch isolado)
+
+- Created /api/admin/recovery/route.ts:
+  • GET: lista carts com recovery info + A/B stats
+    - Filtros: status (pending/sent/recovered/all), variant (A/B/C)
+    - Stats: por variant × recovered × conversion_rate
+    - Summary: total, pendentes, recuperados, receita recuperada, taxa
+  • PATCH: actions = mark_recovered | resend
+    - mark_recovered: admin marca manualmente como recuperado
+    - resend: reset recovery_email_sent para cron reenviar
+
+- Created /admin/recuperacao/page.tsx (19ª seção admin):
+  • 6 KPIs: Total, Pendentes, Enviados, Recuperados, Receita, Taxa
+  • Painel A/B Test com 3 cards mostrando:
+    - Taxa de conversão por variant
+    - Enviadas / Recuperadas
+    - Badge "🏆 Líder" destacando a variante vencedora
+  • Tabela de carrinhos com:
+    - Cliente (nome/email/telefone)
+    - Serviço, valor, tempo (time-ago)
+    - Status badge (Pendente/Enviado/Recuperado)
+    - Variante badge colorida (A=azul, B=âmbar, C=violeta)
+    - Botões: [WhatsApp] (abre wa.me) [✓] (mark recovered) [↻] (resend)
+  • Filtros: busca textual + status + variant
+  • Refresh manual + auto-load
+
+- Adicionado item "Recuperação" no sidebar admin (grupo Vendas,
+  ícone RotateCcw, após "Pedidos")
+
+- Created migration 20260905030000_recovery_variant.sql:
+  • ADD COLUMN recovery_variant text CHECK IN ('A','B','C')
+  • Index para queries A/B stats
+  • Backfill de carts já enviados com variant determinístico (hash session_id)
+
+- Build: ✅ passa (19.3s compile, 51 páginas — era 48, +3: /admin/recuperacao,
+  /api/admin/recovery, /api/cron/recover-carts já existia)
+- Deploy: ✅ pronto em 34s
+  URL: https://clodoaldo.vercel.app
+
+- Validação pós-deploy:
+  • /admin/recuperacao (sem auth) → 307 redirect login ✅
+  • /api/admin/recovery (sem auth) → 401 ✅
+  • /api/cron/recover-carts (com secret) → 200
+    {"ok":true,"processed":0,"message":"No carts pending recovery"} ✅
+  • Home, Quiz → 200 ✅
+
+Pendências manuais do usuário:
+1. Aplicar migration /home/z/my-project/upload/codigo-01/supabase/migrations/
+   20260905030000_recovery_variant.sql no Supabase SQL Editor.
+   Adiciona coluna recovery_variant (A/B/C) à tabela abandoned_carts.
+   Sem isso, o cron não consegue persistir a variant (estatística A/B
+   não funciona), mas a recuperação em si continua funcionando.
+
+2. Configurar Telegram Bot (passo a passo):
+   a. Abrir Telegram → buscar @BotFather → /newbot
+   b. Escolher nome (ex: "Clodoaldo Alertas Bot") e username único
+   c. BotFather responde com token (ex: 7890123456:ABC...)
+   d. Abrir o bot recém-criado no Telegram → /start (inicia conversa)
+   e. Buscar @userinfobot → /start → ele responde com seu chat_id (número)
+   f. Enviar DM ao @BotFather para configurar webhook (opcional)
+   g. Adicionar 2 env vars no Vercel:
+      - TELEGRAM_BOT_TOKEN = <token do BotFather>
+      - TELEGRAM_CHAT_ID = <seu chat_id do @userinfobot>
+   h. Testar: curl "https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<CHAT_ID>&text=hi"
+      Deve receber mensagem no Telegram em segundos.
+
+   Após configurar, o cron vai disparar push notification automático
+   sempre que um carrinho for abandonado há +30min com telefone.
+
+Stage Summary:
+- ✅ Bot Telegram integrado (API oficial, gratuito, sem risco de ban)
+- ✅ 3 variantes A/B/C de mensagens (ajuda/urgência/cupom)
+- ✅ Dashboard /admin/recuperacao completo (KPIs + A/B + tabela + ações)
+- ✅ Cron atualizado para sortear variant, gerar wa.me, notificar Telegram
+- ✅ Webhook Kiwify também notifica Telegram ("💰 Nova venda!")
+- ✅ Item "Recuperação" no sidebar admin (19ª seção)
+- ✅ Migration SQL criada (pendente aplicação manual)
+- ✅ Build + deploy production atualizados
+- ⚠️ TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID pendentes configuração pelo user
+

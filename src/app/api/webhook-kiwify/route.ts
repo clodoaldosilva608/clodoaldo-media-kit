@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { verifyKiwifyWebhookSignature } from "@/lib/kiwify";
+import { notifyPaidOrder } from "@/lib/telegram";
 
 /**
  * Webhook da Kiwify — recebe notificações de pagamento.
@@ -198,6 +199,27 @@ export async function POST(req: NextRequest) {
         if (queueId) {
           await sb.from("service_queue").update({ status: "paid" }).eq("id", queueId);
         }
+
+        // Telegram notification — push "💰 Nova venda!" to Clodoaldo
+        try {
+          const { data: orderRow } = await sb
+            .from("orders")
+            .select("service_name, customer_name, customer_email, total_cents")
+            .eq("id", orderId)
+            .maybeSingle();
+          if (orderRow) {
+            await notifyPaidOrder({
+              customerName: orderRow.customer_name || "(sem nome)",
+              customerEmail: orderRow.customer_email || "",
+              serviceName: orderRow.service_name || "",
+              totalCents: orderRow.total_cents || 0,
+              orderId,
+            });
+          }
+        } catch {
+          // Telegram failure must not block webhook ACK
+        }
+
         emit("processed", "order_marked_paid", { orderId, eventId, queueId });
       }
     }

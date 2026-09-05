@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Sparkles,
   Handshake,
+  RotateCcw,
 } from "lucide-react";
 
 interface NavItem {
@@ -42,6 +43,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/admin", label: "Visão Geral", icon: LayoutDashboard, group: "overview" },
   { href: "/admin/orders", label: "Pedidos", icon: ShoppingCart, group: "vendas" },
+  { href: "/admin/recuperacao", label: "Recuperação", icon: RotateCcw, group: "vendas" },
   { href: "/admin/queue", label: "Fila de Espera", icon: ListOrdered, group: "vendas" },
   { href: "/admin/leads", label: "Leads", icon: Users, group: "vendas" },
   { href: "/admin/briefings", label: "Briefings", icon: FileText, group: "vendas" },
