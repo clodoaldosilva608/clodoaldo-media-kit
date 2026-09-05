@@ -1,4 +1,5 @@
-"use client";
+# Generate the complete parceiros page with all 5 tabs
+content = r'''"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
@@ -306,3 +307,9 @@ function SB({label,value,icon:Icon,c="emerald"}:{label:string;value:number;icon:
   const colors:Record<string,string> = {emerald:"text-emerald-300 bg-emerald-500/10",blue:"text-blue-300 bg-blue-500/10",amber:"text-amber-300 bg-amber-500/10",rose:"text-rose-300 bg-rose-500/10",violet:"text-violet-300 bg-violet-500/10"};
   return <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-center gap-2"><div className={`flex h-7 w-7 items-center justify-center rounded-lg ${colors[c]}`}><Icon className="h-3.5 w-3.5" /></div><div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div></div><div className="mt-1.5 text-xl font-bold text-white">{value}</div></div>;
 }
+'''
+
+with open("/home/z/my-project/src/app/admin/parceiros/page.tsx", "w") as f:
+    f.write(content)
+
+print(f"✅ Page written: {len(content)} chars")

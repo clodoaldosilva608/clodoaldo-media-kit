@@ -1,159 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase-server";
+import pg from "pg";
 
-/**
- * GET /api/admin/prospects
- * Lista prospects salvos no banco.
- * Query params: status?, niche?, city?, priority?, search?
- */
+const pool = new pg.Pool({
+  connectionString: `postgresql://postgres.pjetmhsevohaqtqfbxrr:Silva88677488@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`,
+  max: 3, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000,
+});
+
 export async function GET(req: NextRequest) {
   try {
-    const supabase = getSupabaseServer();
     const url = req.nextUrl;
     const status = url.searchParams.get("status");
-    const niche = url.searchParams.get("niche");
-    const city = url.searchParams.get("city");
-    const priority = url.searchParams.get("priority");
     const search = url.searchParams.get("search");
     const limit = Math.min(Number(url.searchParams.get("limit") || 500), 2000);
-
-    let query = supabase
-      .from("prospects")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (status && status !== "all") query = query.eq("status", status);
-    if (niche && niche !== "all") query = query.eq("niche", niche);
-    if (city && city !== "all") query = query.eq("city", city);
-    if (priority && priority !== "all") query = query.eq("priority", priority);
-
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%,city.ilike.%${search}%,formatted_address.ilike.%${search}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      // Table might not exist yet
-      if (error.code === "PGRST205" || error.message.includes("schema") || error.message.includes("Does not exist")) {
-        return NextResponse.json({ data: [], error: null });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ data: data || [] });
+    const client = await pool.connect();
+    try {
+      let query = "SELECT * FROM public.clodoaldo_prospects";
+      const conditions: string[] = [];
+      const params: any[] = [];
+      let idx = 1;
+      if (status && status !== "all") { conditions.push(`status = $${idx++}`); params.push(status); }
+      if (search) { conditions.push(`(name ILIKE $${idx} OR phone ILIKE $${idx} OR city ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
+      if (conditions.length > 0) query += " WHERE " + conditions.join(" AND ");
+      query += ` ORDER BY created_at DESC LIMIT $${idx++}`;
+      params.push(limit);
+      const result = await client.query(query, params);
+      return NextResponse.json({ data: result.rows, error: null });
+    } finally { client.release(); }
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return NextResponse.json({ data: [], error: e.message });
   }
 }
 
-/**
- * POST /api/admin/prospects
- * Salva um prospect (vindo da busca do Google Maps ou manual).
- * Body: prospect data
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const supabase = getSupabaseServer();
-
-    // Se tem place_id, faz upsert (não duplica)
-    if (body.place_id) {
-      const { data: existing } = await supabase
-        .from("prospects")
-        .select("id, contacted_count")
-        .eq("place_id", body.place_id)
-        .maybeSingle();
-
-      if (existing) {
-        return NextResponse.json({ data: existing, already_exists: true });
+    const client = await pool.connect();
+    try {
+      if (body.place_id) {
+        const existing = await client.query("SELECT id FROM public.clodoaldo_prospects WHERE place_id = $1", [body.place_id]);
+        if (existing.rows.length > 0) return NextResponse.json({ data: existing.rows[0], already_exists: true });
       }
-    }
-
-    const { data, error } = await supabase
-      .from("prospects")
-      .insert(body)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ data, saved: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+      const cols = ["place_id","name","category","formatted_address","city","phone","website","email","whatsapp","instagram","facebook","lat","lng","rating","user_ratings_total","status","priority","source","niche","search_location","has_website","has_whatsapp","has_email","has_social_media","web_dev_opportunity","opening_hours"];
+      const values: any[] = []; const placeholders: string[] = []; let idx = 1;
+      for (const col of cols) { if (body[col] !== undefined) { values.push(body[col]); placeholders.push(`$${idx++}`); } }
+      const colNames = cols.filter(c => body[c] !== undefined);
+      const result = await client.query(`INSERT INTO public.clodoaldo_prospects (${colNames.join(",")}) VALUES (${placeholders.join(",")}) RETURNING *`, values);
+      return NextResponse.json({ data: result.rows[0], saved: true });
+    } finally { client.release(); }
+  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
 
-/**
- * PATCH /api/admin/prospects
- * Atualiza um prospect (status, notes, priority, etc).
- * Body: { id, ...fields }
- */
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, ...updates } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    }
-
-    const supabase = getSupabaseServer();
-
-    // Se está marcando como contacted, incrementa contador e atualiza last_contact_at
-    if (updates.status === "contacted" && !updates.last_contact_at) {
-      updates.last_contact_at = new Date().toISOString();
-      const { data: current } = await supabase
-        .from("prospects")
-        .select("contacted_count")
-        .eq("id", id)
-        .maybeSingle();
-      updates.contacted_count = (current?.contacted_count || 0) + 1;
-    }
-
-    const { data, error } = await supabase
-      .from("prospects")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ data });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+    const { id, ...updates } = await req.json();
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    const client = await pool.connect();
+    try {
+      if (updates.status === "contacted" && !updates.last_contact_at) {
+        updates.last_contact_at = new Date().toISOString();
+        const cur = await client.query("SELECT contacted_count FROM public.clodoaldo_prospects WHERE id = $1", [id]);
+        updates.contacted_count = (cur.rows[0]?.contacted_count || 0) + 1;
+      }
+      const cols = Object.keys(updates); const sets = cols.map((c,i) => `${c} = $${i+1}`).join(", ");
+      const values = cols.map(c => updates[c]); values.push(id);
+      const result = await client.query(`UPDATE public.clodoaldo_prospects SET ${sets}, updated_at = now() WHERE id = $${values.length} RETURNING *`, values);
+      return NextResponse.json({ data: result.rows[0] });
+    } finally { client.release(); }
+  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
 
-/**
- * DELETE /api/admin/prospects
- * Remove um prospect.
- * Body: { id }
- */
 export async function DELETE(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { id } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    }
-
-    const supabase = getSupabaseServer();
-    const { error } = await supabase.from("prospects").delete().eq("id", id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
-  }
+    const { id } = await req.json();
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    const client = await pool.connect();
+    try { await client.query("DELETE FROM public.clodoaldo_prospects WHERE id = $1", [id]); return NextResponse.json({ ok: true }); }
+    finally { client.release(); }
+  } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }
 }
