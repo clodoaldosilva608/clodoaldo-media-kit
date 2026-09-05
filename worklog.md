@@ -1345,3 +1345,78 @@ Fluxo completo agora ativo:
    Telegram push com botão [💬 Recuperar no WhatsApp] (wa.me pronto)
 2. Cliente paga na Kiwify → webhook → Telegram push "💰 Nova venda!"
 
+
+---
+Task ID: 25
+Agent: main (GLM)
+Task: Verificar migration aplicada + teste end-to-end do fluxo completo
+
+Work Log:
+- User confirmou aplicação da migration 20260905030000_recovery_variant.sql
+  (adiciona coluna recovery_variant text CHECK IN ('A','B','C') em abandoned_carts)
+
+- Teste 1 (cron sem carts pendentes): 
+  • Response: {"ok":true,"processed":0,"message":"No carts pending recovery"}
+  • Migration OK — não houve erro de schema.
+
+- Teste 2 (criou cart de teste com phone + created_at 1h atrás):
+  • Cron processou 1 cart
+  • Attribuiu variant C (determinístico por session_id hash)
+  • Telegram falhou (telegram_failed: 1) — diagnóstico: deploy atual
+    foi feito ANTES de adicionar TELEGRAM_BOT_TOKEN/CHAT_ID ao Vercel.
+
+- Fix: redeploy production para que env vars Telegram fiquem disponíveis.
+  • Deploy: clodoaldo-71j7xbk2d-clodoaldo608-gmailcoms-projects.vercel.app
+  • Alias: https://clodoaldo.vercel.app
+
+- Teste 3 (após redeploy, criou novo cart de teste):
+  • Cron response:
+    {
+      "ok": true,
+      "processed": 1,
+      "failed": 0,
+      "telegram_sent": 1,    ← Telegram funcionou!
+      "telegram_failed": 0,
+      "variants": {"A":0,"B":0,"C":1},
+      "total_eligible": 1
+    }
+  • User recebeu push no Telegram com botões [💬 Recuperar no WhatsApp]
+    e [🔗 Ver checkout]
+
+- Validação no banco (Supabase query direta):
+  • Cart id: 64a8335a-2048-4b56-94da-db3b41ff76bf
+  • recovery_email_sent: true ✅
+  • recovery_variant: "C" ✅ (cupom VOLTA10)
+  • recovery_link: https://wa.me/5581920051068?text=Olá+Cliente!+🎁+Voltei+aqui...
+    (mensagem completa da variant C, URL-encoded, pronta para clicar)
+  • recovery_attempted_at: 2026-09-05T06:26:49.391+00:00 ✅
+
+- API /api/admin/recovery (sem auth) → 401 ✅ (middleware protege)
+
+Stage Summary:
+- ✅ Migration aplicada com sucesso (coluna recovery_variant ativa)
+- ✅ Cron funcional: encontra carts → atribui variant → salva no DB
+- ✅ Telegram push enviado e recebido pelo user @carcara08
+- ✅ recovery_link populado com wa.me + mensagem personalizada
+- ✅ Variant C (cupom) foi a sorteada para ambos os carts de teste
+  (determinístico por session_id hash, sem bias)
+- ✅ Fluxo end-to-end validado: cart abandoned → cron → DB update +
+  Telegram push → botão WhatsApp 1-clique
+
+FLUXO COMPLETO EM PRODUÇÃO:
+1. Visitor abandona checkout com WhatsApp preenchido
+2. Cron roda diariamente às 10h BRT (ou manualmente via curl)
+3. Cart é encontrado (>30min, não recuperado, tem phone)
+4. Variant A/B/C atribuída por hash(session_id)
+5. Mensagem renderizada + link wa.me gerado
+6. Telegram push enviado para Clodoaldo com 2 botões inline:
+   - 💬 Recuperar no WhatsApp → abre wa.me com msg pronta
+   - 🔗 Ver checkout → abre página do carrinho
+7. Dados persistidos em abandoned_carts:
+   - recovery_email_sent, recovery_variant, recovery_link,
+     recovery_attempted_at
+8. Dashboard /admin/recuperacao mostra:
+   - 6 KPIs (total, pendentes, enviados, recuperados, receita, taxa)
+   - Painel A/B com 3 cards (líder destacado)
+   - Tabela com filtros + botões de ação
+
