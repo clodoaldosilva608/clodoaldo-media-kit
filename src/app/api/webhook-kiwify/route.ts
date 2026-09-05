@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { verifyKiwifyWebhookSignature } from "@/lib/kiwify";
 
@@ -77,8 +78,24 @@ export async function POST(req: NextRequest) {
 
   const tokenToCheck = signature || bodyToken;
 
-  if (!tokenToCheck || tokenToCheck !== secret) {
-    // Tentar HMAC como fallback
+  // Always use constant-time comparison — never string equality (avoids timing attacks)
+  if (!tokenToCheck) {
+    emit("denied", "missing_signature");
+    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+  }
+
+  // Constant-time direct secret comparison
+  let directMatch = false;
+  try {
+    const sigBuf = Buffer.from(tokenToCheck);
+    const secBuf = Buffer.from(secret);
+    if (sigBuf.length === secBuf.length) {
+      directMatch = crypto.timingSafeEqual(sigBuf, secBuf);
+    }
+  } catch {}
+
+  if (!directMatch) {
+    // Try HMAC verification
     if (!verifyKiwifyWebhookSignature(body, tokenToCheck, secret)) {
       emit("denied", "signature_invalid", {
         has_sig: !!tokenToCheck,

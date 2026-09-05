@@ -4,14 +4,10 @@ import pg from "pg";
  * Shared connection pool for the meucorre Supabase database.
  * Used by: prospects, envios, respostas, prospect/report APIs.
  *
- * Connection string is read from env var MEUCORRE_DATABASE_URL.
- * Falls back to a default only in development (never in production).
+ * Connection string MUST be provided via MEUCORRE_DATABASE_URL env var.
+ * Never hardcode credentials in source.
  */
-const connectionString =
-  process.env.MEUCORRE_DATABASE_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "" // Must be set in production
-    : "postgresql://postgres.pjetmhsevohaqtqfbxrr:Silva88677488@aws-0-sa-east-1.pooler.supabase.com:6543/postgres");
+const connectionString = process.env.MEUCORRE_DATABASE_URL;
 
 let _pool: pg.Pool | null = null;
 

@@ -7,7 +7,6 @@ interface PixelConfig {
   id: string;
   provider: string;
   pixel_id: string;
-  api_token: string | null;
   active: boolean;
   send_events: string[];
 }
@@ -33,7 +32,7 @@ export function PixelLoader() {
     (async () => {
       const { data } = await supabase
         .from("pixel_config")
-        .select("id, provider, pixel_id, api_token, active, send_events")
+        .select("id, provider, pixel_id, active, send_events")
         .eq("active", true);
       if (mounted) setPixels(data || []);
     })();

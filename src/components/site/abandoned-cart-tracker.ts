@@ -63,19 +63,21 @@ export function useAbandonedCartTracker(cart: CartData | null) {
         affiliate_slug: cart.affiliate_slug || null,
       };
 
-      // Try to update existing by session_id; if not exists, insert
-      const { data: existing } = await supabase
+      // RLS closed SELECT on abandoned_carts for non-admins.
+      // Use UPDATE-or-INSERT pattern: try UPDATE first (by session_id), if
+      // no row was updated, INSERT a new one. Avoids the need for SELECT.
+      const updatePayload = { ...payload, updated_at: new Date().toISOString() };
+      const { data: updated, error: updErr } = await supabase
         .from("abandoned_carts")
-        .select("id, session_id")
+        .update(updatePayload)
         .eq("session_id", cart.session_id)
-        .maybeSingle();
+        .select("id");
 
-      if (existing) {
-        await supabase
-          .from("abandoned_carts")
-          .update({ ...payload, updated_at: new Date().toISOString() })
-          .eq("id", existing.id);
-      } else {
+      if (updErr || !updated || updated.length === 0) {
+        // No existing row — insert a new one (RLS allows INSERT for anon)
+        // Race-safe: if two tabs insert simultaneously, the unique session_id
+        // constraint (if present) will reject the duplicate; otherwise the
+        // tracker just stores two rows for the same session (acceptable).
         await supabase.from("abandoned_carts").insert(payload);
       }
     })();
