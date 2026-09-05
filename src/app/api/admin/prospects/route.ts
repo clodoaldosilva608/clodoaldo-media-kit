@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import pg from "pg";
+import { getMeucorrePool } from "@/lib/meucorre-db";
 
-const pool = new pg.Pool({
-  connectionString: `postgresql://postgres.pjetmhsevohaqtqfbxrr:Silva88677488@aws-0-sa-east-1.pooler.supabase.com:6543/postgres`,
-  max: 3, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000,
-});
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,7 +8,7 @@ export async function GET(req: NextRequest) {
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search");
     const limit = Math.min(Number(url.searchParams.get("limit") || 500), 2000);
-    const client = await pool.connect();
+    const client = await getMeucorrePool().connect();
     try {
       let query = "SELECT * FROM public.clodoaldo_prospects";
       const conditions: string[] = [];
@@ -34,7 +30,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const client = await pool.connect();
+    const client = await getMeucorrePool().connect();
     try {
       if (body.place_id) {
         const existing = await client.query("SELECT id FROM public.clodoaldo_prospects WHERE place_id = $1", [body.place_id]);
@@ -54,7 +50,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const { id, ...updates } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    const client = await pool.connect();
+    const client = await getMeucorrePool().connect();
     try {
       if (updates.status === "contacted" && !updates.last_contact_at) {
         updates.last_contact_at = new Date().toISOString();
@@ -73,7 +69,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    const client = await pool.connect();
+    const client = await getMeucorrePool().connect();
     try { await client.query("DELETE FROM public.clodoaldo_prospects WHERE id = $1", [id]); return NextResponse.json({ ok: true }); }
     finally { client.release(); }
   } catch (e: any) { return NextResponse.json({ error: e.message }, { status: 500 }); }

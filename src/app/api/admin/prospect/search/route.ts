@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { getMeucorreJwt } from "@/lib/meucorre-db";
 
 /**
  * POST /api/admin/prospect/search
@@ -17,7 +18,6 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 
 // Proxy JWT for meucorre admin API (allows using their Google Maps quota)
-const MEUCORRE_ADMIN_JWT = process.env.MEUCORRE_ADMIN_JWT || "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic3VwZXJfYWRtaW4iLCJzb3VyY2UiOiJlbnYiLCJzdWIiOiJjbG9kb2FsZG82MDhAZ21haWwuY29tIiwianRpIjoiMWE5ZmM2MGEtOTc5YS00ZTRmLWFmNzMtZTcwYTc4NTZlNjAyIiwiaWF0IjoxNzg4NDk2MTk5LCJleHAiOjE3ODkxMDA5OTl9.DzzXx3vo0kKjY37Nx_HcfDzr9DQy0Vk0AWYp82qzUfA";
 
 // Map clodoaldo niches to meucorre categories
 const MEUCORRE_CATEGORIES: Record<string, string> = {
@@ -181,7 +181,7 @@ async function searchViaMeucorre(niche: string, location: string, lat: number, l
   try {
     const res = await fetch(url, {
       headers: {
-        Cookie: `meucorre_admin=${MEUCORRE_ADMIN_JWT}`,
+        Cookie: `meucorre_admin=${getMeucorreJwt()}`,
       },
       signal: AbortSignal.timeout(20000),
     });

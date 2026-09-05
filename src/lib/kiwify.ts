@@ -187,10 +187,8 @@ export async function createKiwifyCheckout(
     }
   }
 
-  // Override with client-side total if provided (it already accounts for coupon)
-  if (input.total_cents && input.total_cents > 0) {
-    totalCents = input.total_cents;
-  }
+  // Server always computes the final total — never trust client-side total_cents.
+  // (Previous code allowed client override which was a payment integrity bug.)
 
   const bonusEbooks = (service.bonusEbooks ?? []).map((bonus) => ({
     title: bonus.title,
@@ -430,23 +428,31 @@ export function verifyKiwifyWebhookSignature(
   if (!secret) return false;
   if (!signature) return false;
 
-  // Kiwify webhook verification: the signature is typically the
-  // webhook secret or an HMAC of the body. Check both.
-  if (signature === secret) return true;
+  const crypto = require("crypto");
 
-  // HMAC-SHA256 verification
+  // Kiwify webhook verification: the signature is typically the
+  // webhook secret or an HMAC of the body. Check both with constant-time comparison.
+
+  // Direct secret match (constant-time)
   try {
-    const crypto = require("crypto");
+    const sigBuf = Buffer.from(signature);
+    const secBuf = Buffer.from(secret);
+    if (sigBuf.length === secBuf.length && crypto.timingSafeEqual(sigBuf, secBuf)) {
+      return true;
+    }
+  } catch {}
+
+  // HMAC-SHA256 verification (constant-time)
+  try {
     const expected = crypto
       .createHmac("sha256", secret)
       .update(body)
       .digest("hex");
 
-    if (signature.length !== expected.length) return false;
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expected),
-    );
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length) return false;
+    return crypto.timingSafeEqual(sigBuf, expBuf);
   } catch {
     return false;
   }

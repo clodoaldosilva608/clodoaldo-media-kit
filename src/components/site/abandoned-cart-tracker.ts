@@ -43,6 +43,11 @@ export function useAbandonedCartTracker(cart: CartData | null) {
     if (hash === lastSavedRef.current) return;
     lastSavedRef.current = hash;
 
+    // Debounce: wait 3s before writing to avoid writing on every keystroke
+    const debounceTimer = setTimeout(() => {
+    if (hash === lastSavedRef.current) return;
+    lastSavedRef.current = hash;
+
     (async () => {
       const payload = {
         session_id: cart.session_id,
@@ -74,6 +79,9 @@ export function useAbandonedCartTracker(cart: CartData | null) {
         await supabase.from("abandoned_carts").insert(payload);
       }
     })();
+    }, 3000); // 3s debounce
+
+    return () => clearTimeout(debounceTimer);
   }, [cart]);
 }
 
