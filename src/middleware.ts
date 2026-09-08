@@ -71,12 +71,15 @@ export async function middleware(req: NextRequest) {
     if (authHeader?.startsWith("Bearer ")) {
       token = authHeader.slice(7);
     } else if (cookieToken) {
-      // Supabase stores the session in a cookie — try to extract the access_token
+      // Supabase stores the session as URL-encoded JSON in the cookie.
+      // Try to decode → parse → extract access_token.
       try {
-        const parsed = JSON.parse(cookieToken);
+        const decoded = decodeURIComponent(cookieToken);
+        const parsed = JSON.parse(decoded);
         token = parsed?.access_token || null;
       } catch {
-        token = cookieToken; // Might be the raw token
+        // Fallback: cookie might be the raw token (non-JSON, non-encoded)
+        token = cookieToken;
       }
     }
 
@@ -92,10 +95,17 @@ export async function middleware(req: NextRequest) {
 
     // Verify the JWT with Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+    // Use service_role key for the role check — the anon key is blocked by
+    // RLS on user_roles table. Service role bypasses RLS server-side only
+    // and is never exposed to the browser.
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseAnonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.SUPABASE_PUBLISHABLE_KEY;
 
-    if (supabaseUrl && supabaseAnonKey) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    if (supabaseUrl && (supabaseServiceKey || supabaseAnonKey)) {
+      const key = supabaseServiceKey || supabaseAnonKey!;
+      const supabase = createClient(supabaseUrl, key, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
 
