@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, MessageCircle } from "lucide-react";
 import { Footer } from "@/components/media-kit/footer";
 import { Header } from "@/components/media-kit/header";
+import { faqPageSchema, serializeSchema } from "@/lib/schema";
 
 const FAQ = [
   {
@@ -47,6 +48,15 @@ export default function FAQPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* JSON-LD FAQ schema para SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: serializeSchema(
+            faqPageSchema(FAQ.map((f) => ({ q: f.q, a: f.a }))),
+          ),
+        }}
+      />
       <Header />
       <main className="mx-auto max-w-4xl px-5 sm:px-8 pt-28 sm:pt-32 pb-20 flex-1">
         <div className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-primary">

@@ -16,10 +16,13 @@ import {
   type AppCategory,
 } from "@/lib/apps-catalog";
 
+import { getAppCountBreakdown } from "@/lib/site-metrics";
+
 export default function AppsPage() {
   const [category, setCategory] = useState<AppCategory | "todos">("todos");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AppItem | null>(null);
+  const breakdown = getAppCountBreakdown();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -43,12 +46,19 @@ export default function AppsPage() {
             Empreendedor Tech
           </div>
           <h1 className="mt-3 font-display font-medium text-3xl sm:text-5xl leading-tight">
-            Ecossistema de {APPS.length} aplicativos
+            Ecossistema de {breakdown.total} aplicativos
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed">
             De autoconhecimento a saúde, de educação infantil a concursos. Cada app resolve uma dor
             real — explore, teste a demo interativa e apoie o desenvolvimento dos que estão por vir.
           </p>
+          {/* Breakdown por status — transparência total */}
+          <div className="mt-5 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-emerald-300">{breakdown.available} disponíveis</span>
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-300">{breakdown.beta} em beta</span>
+            <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-blue-300">{breakdown.inDevelopment} em construção</span>
+            <span className="rounded-full border border-zinc-500/30 bg-zinc-500/10 px-3 py-1 text-zinc-300">{breakdown.concept} conceitos</span>
+          </div>
         </div>
 
         <AppsCarousel

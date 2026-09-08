@@ -42,19 +42,26 @@ export default function GlobeCanvas({
   useEffect(() => {
     if (!canvasRef.current) return;
     let disposed = false;
+    const canvas = canvasRef.current;
 
     // Lazy-load Three.js only on client
-    import("three").then((THREE) => {
-      if (disposed || !canvasRef.current) return;
-      const cleanup = initGlobe(THREE, canvasRef.current, {
-        speed,
-        tileDeg,
-        cameraZ,
-        isVisibleRef,
-        rafRef,
+    import("three")
+      .then((THREE) => {
+        // Store globally so helper functions can access it
+        (window as any).THREE = THREE;
+        if (disposed || !canvasRef.current) return;
+        const cleanup = initGlobe(THREE, canvasRef.current, {
+          speed,
+          tileDeg,
+          cameraZ,
+          isVisibleRef,
+          rafRef,
+        });
+        cleanupRef.current = cleanup;
+      })
+      .catch((err) => {
+        console.error("[globe-canvas] Failed to load Three.js:", err);
       });
-      cleanupRef.current = cleanup;
-    });
 
     // Intersection observer to pause when off-screen
     if (canvasRef.current) {
@@ -103,18 +110,33 @@ function initGlobe(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
   camera.position.set(0, 0, cameraZ);
+  camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     alpha: true,
     antialias: true,
     powerPreference: "high-performance",
+    preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Set transparent clear color (alpha 0) so background CSS shows through
+  renderer.setClearColor(0x000000, 0);
 
   // === Globe group (rotates) ===
   const globeGroup = new THREE.Group();
   scene.add(globeGroup);
+
+  // Add a wireframe sphere to verify rendering works
+  const wireGeo = new THREE.SphereGeometry(1, 24, 16);
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0x4dabff,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.15,
+  });
+  const wireframe = new THREE.Mesh(wireGeo, wireMat);
+  globeGroup.add(wireframe);
 
   // === Dot sphere ===
   const dotPositions: number[] = [];
@@ -154,14 +176,14 @@ function initGlobe(
   const dotTexture = createDotTexture(THREE);
 
   const dotMaterial = new THREE.PointsMaterial({
-    size: 0.018,
+    size: 0.025,
     sizeAttenuation: true,
     map: dotTexture,
     transparent: true,
     vertexColors: true,
     alphaTest: 0.1,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
   });
 
   const dots = new THREE.Points(dotGeometry, dotMaterial);
@@ -181,7 +203,7 @@ function initGlobe(
   for (let i = 0; i < numArcs; i++) {
     const start = randomSpherePoint(1.005);
     const end = randomSpherePoint(1.005);
-    const arcPoints = buildArcCurve(THREE, start, end, 50);
+    const arcPoints = buildArcCurve(start, end, 50);
     const geometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const material = new THREE.LineBasicMaterial({
       color: 0xf45300,
@@ -217,7 +239,7 @@ function initGlobe(
   });
 
   pinPositions.forEach((p) => {
-    const v = latLngToVec3(THREE, p.lat, p.lng, 1.005);
+    const v = latLngToVec3(p.lat, p.lng, 1.005);
     const pin = new THREE.Mesh(pinGeometry, pinMaterial);
     pin.position.copy(v);
     globeGroup.add(pin);
@@ -239,17 +261,31 @@ function initGlobe(
 
   // === Resize handling ===
   const resize = () => {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (w === 0 || h === 0) return;
-    renderer.setSize(w, h, false);
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    if (w < 2 || h < 2) return;
+    renderer.setSize(w, h, true);
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.display = "block";
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   };
-  resize();
 
-  const resizeObserver = new ResizeObserver(resize);
+  requestAnimationFrame(() => {
+    resize();
+    setTimeout(resize, 100);
+    setTimeout(resize, 500);
+  });
+
+  const resizeObserver = new ResizeObserver(() => {
+    requestAnimationFrame(resize);
+  });
   resizeObserver.observe(canvas);
+  if (canvas.parentElement) {
+    resizeObserver.observe(canvas.parentElement);
+  }
 
   // === Animation loop ===
   let lastTime = performance.now();
@@ -321,14 +357,15 @@ function createDotTexture(THREE: typeof import("three")): THREE.Texture {
 }
 
 function randomSpherePoint(
-  THREE: typeof import("three"),
   r: number,
-): THREE.Vector3 {
+): import("three").Vector3 {
+  // Use global THREE (loaded via dynamic import in initGlobe)
+  const T = (window as any).THREE || require("three");
   const u = Math.random();
   const v = Math.random();
   const theta = 2 * Math.PI * u;
   const phi = Math.acos(2 * v - 1);
-  return new THREE.Vector3(
+  return new T.Vector3(
     r * Math.sin(phi) * Math.cos(theta),
     r * Math.cos(phi),
     r * Math.sin(phi) * Math.sin(theta),
@@ -336,14 +373,14 @@ function randomSpherePoint(
 }
 
 function latLngToVec3(
-  THREE: typeof import("three"),
   lat: number,
   lng: number,
   r: number,
-): THREE.Vector3 {
+): import("three").Vector3 {
+  const T = (window as any).THREE || require("three");
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lng + 180) * (Math.PI / 180);
-  return new THREE.Vector3(
+  return new T.Vector3(
     -r * Math.sin(phi) * Math.cos(theta),
     r * Math.cos(phi),
     r * Math.sin(phi) * Math.sin(theta),
@@ -351,18 +388,18 @@ function latLngToVec3(
 }
 
 function buildArcCurve(
-  THREE: typeof import("three"),
-  start: THREE.Vector3,
-  end: THREE.Vector3,
+  start: import("three").Vector3,
+  end: import("three").Vector3,
   segments: number,
-): THREE.Vector3[] {
-  const points: THREE.Vector3[] = [];
+): import("three").Vector3[] {
+  const T = (window as any).THREE || require("three");
+  const points: import("three").Vector3[] = [];
   const angle = start.angleTo(end);
   const mid = start.clone().add(end).multiplyScalar(0.5);
   const elevation = 1 + Math.sin(angle / 2) * 0.3;
   mid.normalize().multiplyScalar(elevation);
 
-  const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+  const curve = new T.QuadraticBezierCurve3(start, mid, end);
   for (let i = 0; i <= segments; i++) {
     points.push(curve.getPoint(i / segments));
   }

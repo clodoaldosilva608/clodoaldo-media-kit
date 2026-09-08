@@ -3,12 +3,38 @@
 import { Eye, Rocket, TrendingUp, UserCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useReveal } from "@/hooks/use-reveal";
+import { SITE_METRICS, getAppCountBreakdown } from "@/lib/site-metrics";
 
+const breakdown = getAppCountBreakdown();
 const METRICS = [
-  { icon: Eye, label: "Visualizações geradas", value: 12, suffix: "M", growth: "+5.593%" },
-  { icon: UserCheck, label: "Seguidores e comunidade", value: 480, suffix: "K", growth: "+75.900%" },
-  { icon: TrendingUp, label: "Engajamento médio", value: 6.2, suffix: "%", growth: "+16.550,8%" },
-  { icon: Rocket, label: "Marcas posicionadas", value: 300, suffix: "", growth: "+8.000%" },
+  {
+    icon: Eye,
+    label: SITE_METRICS.impactedPeople.label,
+    value: Number((SITE_METRICS.impactedPeople.value / 1_000_000).toFixed(1)),
+    suffix: "M",
+    growth: SITE_METRICS.impactedPeople.period,
+  },
+  {
+    icon: UserCheck,
+    label: SITE_METRICS.communitySize.label,
+    value: Number((SITE_METRICS.communitySize.value / 1_000).toFixed(0)),
+    suffix: "K",
+    growth: SITE_METRICS.communitySize.period,
+  },
+  {
+    icon: TrendingUp,
+    label: SITE_METRICS.clientsAttended.label,
+    value: SITE_METRICS.clientsAttended.value,
+    suffix: "+",
+    growth: `em ${SITE_METRICS.yearsOfExperience} anos de carreira`,
+  },
+  {
+    icon: Rocket,
+    label: "Apps no ecossistema",
+    value: breakdown.total,
+    suffix: "",
+    growth: `${breakdown.available} disponíveis · ${breakdown.beta} beta · ${breakdown.inDevelopment + breakdown.concept} em construção`,
+  },
 ];
 
 export function Metrics() {

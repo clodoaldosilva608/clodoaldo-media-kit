@@ -98,8 +98,13 @@ export function Footer() {
       </div>
 
       <div className="border-t border-border">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 py-5 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Clodoaldo Silva. Todos os direitos reservados.
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 py-6 text-center">
+          <p className="text-sm font-display font-bold text-foreground leading-tight">
+            Transformando ideias em resultados reais desde 2016.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            © Clodoaldo Silva. Todos Os Direitos Reservados.
+          </p>
         </div>
       </div>
     </footer>

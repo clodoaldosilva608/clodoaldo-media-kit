@@ -7,8 +7,13 @@ import {
   Search, MapPin, Phone, Globe, Star, Plus, Save, Trash2, X, Loader2,
   AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
-  Smartphone, AlertTriangle, Code2, Eye, Layout,
+  Smartphone, AlertTriangle, Code2, Eye, Layout, Shield,
 } from "lucide-react";
+import {
+  getRelevantObjections,
+  getUrgencyHooks,
+  formatObjectionForDisplay,
+} from "@/lib/objections";
 
 interface Lead {
   place_id?: string; id?: string; name: string; phone?: string | null;
@@ -97,11 +102,70 @@ export default function AdminParceirosPage() {
 
   function genWA(lead:Lead):string {
     const hasSite = lead.hasWebsite;
-    return `Ola! Tudo bem?\n\nMeu nome e Clodoaldo Silva, sou especialista em marketing digital.\n\nEncontrei o ${lead.name} no Google Maps e fiquei impressionado com a avaliacao de ${lead.rating||"5"} estrelas!\n\nNotei que ${hasSite?"seu site poderia ter performance melhor":"voces ainda nao tem um site profissional"}, e isso pode estar custando clientes.\n\nPosso ajudar com:\n✅ ${hasSite?"Redesign do site":"Criacao de site profissional"} que converte\n✅ SEO — aparecer nas buscas da cidade\n✅ Integracao com WhatsApp\n✅ Google Meu Negocio otimizado\n\nTem interesse em 10 min de conversa?\n\n— Clodoaldo Silva\n📱 (81) 92005-1068\n🌐 clodoaldo.vercel.app`;
+    const niche = lead.niche || lead.category || "estabelecimento";
+    const hooks = getUrgencyHooks({
+      name: lead.name,
+      niche,
+      hasWebsite: hasSite,
+      rating: lead.rating ?? null,
+    });
+    return `Olá! Tudo bem?
+
+Meu nome é Clodoaldo Silva, sou especialista em marketing digital local.
+
+Encontrei o ${lead.name} no Google Maps e fiquei impressionado com a avaliação de ${lead.rating||"5"} estrelas — parabéns!
+
+Notei que ${hasSite?"seu site poderia ter performance muito melhor":"vocês ainda não têm um site profissional"}, e isso pode estar custando clientes todos os meses. Deixa eu te explicar:
+
+${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+
+Posso ajudar com:
+✅ ${hasSite?"Redesign do site":"Criação de site profissional"} que converte visita em cliente
+✅ SEO local — aparecer em primeiro nas buscas da cidade
+✅ Integração com WhatsApp — cliente pede com 1 clique
+✅ Google Meu Negócio otimizado — aparecer no Maps
+
+Cada mês sem isso = 30-50 clientes novos indo pro concorrente.
+
+Se tiver interesse em saber mais, é só me chamar no WhatsApp — respondo rápido:
+📱 (81) 92005-1068
+
+— Clodoaldo Silva
+🌐 clodoaldo.vercel.app`;
   }
 
   function genEmail(lead:Lead):string {
-    return `Assunto: ${lead.name} — como atrair mais clientes\n\nOlá, equipe ${lead.name}!\n\nMeu nome e Clodoaldo Silva. Encontrei voces no Google Maps (${lead.rating||"5"} estrelas — parabens!).\n\nNotei que ${lead.hasWebsite?"seu site poderia ter melhor desempenho":"voces nao tem site profissional"}. 87% dos consumidores pesquisam antes de comprar.\n\nO que posso fazer:\n1. ${lead.hasWebsite?"Redesign":"Criacao de site"} — rapido, responsivo\n2. SEO local\n3. Integracao WhatsApp\n4. Google Meu Negocio\n\n10 min de conversa?\n\nClodoaldo Silva\n📱 (81) 92005-1068\n🌐 clodoaldo.vercel.app`;
+    const hasSite = lead.hasWebsite;
+    const niche = lead.niche || lead.category || "estabelecimento";
+    const hooks = getUrgencyHooks({
+      name: lead.name,
+      niche,
+      hasWebsite: hasSite,
+      rating: lead.rating ?? null,
+    });
+    return `Assunto: ${lead.name} — como atrair mais clientes (e não perder para o concorrente)
+
+Olá, equipe ${lead.name}!
+
+Meu nome é Clodoaldo Silva. Encontrei vocês no Google Maps (${lead.rating||"5"} estrelas — parabéns!).
+
+Notei que ${hasSite?"seu site poderia ter melhor desempenho":"vocês não têm site profissional"}. Isso pode estar custando clientes todos os meses:
+
+${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+
+O que posso fazer por vocês:
+1. ${hasSite?"Redesign":"Criação de site"} — rápido, responsivo, que converte
+2. SEO local — aparecer nas buscas da cidade
+3. Integração com WhatsApp
+4. Google Meu Negócio otimizado
+
+Cada mês que passa sem isso = 30-50 clientes novos indo para o concorrente direto.
+
+Se tiver interesse em saber mais, é só me chamar no WhatsApp:
+📱 (81) 92005-1068
+
+Clodoaldo Silva
+🌐 clodoaldo.vercel.app`;
   }
 
   function genPrompt(lead:Lead):string {
@@ -315,6 +379,59 @@ footer strong{color:#fff}
                           <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-blue-300"><Mail className="h-3.5 w-3.5" /> Email</span><button onClick={()=>copyToClipboard(em,`em-${lead.place_id}`)} className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30">{copiedText===`em-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{em}</pre></div>
                           <button onClick={()=>openPreview(lead)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.02] transition"><Eye className="h-4 w-4" /> Ver Preview do Site</button>
                           <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-amber-300"><Code2 className="h-3.5 w-3.5" /> Prompt do Site</span><button onClick={()=>copyToClipboard(pr,`pr-${lead.place_id}`)} className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30">{copiedText===`pr-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-48 overflow-y-auto">{pr}</pre></div>
+
+                          {/* === QUEBRA DE OBJEÇÕES === */}
+                          {(() => {
+                            const objections = getRelevantObjections({
+                              niche: lead.niche || lead.category,
+                              hasWebsite: lead.hasWebsite,
+                            });
+                            if (objections.length === 0) return null;
+                            return (
+                              <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-3">
+                                <div className="mb-3 flex items-center gap-1.5">
+                                  <Shield className="h-3.5 w-3.5 text-rose-300" />
+                                  <span className="text-xs font-bold text-rose-200">
+                                    Quebra de Objeções ({objections.length})
+                                  </span>
+                                </div>
+                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                                  {objections.map((obj) => {
+                                    const f = formatObjectionForDisplay(obj);
+                                    const copyId = `obj-${lead.place_id}-${obj.id}`;
+                                    return (
+                                      <div key={obj.id} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+                                        <div className="mb-1.5 text-[10px] font-bold text-rose-300/80 uppercase tracking-wide">
+                                          {f.objectionLabel}
+                                        </div>
+                                        <div className="mb-2 text-[11px] text-zinc-300 italic">
+                                          "{obj.objection}"
+                                        </div>
+                                        <div className="mb-1.5 text-[10px] font-bold text-emerald-300/80 uppercase tracking-wide">
+                                          {f.breakLabel}
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <pre className="flex-1 whitespace-pre-wrap text-[10px] text-zinc-200 font-sans max-h-40 overflow-y-auto leading-relaxed">
+                                            {obj.break}
+                                          </pre>
+                                          <button
+                                            onClick={() => copyToClipboard(obj.break, copyId)}
+                                            className="shrink-0 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 h-fit"
+                                            title="Copiar resposta pronta"
+                                          >
+                                            {copiedText === copyId ? "✓" : <Copy className="h-3 w-3" />}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div className="mt-2 pt-2 border-t border-rose-500/20 text-[10px] text-zinc-500">
+                                  💡 As 2 objeções de prioridade 1 já estão embutidas na mensagem WhatsApp acima como ganchos preventivos.
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>

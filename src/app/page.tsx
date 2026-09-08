@@ -12,6 +12,7 @@ import { Services } from "@/components/media-kit/services";
 import { ShareButton } from "@/components/media-kit/share-button";
 import { YouTubeSection } from "@/components/media-kit/youtube";
 import { TestimonialCarousel } from "@/components/site/testimonial-carousel";
+import { SocialProofCarousel } from "@/components/site/social-proof-carousel";
 import { AffiliateTrackerWrapper } from "@/components/site/affiliate-tracker-wrapper";
 import { QuizCTASection } from "@/components/quiz/quiz-cta";
 
@@ -37,13 +38,17 @@ export default function Home() {
           <div className="text-center mb-10">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">Provas sociais</div>
             <h2 className="mt-2 font-display font-medium text-3xl sm:text-4xl">
-              Quem já trabalhou comigo
+              Como quem trabalhou comigo se sentiu
             </h2>
             <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">
-              Histórias reais de marcas e creators que confiaram no trabalho.
+              Depoimentos reais de pessoas que confiaram no processo. O sentimento é o que importa — o resultado é consequência.
             </p>
           </div>
-          <TestimonialCarousel limit={6} />
+          <SocialProofCarousel />
+          {/* Carrossel adicional do banco (testimonials cadastrados via admin) */}
+          <div className="mt-8">
+            <TestimonialCarousel limit={6} />
+          </div>
         </section>
         <Contact />
       </main>
