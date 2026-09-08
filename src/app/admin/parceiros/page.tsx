@@ -7,13 +7,14 @@ import {
   Search, MapPin, Phone, Globe, Star, Plus, Save, Trash2, X, Loader2,
   AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
-  Smartphone, AlertTriangle, Code2, Eye, Layout, Shield,
+  Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
 } from "lucide-react";
 import {
   getRelevantObjections,
   getUrgencyHooks,
   formatObjectionForDisplay,
 } from "@/lib/objections";
+import { generatePreviewHTML } from "@/lib/preview-generator";
 
 interface Lead {
   place_id?: string; id?: string; name: string; phone?: string | null;
@@ -175,143 +176,43 @@ Clodoaldo Silva
   }
 
   function genPreview(lead:Lead):string {
-    const wa = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
-    const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||location))}`;
-    const embed = `https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16&output=embed`;
-    const n = lead.niche||lead.category||"estabelecimento";
-    // Cores por nicho (inspirado no cluvi: laranja + escuro)
-    const colors:Record<string,{primary:string;accent:string;bg:string}> = {
-      restaurante: {primary:"#F77909",accent:"#D32F2F",bg:"1"},
-      pizzaria: {primary:"#E65100",accent:"#FF6F00",bg:"1"},
-      hamburgueria: {primary:"#5D4037",accent:"#FFC107",bg:"1"},
-      cafeteria: {primary:"#4E342E",accent:"#8D6E63",bg:"1"},
-      barbearia: {primary:"#263238",accent:"#FFD600",bg:"0"},
-      academia: {primary:"#1B5E20",accent:"#00C853",bg:"0"},
-      "salao de beleza": {primary:"#880E4F",accent:"#E91E63",bg:"0"},
-      farmacia: {primary:"#0D47A1",accent:"#42A5F5",bg:"0"},
-      "pet shop": {primary:"#2E7D32",accent:"#66BB6A",bg:"0"},
-    };
-    const c = colors[(n||"").toLowerCase()] || {primary:"#F77909",accent:"#FF6F00",bg:"1"};
-    const foodImg = c.bg === "1" ? `background:linear-gradient(rgba(0,0,0,.55),rgba(0,0,0,.75)),url('https://source.unsplash.com/1200x800/?${n},food');background-size:cover;background-position:center;background-attachment:fixed;` : `background:linear-gradient(135deg,${c.primary}22,${c.accent}11);`;
-
-    return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${lead.name} | ${n} em ${lead.city||location}</title>
-<meta name="description" content="${lead.name} — ${n} em ${lead.city||location}.${lead.rating?' '+lead.rating+' estrelas no Google.':''} Peça pelo WhatsApp!">
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,sans-serif}
-body{${foodImg}min-height:100vh;color:#fff}
-/* HERO — inspirado no cluvi: logo + CTA centralizado */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
-.hero .logo{margin-bottom:30px}
-.hero .logo h1{font-size:2.5rem;font-weight:900;letter-spacing:-1px;text-shadow:0 2px 20px rgba(0,0,0,.5)}
-.hero .logo .sub{font-size:.9rem;font-weight:400;opacity:.85;letter-spacing:2px;text-transform:uppercase;margin-top:5px}
-.hero .rating{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);padding:8px 20px;border-radius:30px;margin-bottom:25px;font-size:1rem;font-weight:600}
-.hero .btn-main{display:inline-block;padding:16px 48px;border-radius:50px;background:${c.primary};color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;text-transform:uppercase;letter-spacing:1px;box-shadow:0 8px 30px ${c.primary}66;transition:all .3s;border:none;cursor:pointer}
-.hero .btn-main:hover{transform:translateY(-2px);box-shadow:0 12px 40px ${c.primary}88}
-.hero .btn-secondary{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:50px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);color:#fff;text-decoration:none;font-weight:600;font-size:.95rem;margin-top:15px;transition:all .3s}
-.hero .btn-secondary:hover{background:rgba(255,255,255,.25)}
-.hero .social{margin-top:40px}
-.hero .social p{font-size:.85rem;opacity:.7;margin-bottom:10px}
-.hero .social a{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);color:#fff;text-decoration:none;transition:all .3s}
-.hero .social a:hover{background:rgba(255,255,255,.3);transform:scale(1.1)}
-/* SECTIONS */
-.section{padding:60px 20px;max-width:900px;margin:0 auto;background:rgba(255,255,255,.97);color:#333;border-radius:24px 24px 0 0;margin-top:-20px;position:relative}
-.section h2{text-align:center;font-size:1.8rem;font-weight:800;color:${c.primary};margin-bottom:30px}
-.about-text{text-align:center;max-width:600px;margin:0 auto;line-height:1.8;color:#555;font-size:1rem}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:40px}
-.card{background:#fff;border:1px solid #eee;border-radius:16px;padding:28px 20px;text-align:center;transition:all .3s}
-.card:hover{box-shadow:0 8px 25px rgba(0,0,0,.08);transform:translateY(-3px)}
-.card .icon{font-size:2.5rem;margin-bottom:12px}
-.card h3{color:${c.primary};font-size:1.1rem;margin-bottom:8px}
-.card p{color:#777;font-size:.9rem}
-.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.gallery img{width:100%;height:140px;object-fit:cover;border-radius:12px;background:#ddd;transition:transform .3s}
-.gallery img:hover{transform:scale(1.05)}
-.map-box{text-align:center}
-.map-box iframe{width:100%;max-width:560px;height:320px;border:0;border-radius:16px;margin:15px 0;box-shadow:0 4px 20px rgba(0,0,0,.1)}
-.map-box .addr{color:#666;font-size:.9rem;margin-bottom:10px}
-.cta-bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:20px}
-.cta-bar a{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:50px;text-decoration:none;font-weight:700;font-size:.9rem;transition:all .3s}
-.cta-bar .wa{background:#25D366;color:#fff}
-.cta-bar .wa:hover{background:#1da851}
-.cta-bar .call{background:${c.primary};color:#fff}
-.cta-bar .maps{background:${c.accent};color:#fff}
-footer{background:#1a1a1a;color:#888;text-align:center;padding:35px 20px;font-size:.85rem}
-footer a{color:${c.accent};text-decoration:none}
-footer strong{color:#fff}
-@media(max-width:600px){.hero .logo h1{font-size:1.8rem}.hero .btn-main{padding:14px 36px;font-size:1rem}.section{padding:40px 16px;border-radius:20px 20px 0 0}}
-</style>
-</head>
-<body>
-<!-- HERO: full-screen com foto de fundo + dark overlay (estilo cluvi) -->
-<div class="hero">
-  <div class="logo">
-    <h1>${lead.name}</h1>
-    <div class="sub">${n} · ${lead.city||location}</div>
-  </div>
-  ${lead.rating?`<div class="rating">⭐ ${lead.rating} · ${lead.user_ratings_total||0} avaliações no Google</div>`:""}
-  ${wa?`<a href="https://wa.me/${wa}" class="btn-main" target="_blank">📱 Fazer Pedido pelo WhatsApp</a>`:""}
-  <a href="${maps}" class="btn-secondary" target="_blank">🗺️ Como Chegar</a>
-  <div class="social">
-    <p>Siga-nos</p>
-    ${lead.instagram?`<a href="${lead.instagram}" target="_blank" title="Instagram">📷</a>`:""}
-    ${lead.facebook?`<a href="${lead.facebook}" target="_blank" title="Facebook">👍</a>`:""}
-    ${wa?`<a href="https://wa.me/${wa}" target="_blank" title="WhatsApp">💬</a>`:""}
-  </div>
-</div>
-
-<!-- SOBRE -->
-<div class="section">
-  <h2>Sobre Nós</h2>
-  <p class="about-text">Bem-vindo ao <strong>${lead.name}</strong>! Localizado em ${lead.formatted_address||lead.city||location}, somos referência em ${n} na região. ${lead.rating?`Com ${lead.rating} estrelas no Google e ${lead.user_ratings_total||0} avaliações de clientes satisfeitos, `:""}oferecemos qualidade, sabor e atendimento excepcional. Venha nos visitar!</p>
-  <div class="cards">
-    <div class="card"><div class="icon">✅</div><h3>Qualidade</h3><p>Sempre oferecemos o melhor para nossos clientes</p></div>
-    <div class="card"><div class="icon">❤️</div><h3>Atendimento</h3><p>Equipe treinada para receber você com um sorriso</p></div>
-    <div class="card"><div class="icon">📍</div><h3>Localização</h3><p>Localização privilegiada de fácil acesso</p></div>
-  </div>
-</div>
-
-<!-- GALERIA -->
-<div class="section" style="border-radius:0">
-  <h2>Galeria</h2>
-  <div class="gallery">
-    ${Array.from({length:6}).map((_,i)=>`<img src="https://source.unsplash.com/300x200/?${n},food&sig=${i}" alt="Foto ${i+1}" loading="lazy">`).join("\n    ")}
-  </div>
-</div>
-
-<!-- MAPA -->
-<div class="section" style="border-radius:0">
-  <h2>Como Chegar</h2>
-  <div class="map-box">
-    <p class="addr">${lead.formatted_address||lead.city||location}</p>
-    <iframe src="${embed}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-    <div class="cta-bar">
-      <a href="${maps}" class="maps" target="_blank">🗺️ Abrir no Google Maps</a>
-      ${wa?`<a href="tel:${wa}" class="call">📞 Ligar Agora</a>`:""}
-      ${wa?`<a href="https://wa.me/${wa}" class="wa" target="_blank">💬 WhatsApp</a>`:""}
-    </div>
-  </div>
-</div>
-
-<!-- FOOTER -->
-<footer>
-  <p><strong>${lead.name}</strong></p>
-  <p>${lead.formatted_address||""}</p>
-  ${lead.phone?`<p>${lead.phone}</p>`:""}
-  <p style="margin-top:15px">© ${new Date().getFullYear()} ${lead.name}. Todos os direitos reservados.</p>
-  <p style="margin-top:5px;font-size:.75rem">Site criado por <a href="https://clodoaldo.vercel.app" target="_blank">Clodoaldo Silva</a></p>
-</footer>
-</body>
-</html>`;
+    return generatePreviewHTML({
+      name: lead.name,
+      niche: lead.niche,
+      category: lead.category,
+      formatted_address: lead.formatted_address,
+      city: lead.city,
+      phone: lead.phone,
+      whatsapp: lead.whatsapp,
+      website: lead.website,
+      instagram: lead.instagram,
+      facebook: lead.facebook,
+      rating: lead.rating ?? null,
+      user_ratings_total: lead.user_ratings_total ?? null,
+      lat: lead.lat,
+      lng: lead.lng,
+    });
   }
 
   function openPreview(lead:Lead) {
     const blob = new Blob([genPreview(lead)], {type:"text/html"});
     window.open(URL.createObjectURL(blob), "_blank");
+  }
+
+  function getPreviewLink(lead:Lead):string {
+    const id = lead.id || lead.place_id || "";
+    return `https://clodoaldo.vercel.app/api/preview?lead=${id}`;
+  }
+
+  function copyPreviewLink(lead:Lead) {
+    const link = getPreviewLink(lead);
+    navigator.clipboard.writeText(link);
+    setCopiedText(`link-${lead.id || lead.place_id}`);
+    setTimeout(() => setCopiedText(null), 3000);
+  }
+
+  function openPreviewLink(lead:Lead) {
+    window.open(getPreviewLink(lead), "_blank");
   }
 
   const total = prospects.length;
@@ -378,6 +279,15 @@ footer strong{color:#fff}
                           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</span><button onClick={()=>copyToClipboard(wa,`wa-${lead.place_id}`)} className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30">{copiedText===`wa-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{wa}</pre></div>
                           <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-blue-300"><Mail className="h-3.5 w-3.5" /> Email</span><button onClick={()=>copyToClipboard(em,`em-${lead.place_id}`)} className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30">{copiedText===`em-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{em}</pre></div>
                           <button onClick={()=>openPreview(lead)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.02] transition"><Eye className="h-4 w-4" /> Ver Preview do Site</button>
+                          <div className="flex gap-2">
+                            <button onClick={()=>copyPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition" title="Copiar link compartilhável">
+                              {copiedText===`link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                              {copiedText===`link-${lead.id || lead.place_id}` ? "Link copiado!" : "Copiar link"}
+                            </button>
+                            <button onClick={()=>openPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 transition" title="Abrir link compartilhável">
+                              <Share2 className="h-3.5 w-3.5" /> Abrir link
+                            </button>
+                          </div>
                           <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-amber-300"><Code2 className="h-3.5 w-3.5" /> Prompt do Site</span><button onClick={()=>copyToClipboard(pr,`pr-${lead.place_id}`)} className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30">{copiedText===`pr-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-48 overflow-y-auto">{pr}</pre></div>
 
                           {/* === QUEBRA DE OBJEÇÕES === */}
@@ -475,7 +385,9 @@ footer strong{color:#fff}
                           </div>
                           <div className="flex gap-1">
                             {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="flex-1 rounded bg-emerald-500/15 px-2 py-1 text-center text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25">WhatsApp</a>}
-                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25"><Eye className="h-3 w-3" /></button>
+                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview do site"><Eye className="h-3 w-3" /></button>
+                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link do preview"><Link2 className="h-3 w-3" /></button>
+                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link compartilhável"><Share2 className="h-3 w-3" /></button>
                           </div>
                         </div>
                       );
