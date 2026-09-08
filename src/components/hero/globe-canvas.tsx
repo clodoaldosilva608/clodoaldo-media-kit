@@ -108,7 +108,7 @@ function initGlobe(
 
   // === Scene setup ===
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
   camera.position.set(0, 0, cameraZ);
   camera.lookAt(0, 0, 0);
 
@@ -127,16 +127,39 @@ function initGlobe(
   const globeGroup = new THREE.Group();
   scene.add(globeGroup);
 
-  // Add a wireframe sphere to verify rendering works
-  const wireGeo = new THREE.SphereGeometry(1, 24, 16);
-  const wireMat = new THREE.MeshBasicMaterial({
-    color: 0x4dabff,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.15,
+  // === Dark sphere with 3D lighting — creates depth + atmospheric rim ===
+  const darkSphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
+  const darkSphereMat = new THREE.MeshPhongMaterial({
+    color: 0x0d0d14,
+    shininess: 15,
+    specular: 0x222233,
+    emissive: 0x050508,
   });
-  const wireframe = new THREE.Mesh(wireGeo, wireMat);
-  globeGroup.add(wireframe);
+  const darkSphere = new THREE.Mesh(darkSphereGeo, darkSphereMat);
+  globeGroup.add(darkSphere);
+
+  // === Lighting — orange from top-right, blue from bottom-left ===
+  // This creates the dramatic atmospheric rim lighting like United Carriers
+  const orangeLight = new THREE.DirectionalLight(0xff4400, 2.0);
+  orangeLight.position.set(5, 3, 2);
+  scene.add(orangeLight);
+
+  const blueLight = new THREE.DirectionalLight(0x4dabff, 1.5);
+  blueLight.position.set(-3, -5, 1);
+  scene.add(blueLight);
+
+  // Blue rim light — positioned close to bottom-left edge for dramatic blue glow
+  const blueRim = new THREE.PointLight(0x4dabff, 2.0, 5);
+  blueRim.position.set(-2, -1.5, 1.5);
+  scene.add(blueRim);
+
+  // Orange rim light — positioned close to top-right edge for warm orange glow
+  const orangeRim = new THREE.PointLight(0xff3300, 4.0, 5);
+  orangeRim.position.set(2, 1.5, 1.5);
+  scene.add(orangeRim);
+
+  const ambientLight = new THREE.AmbientLight(0x111122, 0.3);
+  scene.add(ambientLight);
 
   // === Dot sphere ===
   const dotPositions: number[] = [];
@@ -153,12 +176,12 @@ function initGlobe(
       const y = radius * Math.sin(lat);
       const z = radius * Math.cos(lat) * Math.sin(lng);
       dotPositions.push(x, y, z);
-      const isAccent = Math.random() < 0.05;
+      const isAccent = Math.random() < 0.08;
       if (isAccent) {
-        dotColors.push(0.96, 0.33, 0);
+        dotColors.push(1.0, 0.48, 0.0);
       } else {
-        const v = 0.5 + Math.random() * 0.4;
-        dotColors.push(v * 0.7, v * 0.85, v);
+        const v = 0.6 + Math.random() * 0.4;
+        dotColors.push(v * 0.8, v * 0.9, v);
       }
     }
   }
@@ -176,14 +199,15 @@ function initGlobe(
   const dotTexture = createDotTexture(THREE);
 
   const dotMaterial = new THREE.PointsMaterial({
-    size: 0.025,
+    size: 0.03,
     sizeAttenuation: true,
     map: dotTexture,
     transparent: true,
     vertexColors: true,
-    alphaTest: 0.1,
+    alphaTest: 0.05,
     depthWrite: false,
-    blending: THREE.NormalBlending,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.9,
   });
 
   const dots = new THREE.Points(dotGeometry, dotMaterial);
@@ -199,18 +223,19 @@ function initGlobe(
     delay: number;
   }> = [];
 
-  const numArcs = 10;
+  const numArcs = 15;
   for (let i = 0; i < numArcs; i++) {
     const start = randomSpherePoint(1.005);
     const end = randomSpherePoint(1.005);
     const arcPoints = buildArcCurve(start, end, 50);
     const geometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const material = new THREE.LineBasicMaterial({
-      color: 0xf45300,
+      color: 0xff7a00,
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      linewidth: 2,
     });
     const line = new THREE.Line(geometry, material);
     arcGroup.add(line);
@@ -303,7 +328,7 @@ function initGlobe(
       const cycle = (t + arc.delay) % (arc.duration * 2);
       if (cycle < arc.duration) {
         const p = cycle / arc.duration;
-        arc.line.material.opacity = Math.sin(p * Math.PI) * 0.8;
+        arc.line.material.opacity = Math.sin(p * Math.PI) * 1.0;
       } else {
         arc.line.material.opacity = 0;
       }
