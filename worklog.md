@@ -1420,3 +1420,99 @@ FLUXO COMPLETO EM PRODUÇÃO:
    - Painel A/B com 3 cards (líder destacado)
    - Tabela com filtros + botões de ação
 
+
+---
+Task ID: 35
+Agent: main (GLM)
+Task: Implementar globo 3D idêntico ao United Carriers na landing page
+
+Work Log:
+- User forneceu HTML do unitedcarriers.com como referência
+- Analisada a implementação original:
+  • Three.js (vendor-three chunk) com factory custom em my-flights chunk
+  • setupGlobe() com canvas + IntersectionObserver
+  • _initDotGlobe() recebe airportsData, flightsData, showArcs, cameraZ, tileDeg
+  • Auto-rotação com gsap.ticker (phi inicial 3.8)
+  • 4 sombras coloridas atrás (orange + blue + blue-plus + orange-plus)
+  • Mobile: cameraZ 2.8 / tileDeg 1.5 / desktop: cameraZ 2.45 / tileDeg 1.2
+  • Pin markers em lat/lng de aeroportos reais
+  • Arcos QuadraticBezierCurve3 entre pontos aleatórios
+
+- Implementação própria (sem copiar código — reescrevi do zero com Three.js):
+  • npm install three @types/three
+  • src/components/hero/globe-canvas.tsx:
+    - Dynamic import do Three.js (lazy load no client)
+    - initGlobe(THREE, canvas, opts) função que cria:
+      * Scene + PerspectiveCamera(45deg) + WebGLRenderer(alpha, antialias)
+      * Dot sphere: gera pontos em coordenadas esféricas com step=tileDeg
+        (lat -90 a +90, lng calculado por circumference da latitude)
+      * Cores: 95% branco-azulado + 5% laranja accent (#F45300)
+      * PointsMaterial com map=dotTexture (radial gradient procedural)
+        + AdditiveBlending + sizeAttenuation + vertexColors
+      * 10 arcos QuadraticBezierCurve3 entre pontos aleatórios
+        com fade in/out via Math.sin(p*PI) ao longo do ciclo
+      * 6 pin markers (São Paulo, NYC, London, Tokyo, Singapore, Sydney)
+        + halos additive azul (#4dabff)
+      * globeGroup.rotation.y inicial = 3.8 (igual ao UC)
+      * Auto-rotação: 0.08 rad/s * speed (default 1x)
+    - IntersectionObserver pausa quando off-screen (rootMargin 100px)
+    - ResizeObserver ajusta canvas + camera aspect
+    - Cleanup completo: dispose geometry/material/texture/renderer
+    
+  • src/components/hero/hero-globe.tsx:
+    - Wrapper visual com 4 sombras coloridas (orange + blue + blue-plus + orange-plus)
+      usando radial-gradient + filter:blur(40-70px) + mix-blend-mode
+    - Star background (CSS radial-gradient points, 7 dots aleatórios)
+    - Vignette radial no edge (transparent center → rgba(10,10,15,0.6) outer)
+    - Detecção mobile via matchMedia → ajusta tileDeg/cameraZ dinamicamente
+    - Dynamic import do GlobeCanvas com ssr: false
+    
+  • src/components/media-kit/hero.tsx atualizado:
+    - Removido retrato estático (img src=clodoaldoHero)
+    - Substituído por <HeroGlobe /> com parallax scroll (shift translateY)
+    - Mantém: 3 portas de entrada, CTA "Encontrar a melhor solução",
+      title com hero-line animation
+    - Background gradient overlay (orange 8% + blue 6%) acima do globo
+    - Caption: "One operator | Global reach" (estilo UC)
+
+- CSS animations em src/app/globals.css:
+  • @keyframes globe-shadow-pulse (4-6s ease-in-out)
+  • .globe-shadow-orange/blue/blue-plus/orange-plus com delays staggered
+  • prefers-reduced-motion: animation: none
+  • @keyframes hero-text-reveal + hero-card-reveal (staggered)
+
+- .env.local e .vercel/project.json foram resetados (problema recorrente)
+  — restaurados manualmente antes do build/deploy
+
+- libs recriadas após detectar que foram perdidas em rollback:
+  • src/lib/analytics.ts (12 eventos padronizados + sanitização PII)
+  • src/lib/schema.ts (Person, Organization, FAQPage, SoftwareApplication)
+  • src/lib/site-metrics.ts (fonte única de métricas)
+
+- Build: ✅ passa (Three.js + dynamic import funcionando)
+- Deploy: ✅ pronto
+  URL: https://clodoaldo.vercel.app
+
+- Validação agent-browser (desktop 1280x800 + mobile 390x844):
+  Desktop:
+  • Canvas WebGL ativo: ✓ ("webgl OK")
+  • 3 portas de entrada (marca/creator/empresa): ✓
+  • CTA "Encontrar a melhor solução": ✓
+  • Screenshot: /home/z/my-project/download/hero-globe.png
+  
+  Mobile (390x844):
+  • Canvas WebGL ativo: ✓
+  • CTA visível: ✓
+  • Screenshot: /home/z/my-project/download/hero-globe-mobile.png
+
+Stage Summary:
+- ✅ Globo 3D Three.js com dot-sphere + flight arcs + pin markers implementado
+- ✅ 4 sombras coloridas pulsantes atrás (orange/blue/blue-plus/orange-plus)
+- ✅ Star background + ambient gradient overlays
+- ✅ Auto-rotação contínua (phi=3.8 inicial, 0.08 rad/s)
+- ✅ IntersectionObserver pausa quando off-screen (perf)
+- ✅ Mobile responsivo (tileDeg/cameraZ ajustam dinamicamente)
+- ✅ Dynamic import (ssr: false) — Three.js só carrega no client
+- ✅ Cleanup completo (dispose geometry/material/texture/renderer)
+- ✅ Build + deploy production atualizado
+
