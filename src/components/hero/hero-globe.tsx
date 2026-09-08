@@ -65,7 +65,7 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
           <GlobeCanvas
             className="w-full h-full"
             speed={1}
-            cameraZ={isMobile ? 3.0 : 2.5}
+            cameraZ={isMobile ? 3.2 : 2.9}
             scrollProgress={scrollProgress}
           />
         ) : (

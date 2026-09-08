@@ -118,13 +118,59 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   globeGroup.rotation.z = 0.05;
   scene.add(globeGroup);
 
-  // === Fill sphere (EXACT: colorWrite=false, depthWrite=true, radius 0.99) ===
-  // Invisible but writes depth → blocks back dots naturally
-  const fillGeo = new THREE.SphereGeometry(0.99, 32, 32);
-  const fillMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true });
-  const fillMesh = new THREE.Mesh(fillGeo, fillMat);
-  fillMesh.renderOrder = -1;
-  globeGroup.add(fillMesh);
+  // === VISIBLE SPHERE with gradient shader (opaque, like user's reference) ===
+  // Orange/amber on top-right, dark blue on bottom-left
+  const sphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
+  const sphereMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uLightDir: { value: new THREE.Vector3(0.6, 0.5, 0.6).normalize() },
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vWorldPos;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uLightDir;
+      varying vec3 vNormal;
+      varying vec3 vWorldPos;
+      void main() {
+        vec3 N = normalize(vNormal);
+        vec3 L = normalize(uLightDir);
+        float ndl = dot(N, L);
+        
+        // Gradient: amber (#D4864B) → dark umber (#3E2512) → near-black (#0D0705)
+        vec3 warmColor = vec3(0.83, 0.53, 0.29);
+        vec3 midColor = vec3(0.24, 0.14, 0.07);
+        vec3 darkColor = vec3(0.05, 0.03, 0.02);
+        
+        float lightAmount = smoothstep(-0.4, 0.9, ndl);
+        vec3 color;
+        if (lightAmount < 0.5) {
+          color = mix(darkColor, midColor, lightAmount * 2.0);
+        } else {
+          color = mix(midColor, warmColor, (lightAmount - 0.5) * 2.0);
+        }
+        
+        // Cyan rim glow (#4FC3F7) strongest on shadow side
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float rim = 1.0 - max(0.0, dot(N, viewDir));
+        rim = pow(rim, 3.0);
+        float shadowSide = 1.0 - smoothstep(0.0, 0.3, ndl);
+        vec3 rimColor = vec3(0.31, 0.76, 0.97) * rim * (0.4 + shadowSide * 0.6);
+        color += rimColor;
+        
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+  });
+  const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+  globeGroup.add(sphereMesh);
 
   // === Dot texture (EXACT: 64x64, radial gradient, hard edge at 0.82) ===
   const dotTexture = createDotTexture(THREE);
@@ -145,9 +191,10 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   // PointsMaterial with onBeforeCompile (EXACT replica of reference shader)
   const edgeMat = new THREE.PointsMaterial({
     color: M.edgeColor,       // #ffffff
-    size: M.pointSize,        // 0.005
+    size: 0.015,              // larger than ref's 0.005 for visibility
     sizeAttenuation: true,
     depthWrite: false,
+    depthTest: true,          // fill sphere at 0.99 blocks back dots at 1.0
     transparent: true,
     map: dotTexture,
     alphaTest: 0,
@@ -271,7 +318,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   return () => {
     cancelAnimationFrame(rafRef.current); ro.disconnect();
     edgeGeo.dispose(); edgeMat.dispose(); dotTexture.dispose();
-    fillGeo.dispose(); fillMat.dispose();
+    sphereGeo.dispose(); sphereMat.dispose();
     arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as THREE.Material).dispose(); });
     pinGeo.dispose(); pinMat.dispose(); haloGeo.dispose(); haloMat.dispose();
     renderer.dispose();
