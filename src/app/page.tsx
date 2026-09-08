@@ -25,7 +25,7 @@ export default function Home() {
       <main id="main-content">
         <Hero />
         {/* Foto do Clodoaldo — logo abaixo da seção do globo */}
-        <section className="relative py-16 sm:py-24 bg-background">
+        <section className="relative py-16 sm:py-24" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
               <div className="order-2 lg:order-1">

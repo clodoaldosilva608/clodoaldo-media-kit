@@ -119,6 +119,7 @@ export function Hero() {
       ref={sectionRef}
       id="inicio"
       className="relative h-[150vh]"
+      style={{ backgroundColor: "#0a0a0f", color: "#fff" }}
     >
       {/* Sticky inner container — globe + text stay fixed for 100vh of scroll */}
       <div className="sticky top-0 h-screen overflow-hidden flex items-center">
