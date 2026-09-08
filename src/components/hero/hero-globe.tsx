@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 
 /**
  * HeroGlobe — wrapper visual do GlobeCanvas.
- * Réplica do layout do United Carriers com:
- * - Globo grande preenchendo o container
- * - 4 sombras coloridas pulsantes (orange + blue + blue-plus + orange-plus)
- * - Star background
- * - Vignette
+ * Aceita scrollProgress (0-1) para aplicar tilt + rotação adicional.
  */
 
-export function HeroGlobe() {
+interface HeroGlobeProps {
+  scrollProgress?: number;
+}
+
+export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
   const [GlobeCanvas, setGlobeCanvas] = useState<any>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -52,8 +52,7 @@ export function HeroGlobe() {
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-orange"
         style={{
-          background:
-            "radial-gradient(circle at 60% 35%, rgba(244,83,0,0.35) 0%, rgba(244,83,0,0.12) 25%, transparent 50%)",
+          background: "radial-gradient(circle at 60% 35%, rgba(244,83,0,0.35) 0%, rgba(244,83,0,0.12) 25%, transparent 50%)",
           filter: "blur(30px)",
         }}
       />
@@ -61,45 +60,47 @@ export function HeroGlobe() {
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-blue"
         style={{
-          background:
-            "radial-gradient(circle at 35% 65%, rgba(77,171,255,0.30) 0%, rgba(77,171,255,0.10) 25%, transparent 45%)",
+          background: "radial-gradient(circle at 35% 65%, rgba(77,171,255,0.30) 0%, rgba(77,171,255,0.10) 25%, transparent 45%)",
           filter: "blur(35px)",
         }}
       />
-      {/* Blue-plus (far left) */}
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-blue-plus"
         style={{
-          background:
-            "radial-gradient(circle at 20% 50%, rgba(77,171,255,0.15) 0%, transparent 35%)",
+          background: "radial-gradient(circle at 20% 50%, rgba(77,171,255,0.15) 0%, transparent 35%)",
           filter: "blur(50px)",
         }}
       />
-      {/* Orange-plus (far right) */}
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-orange-plus"
         style={{
-          background:
-            "radial-gradient(circle at 80% 50%, rgba(244,83,0,0.15) 0%, transparent 35%)",
+          background: "radial-gradient(circle at 80% 50%, rgba(244,83,0,0.15) 0%, transparent 35%)",
           filter: "blur(50px)",
         }}
       />
 
-      {/* The globe canvas */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* The globe canvas — with scroll-driven tilt */}
+      <div
+        className="absolute inset-0 flex items-center justify-center will-change-transform"
+        style={{
+          transform: `perspective(1000px) rotateX(${scrollProgress * 15}deg) rotateZ(${scrollProgress * -5}deg)`,
+          transition: "transform 0.1s ease-out",
+        }}
+      >
         {GlobeCanvas ? (
           <GlobeCanvas
             className="w-full h-full"
             speed={1}
             tileDeg={isMobile ? 1.5 : 1.0}
-            cameraZ={isMobile ? 2.8 : 2.3}
+            cameraZ={isMobile ? 2.8 : 2.0}
+            scrollProgress={scrollProgress}
           />
         ) : (
           <div className="text-xs text-muted-foreground animate-pulse">Carregando globo…</div>
         )}
       </div>
 
-      {/* Atmospheric rim lighting — ON TOP of canvas, creates the orange/blue glow on globe edge */}
+      {/* Atmospheric rim lighting */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -109,12 +110,11 @@ export function HeroGlobe() {
         }}
       />
 
-      {/* Vignette — fade edges */}
+      {/* Vignette */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(circle at 50% 50%, transparent 45%, rgba(10,10,15,0.5) 80%, rgba(10,10,15,0.8) 100%)",
+          background: "radial-gradient(circle at 50% 50%, transparent 45%, rgba(10,10,15,0.5) 80%, rgba(10,10,15,0.8) 100%)",
         }}
       />
     </div>

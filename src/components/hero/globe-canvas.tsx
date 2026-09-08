@@ -19,12 +19,10 @@ import { useEffect, useRef } from "react";
 
 interface GlobeCanvasProps {
   className?: string;
-  /** Velocidade da rotação automática (0 = parado, 1 = padrão) */
   speed?: number;
-  /** Densidade dos pontos (graus entre pontos) — menor = mais denso */
   tileDeg?: number;
-  /** Distância da câmera */
   cameraZ?: number;
+  scrollProgress?: number;
 }
 
 export default function GlobeCanvas({
@@ -32,12 +30,19 @@ export default function GlobeCanvas({
   speed = 1,
   tileDeg = 1.2,
   cameraZ = 2.45,
+  scrollProgress = 0,
 }: GlobeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const isVisibleRef = useRef(true);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const scrollProgressRef = useRef(scrollProgress);
+
+  // Update ref when prop changes
+  useEffect(() => {
+    scrollProgressRef.current = scrollProgress;
+  }, [scrollProgress]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -56,6 +61,7 @@ export default function GlobeCanvas({
           cameraZ,
           isVisibleRef,
           rafRef,
+          scrollProgressRef,
         });
         cleanupRef.current = cleanup;
       })
@@ -97,6 +103,7 @@ interface InitOptions {
   cameraZ: number;
   isVisibleRef: React.MutableRefObject<boolean>;
   rafRef: React.MutableRefObject<number>;
+  scrollProgressRef: React.MutableRefObject<number>;
 }
 
 function initGlobe(
@@ -104,7 +111,7 @@ function initGlobe(
   canvas: HTMLCanvasElement,
   opts: InitOptions,
 ): () => void {
-  const { speed, tileDeg, cameraZ, isVisibleRef, rafRef } = opts;
+  const { speed, tileDeg, cameraZ, isVisibleRef, rafRef, scrollProgressRef } = opts;
 
   // === Scene setup ===
   const scene = new THREE.Scene();
@@ -321,7 +328,12 @@ function initGlobe(
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
 
-    globeGroup.rotation.y += dt * 0.08 * speed;
+    // Auto-rotation + scroll-driven extra rotation
+    const sp = scrollProgressRef.current;
+    globeGroup.rotation.y += dt * 0.08 * speed * (1 + sp * 2); // speed up on scroll
+
+    // Scroll-driven tilt — globe tilts forward dramatically as you scroll
+    globeGroup.rotation.x = sp * -1.2; // tilt from 0 to -1.2 rad (~69deg) — shows horizon
 
     const t = now / 1000;
     arcs.forEach((arc) => {
