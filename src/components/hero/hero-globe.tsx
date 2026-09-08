@@ -48,19 +48,18 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
         }}
       />
 
-      {/* Dramatic atmospheric glow — orange (top-right) */}
+      {/* Subtle atmospheric glow — much fainter to match reference */}
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-orange"
         style={{
-          background: "radial-gradient(circle at 60% 35%, rgba(244,83,0,0.35) 0%, rgba(244,83,0,0.12) 25%, transparent 50%)",
+          background: "radial-gradient(circle at 60% 35%, rgba(244,83,0,0.12) 0%, transparent 40%)",
           filter: "blur(30px)",
         }}
       />
-      {/* Blue glow (bottom-left) */}
       <div
         className="absolute inset-0 pointer-events-none globe-shadow-blue"
         style={{
-          background: "radial-gradient(circle at 35% 65%, rgba(77,171,255,0.30) 0%, rgba(77,171,255,0.10) 25%, transparent 45%)",
+          background: "radial-gradient(circle at 35% 65%, rgba(77,171,255,0.10) 0%, transparent 35%)",
           filter: "blur(35px)",
         }}
       />
@@ -91,8 +90,8 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
           <GlobeCanvas
             className="w-full h-full"
             speed={1}
-            tileDeg={isMobile ? 1.5 : 1.0}
-            cameraZ={isMobile ? 2.8 : 2.0}
+            tileDeg={isMobile ? 1.5 : 1.2}
+            cameraZ={isMobile ? 3.2 : 2.9}
             scrollProgress={scrollProgress}
           />
         ) : (
@@ -100,13 +99,13 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
         )}
       </div>
 
-      {/* Atmospheric rim lighting */}
+      {/* Very subtle rim lighting — barely visible, just for depth */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(circle at 62% 28%, rgba(255,122,0,0.35) 0%, rgba(255,122,0,0.08) 25%, transparent 40%), " +
-            "radial-gradient(circle at 32% 72%, rgba(77,171,255,0.25) 0%, rgba(77,171,255,0.05) 25%, transparent 40%)",
+            "radial-gradient(circle at 62% 28%, rgba(255,122,0,0.08) 0%, transparent 30%), " +
+            "radial-gradient(circle at 32% 72%, rgba(77,171,255,0.06) 0%, transparent 30%)",
         }}
       />
 
