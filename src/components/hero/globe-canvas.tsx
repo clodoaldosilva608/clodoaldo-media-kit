@@ -87,18 +87,19 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   renderer.setClearColor(0x000000, 0);
 
   const globeGroup = new THREE.Group();
-  // Tilt: North Pole towards upper-left (like reference)
-  globeGroup.rotation.x = -0.2;  // slight forward tilt
-  globeGroup.rotation.z = 0.1;   // slight left lean
+  // Tilt: UC reference uses rotation.x=0.15, rotation.z=0.05
+  globeGroup.rotation.x = 0.15;
+  globeGroup.rotation.z = 0.05;
   // Rotate to show South America / Atlantic
   globeGroup.rotation.y = 5.2;
   scene.add(globeGroup);
 
-  // === 1. OPAQUE SPHERE with gradient shader (EXACT colors) ===
+  // === OPAQUE SPHERE — almost black, only rim glows (like UC reference) ===
+  // 80-85% dark mass, 15-20% bright (rim glow + dots)
   const sphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
   const sphereMat = new THREE.ShaderMaterial({
     uniforms: {
-      uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() }, // top-right
+      uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() },
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -118,36 +119,25 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
         vec3 N = normalize(vNormal);
         vec3 L = normalize(uLightDir);
         float ndl = dot(N, L);
-
-        // EXACT colors from reference:
-        // Highlight: #E8A860
-        vec3 highlight = vec3(0.91, 0.66, 0.38);
-        // Mid-tone: #7B4B2E
-        vec3 midTone = vec3(0.48, 0.29, 0.18);
-        // Shadow: #2A1209
-        vec3 shadow = vec3(0.16, 0.07, 0.04);
-
-        float lightAmount = smoothstep(-0.3, 0.95, ndl);
-        vec3 color;
-        if (lightAmount < 0.5) {
-          color = mix(shadow, midTone, lightAmount * 2.0);
-        } else {
-          color = mix(midTone, highlight, (lightAmount - 0.5) * 2.0);
-        }
-
-        // Warm golden glow on lit edge (#FFAA55) — sunrise effect
         vec3 viewDir = normalize(cameraPosition - vWorldPos);
         float rim = 1.0 - max(0.0, dot(N, viewDir));
-        rim = pow(rim, 2.0);
-        float litSide = smoothstep(0.0, 0.4, ndl);
-        vec3 warmGlow = vec3(1.0, 0.67, 0.33) * rim * litSide * 0.8; // #FFAA55
-        color += warmGlow;
-
-        // Faint blue glow on shadow edge (atmospheric)
+        
+        // Body: almost black (NOT warm/brown — just dark)
+        vec3 baseColor = vec3(0.02, 0.02, 0.03); // near black
+        vec3 color = baseColor;
+        
+        // Orange/amber rim glow ONLY on edge, top-right (lit side)
+        // #FF8C42 warm orange
+        float litSide = smoothstep(-0.1, 0.5, ndl);
+        float orangeRim = pow(rim, 2.5) * litSide;
+        color += vec3(1.0, 0.55, 0.26) * orangeRim * 1.2;
+        
+        // Blue rim glow ONLY on edge, bottom-left (shadow side)
+        // #4FC3F7 cyan-blue
         float shadowSide = 1.0 - litSide;
-        vec3 blueGlow = vec3(0.2, 0.4, 0.8) * rim * shadowSide * 0.3;
-        color += blueGlow;
-
+        float blueRim = pow(rim, 2.5) * shadowSide;
+        color += vec3(0.31, 0.76, 0.97) * blueRim * 0.8;
+        
         gl_FragColor = vec4(color, 1.0);
       }
     `,
@@ -248,7 +238,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
     lastTime = now;
     const sp = scrollProgressRef.current;
     globeGroup.rotation.y += dt * 0.05 * speed * (1 + sp * 2);
-    globeGroup.rotation.x = -0.2 + sp * -0.6;
+    globeGroup.rotation.x = 0.15 + sp * -0.6;
 
     const t = now / 1000;
     arcs.forEach((arc) => {
