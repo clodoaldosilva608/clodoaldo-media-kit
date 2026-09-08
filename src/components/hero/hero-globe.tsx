@@ -67,6 +67,7 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
             speed={1}
             cameraZ={isMobile ? 3.2 : 2.9}
             scrollProgress={scrollProgress}
+            isMobile={isMobile}
           />
         ) : (
           <div className="text-xs text-muted-foreground animate-pulse">Carregando globo…</div>

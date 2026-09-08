@@ -3,27 +3,24 @@
 import { useEffect, useRef } from "react";
 
 /**
- * GlobeCanvas — réplica EXATA do globo de referência.
- * Especificações via análise VLM pixel-perfect:
+ * GlobeCanvas — réplica EXATA dos dois globos de referência:
  *
- * ESFERA: 100% opaca, gradiente:
- *   - Highlight top-right: #E8A860 (golden-orange)
- *   - Mid-tone: #7B4B2E (deep brownish-orange)
- *   - Shadow bottom-left: #2A1209 (almost black)
- *   - Glow edge top-right: #FFAA55 (warm golden halo, sunrise effect)
+ * DESKTOP (Screenshot_20260908_165024_Chrome.jpg):
+ *   - Esfera MARROM/LARANJA (warm tones, #E8A860 highlight → #7B4B2E mid → #2A1209 shadow)
+ *   - Blue rim glow bottom-left
+ *   - Fundo espaço escuro com estrelas
+ *   - 5 pins: MÉXICO, COLÔMBIA, BRASIL, ARGENTINA, CHILE
+ *   - 3 arcos laranja
+ *   - cameraZ: 2.9, FOV: 55
  *
- * DOTS: #FFFFFF brancos, 1-2px, SOBRE a superfície, formam continentes
- *   (América do Sul visível — costa leste do Brasil proeminente)
- *   Sem dots no verso (esfera opaca bloqueia)
- *
- * PINS: 5 markers #FF5722 (orange-red) com labels em caixa preta texto branco:
- *   MÉXICO, COLÔMBIA, BRASIL, ARGENTINA, CHILE
- *
- * ARCOS: 2-3 arcos #D84315 (deep orange/red) curvados sobre a esfera
- *
- * ROTAÇÃO: North Pole tilt upper-left, vista centrada no Atlântico/América do Sul
- * CÂMERA: medium-close, globo ocupa metade direita, cropado nas bordas
- * FUNDO: deep space #05051A → #1A237E com estrelas
+ * MOBILE (20260908_181803.jpg):
+ *   - Esfera AZUL (#1E3A8A deep royal blue throughout)
+ *   - Orange rim glow on top edge
+ *   - Fundo claro/off-white
+ *   - 13 pins: CANADA, UNITED STATES, MEXICO, COLOMBIA, BRAZIL, ARGENTINA,
+ *     SOUTH AFRICA, KENYA, UNITED KINGDOM, SPAIN, ITALY, TURKEY, EGYPT
+ *   - 3 arcos laranja
+ *   - cameraZ: 3.2, globe occupies 50-60% of screen
  */
 
 interface GlobeCanvasProps {
@@ -31,10 +28,11 @@ interface GlobeCanvasProps {
   speed?: number;
   cameraZ?: number;
   scrollProgress?: number;
+  isMobile?: boolean;
 }
 
 export default function GlobeCanvas({
-  className = "", speed = 1, cameraZ = 2.3, scrollProgress = 0,
+  className = "", speed = 1, cameraZ = 2.9, scrollProgress = 0, isMobile = false,
 }: GlobeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
@@ -59,7 +57,7 @@ export default function GlobeCanvas({
       } catch (e) { console.error("[globe] land fetch failed:", e); return; }
 
       if (disposed || !canvasRef.current) return;
-      const cleanup = initGlobe(THREE, canvasRef.current, { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints });
+      const cleanup = initGlobe(THREE, canvasRef.current, { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints, isMobile });
       cleanupRef.current = cleanup;
     }).catch((e) => console.error("[globe] three.js failed:", e));
 
@@ -67,15 +65,22 @@ export default function GlobeCanvas({
     if (canvasRef.current) obs.observe(canvasRef.current);
 
     return () => { disposed = true; if (cleanupRef.current) cleanupRef.current(); obs.disconnect(); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [speed, cameraZ]);
+  }, [speed, cameraZ, isMobile]);
 
   return <canvas ref={canvasRef} className={className} style={{ width: "100%", height: "100%", display: "block" }} />;
 }
 
-interface Opts { speed: number; cameraZ: number; isVisibleRef: React.MutableRefObject<boolean>; rafRef: React.MutableRefObject<number>; scrollProgressRef: React.MutableRefObject<number>; landPoints: Array<[number, number]>; }
+interface Opts {
+  speed: number; cameraZ: number;
+  isVisibleRef: React.MutableRefObject<boolean>;
+  rafRef: React.MutableRefObject<number>;
+  scrollProgressRef: React.MutableRefObject<number>;
+  landPoints: Array<[number, number]>;
+  isMobile: boolean;
+}
 
 function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: Opts): () => void {
-  const { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints } = o;
+  const { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints, isMobile } = o;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
@@ -87,64 +92,103 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   renderer.setClearColor(0x000000, 0);
 
   const globeGroup = new THREE.Group();
-  // Tilt: UC reference uses rotation.x=0.15, rotation.z=0.05
   globeGroup.rotation.x = 0.15;
   globeGroup.rotation.z = 0.05;
-  // Rotate to show South America / Atlantic
-  globeGroup.rotation.y = 5.2;
+  globeGroup.rotation.y = isMobile ? 4.8 : 5.2; // slightly different angle for mobile
   scene.add(globeGroup);
 
-  // === OPAQUE SPHERE — almost black, only rim glows (like UC reference) ===
-  // 80-85% dark mass, 15-20% bright (rim glow + dots)
+  // === SPHERE — different shader for mobile vs desktop ===
   const sphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
-  const sphereMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() },
-    },
-    vertexShader: `
-      varying vec3 vNormal;
-      varying vec3 vWorldPos;
-      void main() {
-        vNormal = normalize(normalMatrix * normal);
-        vec4 worldPos = modelMatrix * vec4(position, 1.0);
-        vWorldPos = worldPos.xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uLightDir;
-      varying vec3 vNormal;
-      varying vec3 vWorldPos;
-      void main() {
-        vec3 N = normalize(vNormal);
-        vec3 L = normalize(uLightDir);
-        float ndl = dot(N, L);
-        vec3 viewDir = normalize(cameraPosition - vWorldPos);
-        float rim = 1.0 - max(0.0, dot(N, viewDir));
-        
-        // Body: almost black (NOT warm/brown — just dark)
-        vec3 baseColor = vec3(0.02, 0.02, 0.03); // near black
-        vec3 color = baseColor;
-        
-        // Orange/amber rim glow ONLY on edge, top-right (lit side)
-        // #FF8C42 warm orange
-        float litSide = smoothstep(-0.1, 0.5, ndl);
-        float orangeRim = pow(rim, 2.5) * litSide;
-        color += vec3(1.0, 0.55, 0.26) * orangeRim * 1.2;
-        
-        // Blue rim glow ONLY on edge, bottom-left (shadow side)
-        // #4FC3F7 cyan-blue
-        float shadowSide = 1.0 - litSide;
-        float blueRim = pow(rim, 2.5) * shadowSide;
-        color += vec3(0.31, 0.76, 0.97) * blueRim * 0.8;
-        
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `,
-  });
+
+  let sphereMat: THREE.ShaderMaterial;
+  if (isMobile) {
+    // MOBILE: Blue sphere (#1E3A8A) + orange rim on top
+    sphereMat = new THREE.ShaderMaterial({
+      uniforms: { uLightDir: { value: new THREE.Vector3(0.5, 0.6, 0.6).normalize() } },
+      vertexShader: `
+        varying vec3 vNormal; varying vec3 vWorldPos;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uLightDir;
+        varying vec3 vNormal; varying vec3 vWorldPos;
+        void main() {
+          vec3 N = normalize(vNormal);
+          vec3 L = normalize(uLightDir);
+          float ndl = dot(N, L);
+          vec3 viewDir = normalize(cameraPosition - vWorldPos);
+          float rim = 1.0 - max(0.0, dot(N, viewDir));
+
+          // Blue sphere body: #1E3A8A deep royal blue
+          vec3 blueBase = vec3(0.12, 0.23, 0.54);
+          // Brighter blue in center where lit
+          vec3 blueLit = vec3(0.18, 0.35, 0.75);
+          float lit = smoothstep(-0.2, 0.8, ndl);
+          vec3 color = mix(blueBase, blueLit, lit * 0.6);
+
+          // Orange rim glow on TOP edge (lit side)
+          float orangeRim = pow(rim, 2.0) * smoothstep(0.0, 0.5, ndl);
+          color += vec3(1.0, 0.55, 0.15) * orangeRim * 1.0;
+
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  } else {
+    // DESKTOP: Warm brown/orange sphere + blue rim bottom-left
+    sphereMat = new THREE.ShaderMaterial({
+      uniforms: { uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() } },
+      vertexShader: `
+        varying vec3 vNormal; varying vec3 vWorldPos;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uLightDir;
+        varying vec3 vNormal; varying vec3 vWorldPos;
+        void main() {
+          vec3 N = normalize(vNormal);
+          vec3 L = normalize(uLightDir);
+          float ndl = dot(N, L);
+          vec3 viewDir = normalize(cameraPosition - vWorldPos);
+          float rim = 1.0 - max(0.0, dot(N, viewDir));
+
+          // Warm sphere: #E8A860 highlight → #7B4B2E mid → #2A1209 shadow
+          vec3 highlight = vec3(0.91, 0.66, 0.38);
+          vec3 midTone = vec3(0.48, 0.29, 0.18);
+          vec3 shadow = vec3(0.16, 0.07, 0.04);
+
+          float lightAmount = smoothstep(-0.3, 0.95, ndl);
+          vec3 color;
+          if (lightAmount < 0.5) {
+            color = mix(shadow, midTone, lightAmount * 2.0);
+          } else {
+            color = mix(midTone, highlight, (lightAmount - 0.5) * 2.0);
+          }
+
+          // Warm orange rim glow on lit side (top-right)
+          float litSide = smoothstep(-0.1, 0.5, ndl);
+          color += vec3(1.0, 0.55, 0.26) * pow(rim, 2.5) * litSide * 0.8;
+
+          // Blue rim glow on shadow side (bottom-left)
+          float shadowSide = 1.0 - litSide;
+          color += vec3(0.31, 0.76, 0.97) * pow(rim, 2.5) * shadowSide * 0.6;
+
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  }
   globeGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-  // === 2. WHITE DOTS on land — ON surface, front-only ===
+  // === WHITE DOTS on land ===
   const dotTexture = createDotTexture(THREE);
   const dotRadius = 0.975;
   const positions: number[] = [];
@@ -159,29 +203,36 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   }
 
   const dotMat = new THREE.PointsMaterial({
-    size: 0.012,
-    sizeAttenuation: true,
-    map: dotTexture,
-    color: 0xFFFFFF,
-    transparent: true,
-    opacity: 0.9,
-    depthWrite: false,
-    depthTest: true,  // opaque sphere blocks back dots
-    blending: THREE.AdditiveBlending,
+    size: 0.012, sizeAttenuation: true, map: dotTexture,
+    color: 0xFFFFFF, transparent: true, opacity: 0.9,
+    depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
   });
-
   const dotGeo = new THREE.BufferGeometry();
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   globeGroup.add(new THREE.Points(dotGeo, dotMat));
 
-  // === 3. PIN MARKERS — 5 countries with labels (EXACT from reference) ===
-  const pinCities = [
-    { lat: 23.63, lng: -102.55 }, // MÉXICO
-    { lat: 4.57, lng: -74.30 },   // COLÔMBIA
-    { lat: -14.24, lng: -51.93 }, // BRASIL
-    { lat: -38.42, lng: -63.62 }, // ARGENTINA
-    { lat: -35.68, lng: -71.54 }, // CHILE
+  // === PIN MARKERS — different sets for mobile vs desktop ===
+  const desktopPins = [
+    { lat: 23.63, lng: -102.55 }, { lat: 4.57, lng: -74.30 },
+    { lat: -14.24, lng: -51.93 }, { lat: -38.42, lng: -63.62 },
+    { lat: -35.68, lng: -71.54 },
   ];
+  const mobilePins = [
+    { lat: 56.13, lng: -106.35 }, // CANADA
+    { lat: 37.09, lng: -95.71 },  // UNITED STATES
+    { lat: 23.63, lng: -102.55 }, // MEXICO
+    { lat: 4.57, lng: -74.30 },   // COLOMBIA
+    { lat: -14.24, lng: -51.93 }, // BRAZIL
+    { lat: -38.42, lng: -63.62 }, // ARGENTINA
+    { lat: -30.56, lng: 22.94 },  // SOUTH AFRICA
+    { lat: -0.02, lng: 37.91 },   // KENYA
+    { lat: 55.38, lng: -3.44 },   // UNITED KINGDOM
+    { lat: 40.46, lng: -3.75 },   // SPAIN
+    { lat: 41.87, lng: 12.57 },   // ITALY
+    { lat: 38.96, lng: 35.24 },   // TURKEY
+    { lat: 26.82, lng: 30.80 },   // EGYPT
+  ];
+  const pinCities = isMobile ? mobilePins : desktopPins;
 
   const pinGeo = new THREE.SphereGeometry(0.014, 8, 8);
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF5722, depthTest: false, depthWrite: false });
@@ -194,12 +245,18 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
   });
 
-  // === 4. FLIGHT ARCS — deep orange (#D84315) ===
-  const arcPairs = [
-    [pinCities[0], pinCities[2]], // México → Brasil
-    [pinCities[3], pinCities[1]], // Argentina → Colômbia
-    [pinCities[4], pinCities[2]], // Chile → Brasil
-  ];
+  // === FLIGHT ARCS ===
+  const arcPairs = isMobile
+    ? [
+        [mobilePins[2], mobilePins[4]], // Mexico → Brazil
+        [mobilePins[5], mobilePins[3]], // Argentina → Colombia
+        [mobilePins[8], mobilePins[10]], // UK → Italy
+      ]
+    : [
+        [desktopPins[0], desktopPins[2]], // México → Brasil
+        [desktopPins[3], desktopPins[1]], // Argentina → Colômbia
+        [desktopPins[4], desktopPins[2]], // Chile → Brasil
+      ];
 
   const arcs: Array<{ line: THREE.Line; duration: number; delay: number }> = [];
   for (const [p1, p2] of arcPairs) {
