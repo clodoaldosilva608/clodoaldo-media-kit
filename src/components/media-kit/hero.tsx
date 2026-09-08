@@ -20,6 +20,7 @@ export function Hero() {
   const cardsRef = useRef<HTMLDivElement | null>(null);
   const bgRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
@@ -40,49 +41,55 @@ export function Hero() {
         const p = Math.min(1, Math.max(0, scrolled / maxScroll));
         setScrollProgress(p);
 
-        // === STATES MAPPED TO PROGRESS ===
-        // 0-20%: everything visible, entrance animations play via CSS
-        // 20-50%: title fades + moves left, globe enlarges + moves right
-        // 50-75%: cards fade out in stagger, globe continues to enlarge
-        // 75-100%: globe dissolves, bg shifts to section transition
+        // === CONTINUOUS SCROLL STATES — no empty space ===
+        // 0-10%:   Everything visible. Entrance CSS animations playing.
+        // 10-35%:  Title fades + moves left. Globe grows + moves right. Scroll indicator fades.
+        // 35-60%:  Cards fade out downward. Globe continues growing + rotating.
+        // 60-85%:  Globe dissolves. Background shifts to deep blue. Overlay grows.
+        // 85-100%: Clean transition to next section.
 
-        // TEXT: fade starts at 15%, complete by 45%. Move left 80px.
+        // TEXT: fade 10→35%, move left 60px
         if (textWrapRef.current) {
-          const textOpacity = p < 0.15 ? 1 : Math.max(0, 1 - (p - 0.15) / 0.3);
-          const textX = p < 0.15 ? 0 : -(p - 0.15) * 80 / 0.3;
+          const textOpacity = p < 0.1 ? 1 : Math.max(0, 1 - (p - 0.1) / 0.25);
+          const textX = p < 0.1 ? 0 : -(p - 0.1) * 60 / 0.25;
           textWrapRef.current.style.opacity = String(textOpacity);
           textWrapRef.current.style.transform = `translateX(${textX}px)`;
         }
 
-        // CARDS: fade starts at 30%, complete by 55%. Move down + stagger.
+        // CARDS: fade 35→60%, move down 30px
         if (cardsRef.current) {
-          const cardOpacity = p < 0.3 ? 1 : Math.max(0, 1 - (p - 0.3) / 0.25);
-          const cardY = p < 0.3 ? 0 : (p - 0.3) * 40 / 0.25;
+          const cardOpacity = p < 0.35 ? 1 : Math.max(0, 1 - (p - 0.35) / 0.25);
+          const cardY = p < 0.35 ? 0 : (p - 0.35) * 30 / 0.25;
           cardsRef.current.style.opacity = String(cardOpacity);
           cardsRef.current.style.transform = `translateY(${cardY}px)`;
         }
 
-        // GLOBE: enlarge from 1.0 to 1.3, move right, fade starts at 65%
+        // GLOBE: grow 1.0→1.5, move right 100px, fade starts at 60%
         if (globeWrapRef.current) {
-          const globeScale = 1 + p * 0.35; // grow as you scroll
-          const globeX = p * 80; // move right
-          const globeOpacity = p < 0.65 ? 1 : Math.max(0, 1 - (p - 0.65) / 0.3);
+          const globeScale = 1 + p * 0.5;
+          const globeX = p * 100;
+          const globeOpacity = p < 0.6 ? 1 : Math.max(0, 1 - (p - 0.6) / 0.3);
           globeWrapRef.current.style.transform = `translateX(${globeX}px) scale(${globeScale})`;
           globeWrapRef.current.style.opacity = String(globeOpacity);
         }
 
-        // BACKGROUND: stays dark with subtle blue shift
+        // SCROLL INDICATOR: fades immediately on scroll
+        if (scrollIndicatorRef.current) {
+          scrollIndicatorRef.current.style.opacity = String(Math.max(0, 1 - p * 5));
+        }
+
+        // BACKGROUND: dark → deep blue (stays dark, no white)
         if (bgRef.current) {
-          const r = Math.round(6 + p * 3);
-          const g = Math.round(6 + p * 6);
-          const b = Math.round(10 + p * 15);
+          const r = Math.round(6 + p * 5);
+          const g = Math.round(6 + p * 10);
+          const b = Math.round(10 + p * 25);
           bgRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
         }
 
-        // OVERLAY: atmospheric gradient grows with scroll
+        // OVERLAY: atmospheric blue grows from 30% onward
         if (overlayRef.current) {
-          const overlayOpacity = p < 0.4 ? 0 : (p - 0.4) * 1.2;
-          overlayRef.current.style.opacity = String(Math.min(1, overlayOpacity));
+          const overlayOpacity = p < 0.3 ? 0 : Math.min(1, (p - 0.3) * 1.5);
+          overlayRef.current.style.opacity = String(overlayOpacity);
         }
       });
     };
@@ -100,7 +107,7 @@ export function Hero() {
       ref={sectionRef}
       id="inicio"
       className="relative"
-      style={{ height: "180vh", backgroundColor: "#06060a", color: "#fff" }}
+      style={{ height: "150vh", backgroundColor: "#06060a", color: "#fff" }}
     >
       <div className="sticky top-0 h-screen overflow-hidden flex items-center">
         {/* Background */}
@@ -111,28 +118,28 @@ export function Hero() {
           ref={overlayRef}
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: "linear-gradient(to top, rgba(40,60,120,0.3) 0%, transparent 50%)",
+            background: "linear-gradient(to top, rgba(40,60,120,0.35) 0%, transparent 50%)",
             opacity: 0,
             transition: "opacity 0.15s ease-out",
           }}
         />
 
-        {/* Globe */}
+        {/* Globe — LARGE, centered-right, OVERLAPPING text area */}
         <div
           ref={globeWrapRef}
-          className="absolute right-[-8%] top-1/2 -translate-y-1/2 w-[85vh] h-[85vh] max-w-[1000px] max-h-[1000px] will-change-transform z-0"
+          className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[1100px] h-[1100px] max-w-[95vw] max-h-[95vh] will-change-transform z-0"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />
         </div>
 
-        {/* Text content */}
+        {/* Text content — ON TOP of globe, left-aligned */}
         <div
           ref={textWrapRef}
           className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform"
           style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
         >
-          <div className="max-w-2xl">
+          <div className="max-w-xl">
             <div className="flex items-center gap-4 hero-text-reveal" style={{ animationDelay: "0ms" }}>
               <span className="eyebrow">Criador · Desenvolvedor · Estrategista</span>
               <span className="hairline flex-1 max-w-[120px]" />
@@ -173,10 +180,10 @@ export function Hero() {
               </a>
             </div>
 
-            {/* Entry path cards — separate ref for staggered fade */}
+            {/* Entry path cards */}
             <div
               ref={cardsRef}
-              className="mt-10 grid sm:grid-cols-3 gap-3 max-w-2xl hero-text-reveal"
+              className="mt-10 grid sm:grid-cols-3 gap-3 max-w-xl hero-text-reveal"
               style={{ animationDelay: "950ms", transition: "opacity 0.2s ease-out, transform 0.2s ease-out" }}
             >
               {ENTRY_PATHS.map((path) => {
@@ -201,7 +208,7 @@ export function Hero() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
+        <div ref={scrollIndicatorRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
           Scroll ↓
         </div>
       </div>

@@ -195,14 +195,18 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   globeGroup.add(new THREE.Points(dotGeo, dotMat));
 
-  // === PINS — 6 pontos de interesse do Clodoaldo ===
+  // === PINS — 10 pontos de interesse globais ===
   const pinCities = [
-    { lat: -8.05, lng: -34.9, name: "Apps" },        // Recife
-    { lat: 40.71, lng: -74.0, name: "Conteúdo" },     // NYC
-    { lat: 51.5, lng: -0.13, name: "Estratégia" },    // London
-    { lat: 35.68, lng: 139.69, name: "Produtos" },    // Tokyo
-    { lat: 1.35, lng: 103.82, name: "Parcerias" },    // Singapore
-    { lat: -33.87, lng: 151.21, name: "Dados" },      // Sydney
+    { lat: -8.05, lng: -34.9, name: "Apps" },
+    { lat: 40.71, lng: -74.0, name: "Conteúdo" },
+    { lat: 51.5, lng: -0.13, name: "Estratégia" },
+    { lat: 35.68, lng: 139.69, name: "Produtos" },
+    { lat: 1.35, lng: 103.82, name: "Parcerias" },
+    { lat: -33.87, lng: 151.21, name: "Dados" },
+    { lat: 25.2, lng: 55.27, name: "Métricas" },
+    { lat: 48.85, lng: 2.35, name: "Design" },
+    { lat: -23.55, lng: -46.63, name: "Brasil" },
+    { lat: 37.77, lng: -122.42, name: "Inovação" },
   ];
 
   const pinGeo = new THREE.SphereGeometry(0.012, 8, 8);
@@ -218,11 +222,14 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
   });
 
-  // === ARCS — 3 arcos animados ===
+  // === ARCS — 6 arcos animados ===
   const arcPairs = [
     [pinCities[0], pinCities[2]], // Apps → Estratégia
     [pinCities[1], pinCities[4]], // Conteúdo → Parcerias
     [pinCities[3], pinCities[5]], // Produtos → Dados
+    [pinCities[6], pinCities[8]], // Métricas → Brasil
+    [pinCities[7], pinCities[9]], // Design → Inovação
+    [pinCities[2], pinCities[1]], // Estratégia → Conteúdo
   ];
 
   const arcs: Array<{ line: THREE.Line; duration: number; delay: number }> = [];
