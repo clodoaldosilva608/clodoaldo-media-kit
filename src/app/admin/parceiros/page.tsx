@@ -38,7 +38,7 @@ const KANBAN = [
 ];
 
 export default function AdminParceirosPage() {
-  const [view, setView] = useState<"search"|"kanban"|"envios"|"respostas"|"report">("search");
+  const [view, setView] = useState<"search"|"kanban"|"salvos"|"envios"|"respostas"|"report">("search");
   const [niche, setNiche] = useState("restaurante");
   const [location, setLocation] = useState("Recife, PE");
   const [radius, setRadius] = useState(5000);
@@ -228,7 +228,7 @@ Clodoaldo Silva
       </div>
 
       <div className="mb-4 flex flex-wrap gap-0.5 rounded-full border border-white/5 bg-white/[0.03] p-0.5 inline-flex">
-        {[["search","Buscar",Search],["kanban","Pipeline ("+total+")",Layout]].map(([k,l,I]:any) => (
+        {[["search","Buscar",Search],["kanban","Pipeline ("+total+")",Layout],["salvos","Leads Salvos ("+total+")",CheckCircle2]].map(([k,l,I]:any) => (
           <button key={k} onClick={()=>setView(k)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view===k?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><I className="h-4 w-4" /> {l}</button>
         ))}
         <button onClick={()=>setView("envios")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="envios"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><MessageCircle className="h-4 w-4" /> Envios</button>
@@ -272,6 +272,7 @@ Clodoaldo Silva
                       <div className="mt-3 flex flex-wrap gap-2">
                         {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
                         {lead.website&&<a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/25"><ExternalLink className="h-3.5 w-3.5" /> Site</a>}
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||""))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"><MapPin className="h-3.5 w-3.5" /> Maps</a>
                         <button onClick={()=>setExpandedLead(exp?null:lead.place_id||null)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><Copy className="h-3.5 w-3.5" /> Copy + CTA</button>
                       </div>
                       {exp&&(
@@ -385,6 +386,7 @@ Clodoaldo Silva
                           </div>
                           <div className="flex gap-1">
                             {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="flex-1 rounded bg-emerald-500/15 px-2 py-1 text-center text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25">WhatsApp</a>}
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
                             <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview do site"><Eye className="h-3 w-3" /></button>
                             <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link do preview"><Link2 className="h-3 w-3" /></button>
                             <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link compartilhável"><Share2 className="h-3 w-3" /></button>
@@ -398,6 +400,58 @@ Clodoaldo Silva
             })}
           </div>
         </div>
+      )}
+
+      {view==="salvos" && (
+        <Widget title="Leads Salvos" icon={<CheckCircle2 className="h-4 w-4 text-emerald-400" />} action={<Button variant="outline" size="sm" onClick={loadProspects} disabled={loadingProspects}><RefreshCw className={`h-3 w-3 ${loadingProspects?"animate-spin":""}`} /><span className="ml-1">Atualizar</span></Button>}>
+          {loadingProspects ? (
+            <div className="py-12 text-center text-zinc-500"><RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin" />Carregando leads salvos...</div>
+          ) : prospects.length === 0 ? (
+            <EmptyState icon={<CheckCircle2 className="h-8 w-8 text-zinc-600" />} title="Nenhum lead salvo" description="Busque estabelecimentos e eles serão salvos automaticamente aqui." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
+                    <th className="py-2 pr-3">Estabelecimento</th>
+                    <th className="py-2 pr-3">Nicho</th>
+                    <th className="py-2 pr-3">Cidade</th>
+                    <th className="py-2 pr-3">Rating</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prospects.map((p) => {
+                    const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+                    const wa = genWA(p);
+                    return (
+                      <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                        <td className="py-3 pr-3">
+                          <div className="font-medium text-white">{p.name}</div>
+                          {p.phone && <div className="flex items-center gap-1 text-xs text-zinc-500"><Phone className="h-3 w-3" /> {p.phone}</div>}
+                        </td>
+                        <td className="py-3 pr-3 text-xs text-zinc-300 capitalize">{p.niche || p.category || "—"}</td>
+                        <td className="py-3 pr-3 text-xs text-zinc-400">{p.city || "—"}</td>
+                        <td className="py-3 pr-3 text-xs text-amber-300">{p.rating ? `⭐ ${p.rating}` : "—"}</td>
+                        <td className="py-3 pr-3"><span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span></td>
+                        <td className="py-3 pr-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            {num && <a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="WhatsApp"><MessageCircle className="h-3 w-3" /></a>}
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
+                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview"><Eye className="h-3 w-3" /></button>
+                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link"><Link2 className="h-3 w-3" /></button>
+                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link"><Share2 className="h-3 w-3" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Widget>
       )}
 
       {view==="envios" && <EnviosView />}
