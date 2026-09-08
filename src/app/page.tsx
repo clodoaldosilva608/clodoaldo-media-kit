@@ -15,6 +15,7 @@ import { TestimonialCarousel } from "@/components/site/testimonial-carousel";
 import { SocialProofCarousel } from "@/components/site/social-proof-carousel";
 import { AffiliateTrackerWrapper } from "@/components/site/affiliate-tracker-wrapper";
 import { QuizCTASection } from "@/components/quiz/quiz-cta";
+import { ASSETS } from "@/lib/asset-urls";
 
 export default function Home() {
   return (
@@ -23,6 +24,72 @@ export default function Home() {
       <Header />
       <main id="main-content">
         <Hero />
+        {/* Foto do Clodoaldo — logo abaixo da seção do globo */}
+        <section className="relative py-16 sm:py-24 bg-background">
+          <div className="mx-auto max-w-5xl px-5 sm:px-8">
+            <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+              <div className="order-2 lg:order-1">
+                <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
+                  Quem sou eu
+                </div>
+                <h2 className="mt-3 font-display font-medium text-2xl sm:text-4xl leading-tight">
+                  Clodoaldo Silva
+                </h2>
+                <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed">
+                  Criador, desenvolvedor e estrategista digital. Há quase uma década
+                  transforma ideias em produtos reais — apps, ferramentas, conteúdos
+                  e soluções sob medida para quem quer sair do lugar.
+                </p>
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                  Não vende fórmula mágica. O trabalho é guiado por método, clareza e
+                  respeito pela pessoa do outro. Cada projeto é pensado pra resolver
+                  uma dor específica — não pra encaixar em um template genérico.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <a
+                    href="/sobre"
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20 transition"
+                  >
+                    Conhecer minha história
+                  </a>
+                  <a
+                    href="/quiz"
+                    className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground hover:border-primary/50 transition"
+                  >
+                    Fazer o quiz de recomendação
+                  </a>
+                </div>
+              </div>
+              <div className="order-1 lg:order-2">
+                <figure className="relative">
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-card">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={ASSETS.clodoaldoHero}
+                      alt="Clodoaldo Silva — criador e desenvolvedor digital"
+                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      loading="eager"
+                      // @ts-expect-error fetchPriority is valid in React 19+
+                      fetchPriority="high"
+                      decoding="async"
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{
+                        background:
+                          "radial-gradient(120% 80% at 50% 20%, transparent 40%, oklch(0.12 0.004 60 / 0.55) 100%)",
+                      }}
+                    />
+                  </div>
+                  <figcaption className="mt-3 flex items-center justify-between text-[0.6875rem] uppercase tracking-[0.18em] text-muted-foreground">
+                    <span>Retrato oficial</span>
+                    <span>Desde 2016</span>
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+          </div>
+        </section>
         {/* Quiz CTA — chamada principal para o quiz de recomendação */}
         <QuizCTASection />
         <Metrics />

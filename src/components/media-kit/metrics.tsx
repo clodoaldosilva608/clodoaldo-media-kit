@@ -4,37 +4,14 @@ import { Eye, Rocket, TrendingUp, UserCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useReveal } from "@/hooks/use-reveal";
 import { SITE_METRICS, getAppCountBreakdown } from "@/lib/site-metrics";
+import { CountUp } from "@/components/site/count-up";
 
 const breakdown = getAppCountBreakdown();
 const METRICS = [
-  {
-    icon: Eye,
-    label: SITE_METRICS.impactedPeople.label,
-    value: Number((SITE_METRICS.impactedPeople.value / 1_000_000).toFixed(1)),
-    suffix: "M",
-    growth: SITE_METRICS.impactedPeople.period,
-  },
-  {
-    icon: UserCheck,
-    label: SITE_METRICS.communitySize.label,
-    value: Number((SITE_METRICS.communitySize.value / 1_000).toFixed(0)),
-    suffix: "K",
-    growth: SITE_METRICS.communitySize.period,
-  },
-  {
-    icon: TrendingUp,
-    label: SITE_METRICS.clientsAttended.label,
-    value: SITE_METRICS.clientsAttended.value,
-    suffix: "+",
-    growth: `em ${SITE_METRICS.yearsOfExperience} anos de carreira`,
-  },
-  {
-    icon: Rocket,
-    label: "Apps no ecossistema",
-    value: breakdown.total,
-    suffix: "",
-    growth: `${breakdown.available} disponíveis · ${breakdown.beta} beta · ${breakdown.inDevelopment + breakdown.concept} em construção`,
-  },
+  { icon: Eye, label: SITE_METRICS.impactedPeople.label, endValue: SITE_METRICS.impactedPeople.value / 1_000_000, decimals: 1, suffix: "M", growth: SITE_METRICS.impactedPeople.period, isCountUp: true },
+  { icon: UserCheck, label: SITE_METRICS.communitySize.label, endValue: SITE_METRICS.communitySize.value / 1_000, decimals: 0, suffix: "K", growth: SITE_METRICS.communitySize.period, isCountUp: true },
+  { icon: TrendingUp, label: SITE_METRICS.clientsAttended.label, endValue: SITE_METRICS.clientsAttended.value, decimals: 0, suffix: "+", growth: `em ${SITE_METRICS.yearsOfExperience} anos de carreira`, isCountUp: true },
+  { icon: Rocket, label: "Apps no ecossistema", endValue: breakdown.total, decimals: 0, suffix: "", growth: `${breakdown.available} disponíveis · ${breakdown.beta} beta · ${breakdown.inDevelopment + breakdown.concept} em construção`, isCountUp: true },
 ];
 
 export function Metrics() {
@@ -67,28 +44,6 @@ function MetricCard({
 }) {
   const ref = useReveal<HTMLDivElement>();
   const Icon = metric.icon;
-  const [displayValue, setDisplayValue] = useState(0);
-
-  useEffect(() => {
-    let frame = 0;
-    const totalFrames = 36;
-    const timer = window.setInterval(() => {
-      frame += 1;
-      const progress = Math.min(frame / totalFrames, 1);
-      setDisplayValue(metric.value * progress);
-      if (progress >= 1) window.clearInterval(timer);
-    }, 22);
-
-    return () => window.clearInterval(timer);
-  }, [metric.value]);
-
-  const formattedValue = useMemo(() => {
-    if (metric.suffix === "%") {
-      return `${displayValue.toFixed(1).replace(".", ",")}${metric.suffix}`;
-    }
-    const decimals = metric.value < 10 && metric.value % 1 !== 0 ? 1 : 0;
-    return `${displayValue.toFixed(decimals).replace(".", ",")}${metric.suffix}`;
-  }, [displayValue, metric.suffix, metric.value]);
 
   return (
     <div
@@ -104,7 +59,7 @@ function MetricCard({
         </span>
       </div>
       <div className="mt-8 font-display font-medium text-4xl sm:text-5xl tracking-[-0.03em] tabular-nums">
-        +{formattedValue}
+        <CountUp end={metric.endValue} decimals={metric.decimals || 0} suffix={metric.suffix || ""} duration={2200} />
       </div>
       <div className="mt-2 text-sm text-muted-foreground">{metric.label}</div>
     </div>
