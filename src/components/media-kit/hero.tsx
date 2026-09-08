@@ -82,26 +82,12 @@ export function Hero() {
           textWrapRef.current.style.transform = `translateY(${textY}px)`;
         }
 
-        // Background color transition: black → deep blue → near white (faster, reaches white by 60%)
+        // Background stays dark — subtle shift from black to deep blue-black
         if (bgRef.current) {
-          if (progress < 0.3) {
-            // 0-30%: black → deep blue
-            const p = progress / 0.3;
-            const r = Math.round(10 + p * 20);
-            const g = Math.round(10 + p * 40);
-            const b = Math.round(15 + p * 100);
-            bgRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-          } else if (progress < 0.6) {
-            // 30-60%: deep blue → lighter blue → near white
-            const p = (progress - 0.3) / 0.3;
-            const r = Math.round(30 + p * 210);
-            const g = Math.round(50 + p * 200);
-            const b = Math.round(115 + p * 140);
-            bgRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-          } else {
-            // 60-100%: near white
-            bgRef.current.style.backgroundColor = "rgb(240, 250, 255)";
-          }
+          const r = Math.round(6 + progress * 4);
+          const g = Math.round(6 + progress * 8);
+          const b = Math.round(10 + progress * 20);
+          bgRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
         }
       });
     };
@@ -118,8 +104,8 @@ export function Hero() {
     <section
       ref={sectionRef}
       id="inicio"
-      className="relative h-[150vh]"
-      style={{ backgroundColor: "#0a0a0f", color: "#fff" }}
+      className="relative"
+      style={{ height: "260vh", backgroundColor: "#06060a", color: "#fff" }}
     >
       {/* Sticky inner container — globe + text stay fixed for 100vh of scroll */}
       <div className="sticky top-0 h-screen overflow-hidden flex items-center">
@@ -127,7 +113,7 @@ export function Hero() {
         <div
           ref={bgRef}
           className="absolute inset-0 transition-colors duration-100"
-          style={{ backgroundColor: "rgb(10, 10, 15)" }}
+          style={{ backgroundColor: "rgb(6, 6, 10)" }}
         />
 
         {/* Atmospheric gradient overlay — washes from bottom up as you scroll */}
@@ -164,13 +150,12 @@ export function Hero() {
 
             <h1 className="mt-8 font-display text-[2.75rem] sm:text-6xl lg:text-[4.5rem] font-medium leading-[0.98] tracking-[-0.03em] text-foreground">
               {LINES.map((line, i) => (
-                <span key={line} className="block overflow-hidden">
+                <span key={line} className="hero-line-mask block">
                   <span
-                    className="hero-text-reveal block"
                     style={{ animationDelay: `${200 + i * 150}ms` }}
                   >
                     {i === 2 ? (
-                      <em className="not-italic text-primary">{line}</em>
+                      <em className="not-italic text-primary" style={{ animationDelay: `${320 + i * 150}ms` }}>{line}</em>
                     ) : (
                       line
                     )}

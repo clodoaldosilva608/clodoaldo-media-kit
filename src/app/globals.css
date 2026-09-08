@@ -51,56 +51,56 @@
 :root {
   --radius: 0.75rem;
 
-  /* Light theme: white bg, dark text (like United Carriers) */
-  --background: oklch(0.98 0.003 80);
-  --foreground: oklch(0.2 0.004 60);
+  /* Dark premium theme: near-black bg, soft white text, burnt orange accent */
+  --background: oklch(0.08 0.003 260);
+  --foreground: oklch(0.92 0.006 80);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.004 60);
+  --card: oklch(0.12 0.004 260);
+  --card-foreground: oklch(0.92 0.006 80);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.004 60);
+  --popover: oklch(0.12 0.004 260);
+  --popover-foreground: oklch(0.92 0.006 80);
 
-  /* Primary = vibrant orange (like UC #f50) */
-  --primary: oklch(0.68 0.18 45);
-  --primary-foreground: oklch(0.98 0.003 80);
-  --primary-glow: oklch(0.72 0.16 50);
+  /* Primary = burnt orange (#FF6B1A) */
+  --primary: oklch(0.68 0.19 45);
+  --primary-foreground: oklch(0.08 0.003 260);
+  --primary-glow: oklch(0.72 0.17 50);
 
-  --secondary: oklch(0.94 0.004 80);
-  --secondary-foreground: oklch(0.2 0.004 60);
+  --secondary: oklch(0.16 0.004 260);
+  --secondary-foreground: oklch(0.92 0.006 80);
 
-  --muted: oklch(0.95 0.003 80);
-  --muted-foreground: oklch(0.45 0.008 75);
+  --muted: oklch(0.14 0.004 260);
+  --muted-foreground: oklch(0.58 0.008 75);
 
-  --accent: oklch(0.68 0.18 45);
-  --accent-foreground: oklch(0.98 0.003 80);
+  --accent: oklch(0.68 0.19 45);
+  --accent-foreground: oklch(0.08 0.003 260);
 
   --destructive: oklch(0.6 0.19 25);
-  --destructive-foreground: oklch(0.98 0.003 80);
+  --destructive-foreground: oklch(0.92 0.006 80);
 
   --success: oklch(0.7 0.12 152);
   --success-foreground: oklch(0.15 0.004 60);
 
-  --border: oklch(0.2 0.004 60 / 12%);
-  --input: oklch(0.9 0.004 80);
-  --ring: oklch(0.68 0.18 45);
+  --border: oklch(0.92 0.006 80 / 8%);
+  --input: oklch(0.16 0.004 260);
+  --ring: oklch(0.68 0.19 45);
 
   --gradient-hero: radial-gradient(
       circle at 15% -5%,
-      oklch(0.68 0.18 45 / 7%),
+      oklch(0.68 0.19 45 / 6%),
       transparent 55%
     ),
-    linear-gradient(180deg, oklch(0.98 0.003 80), oklch(0.96 0.003 80));
+    linear-gradient(180deg, oklch(0.06 0.003 260), oklch(0.09 0.004 260));
   --gradient-orange: linear-gradient(
     180deg,
-    oklch(0.72 0.16 50),
-    oklch(0.68 0.18 45)
+    oklch(0.72 0.17 50),
+    oklch(0.68 0.19 45)
   );
-  --shadow-glow: 0 1px 0 oklch(0 0 0 / 8%) inset;
-  --shadow-card: 0 24px 60px -32px oklch(0 0 0 / 15%);
+  --shadow-glow: 0 1px 0 oklch(1 0 0 / 8%) inset;
+  --shadow-card: 0 24px 60px -32px oklch(0 0 0 / 60%);
 
-  --sidebar: oklch(0.96 0.003 80);
-  --sidebar-foreground: oklch(0.2 0.004 60);
+  --sidebar: oklch(0.1 0.004 260);
+  --sidebar-foreground: oklch(0.92 0.006 80);
   --sidebar-primary: oklch(0.75 0.088 62);
   --sidebar-primary-foreground: oklch(0.15 0.004 60);
   --sidebar-accent: oklch(0.23 0.005 60);
@@ -353,4 +353,120 @@
 
 .hero-card-reveal {
   animation: hero-card-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* === Microinterações === */
+
+/* Botões: deslocamento 1-2px + brilho no hover */
+.btn-micro {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.btn-micro:hover {
+  transform: translateY(-1px);
+}
+.btn-micro:active {
+  transform: translateY(0);
+}
+
+/* Setas movendo 4-6px no hover */
+.arrow-hover {
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .arrow-hover {
+  transform: translate(4px, -2px);
+}
+
+/* Cards: tilt máximo 2° apenas em hover */
+@media (hover: hover) {
+  .card-tilt {
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card-tilt:hover {
+    transform: perspective(1000px) rotateX(0.5deg) rotateY(0.5deg) translateY(-2px);
+  }
+}
+
+/* === Hero line reveal com máscara === */
+@keyframes hero-line-mask {
+  from {
+    opacity: 0;
+    transform: translateY(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-line-mask {
+  display: block;
+  overflow: hidden;
+}
+.hero-line-mask > * {
+  animation: hero-line-mask 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* === Header fixo transição === */
+.header-blur {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background-color: rgba(8, 8, 12, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background-color 0.5s ease, border-color 0.5s ease, backdrop-filter 0.5s ease;
+}
+
+.header-transparent {
+  background-color: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.5s ease, border-color 0.5s ease, backdrop-filter 0.5s ease;
+}
+
+/* === Active nav indicator === */
+.nav-active {
+  color: var(--primary);
+  position: relative;
+}
+.nav-active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 1px;
+}
+
+/* === Scrollbar premium === */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(0.06 0.003 260);
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.2 0.004 260);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.3 0.004 260);
+}
+
+/* === Reduced motion: remover todas animações complexas === */
+@media (prefers-reduced-motion: reduce) {
+  .hero-line-mask > *,
+  .hero-text-reveal,
+  .hero-card-reveal,
+  .globe-shadow-orange,
+  .globe-shadow-blue,
+  .globe-shadow-blue-plus,
+  .globe-shadow-orange-plus,
+  .card-tilt,
+  .btn-micro,
+  .arrow-hover {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
 }

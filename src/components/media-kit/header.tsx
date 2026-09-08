@@ -32,8 +32,8 @@ export function Header() {
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "backdrop-blur-xl bg-background/80 border-b border-border"
-          : "bg-transparent border-b border-transparent"
+          ? "header-blur"
+          : "header-transparent"
       }`}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between gap-4">
@@ -93,7 +93,7 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="xl:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+        <div className="xl:hidden border-t border-white/5 bg-background/95 backdrop-blur-xl">
           <nav className="px-5 py-4 flex flex-col gap-1" aria-label="Mobile">
             {NAV.map((item) => (
               <a

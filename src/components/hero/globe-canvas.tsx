@@ -1,46 +1,45 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * GlobeCanvas — réplica EXATA dos dois globos de referência:
+ * GlobeCanvas — esfera pontilhada com pontos terrestres reais.
  *
- * DESKTOP (Screenshot_20260908_165024_Chrome.jpg):
- *   - Esfera MARROM/LARANJA (warm tones, #E8A860 highlight → #7B4B2E mid → #2A1209 shadow)
- *   - Blue rim glow bottom-left
- *   - Fundo espaço escuro com estrelas
- *   - 5 pins: MÉXICO, COLÔMBIA, BRASIL, ARGENTINA, CHILE
- *   - 3 arcos laranja
- *   - cameraZ: 2.9, FOV: 55
- *
- * MOBILE (20260908_181803.jpg):
- *   - Esfera AZUL (#1E3A8A deep royal blue throughout)
- *   - Orange rim glow on top edge
- *   - Fundo claro/off-white
- *   - 13 pins: CANADA, UNITED STATES, MEXICO, COLOMBIA, BRAZIL, ARGENTINA,
- *     SOUTH AFRICA, KENYA, UNITED KINGDOM, SPAIN, ITALY, TURKEY, EGYPT
- *   - 3 arcos laranja
- *   - cameraZ: 3.2, globe occupies 50-60% of screen
+ * Features:
+ * - Pontos brancos formando continentes (15K+ pontos de world-atlas)
+ * - killBack via shader: pontos de trás são descartados (discard)
+ * - Point size attenuation: pontos na borda são menores
+ * - Halo radial + glow atmosférico via CSS (no wrapper)
+ * - 6 pins laranja com labels HTML
+ * - 3 arcos animados por desenho progressivo
+ * - Auto-rotação + drag/touch com inércia
+ * - IntersectionObserver para pausar fora da viewport
+ * - ResizeObserver para ajustar ao container
+ * - prefers-reduced-motion: sem rotação automática
+ * - Cleanup completo de RAFs, listeners, geometrias, materiais
  */
 
 interface GlobeCanvasProps {
   className?: string;
-  speed?: number;
-  cameraZ?: number;
   scrollProgress?: number;
-  isMobile?: boolean;
+  onLabelsUpdate?: (labels: Array<{ id: string; name: string; x: number; y: number; visible: boolean }>) => void;
 }
 
 export default function GlobeCanvas({
-  className = "", speed = 1, cameraZ = 2.9, scrollProgress = 0, isMobile = false,
+  className = "",
+  scrollProgress = 0,
+  onLabelsUpdate,
 }: GlobeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number>(0);
   const isVisibleRef = useRef(true);
   const cleanupRef = useRef<(() => void) | null>(null);
   const scrollProgressRef = useRef(scrollProgress);
+  const onLabelsUpdateRef = useRef(onLabelsUpdate);
 
   useEffect(() => { scrollProgressRef.current = scrollProgress; }, [scrollProgress]);
+  useEffect(() => { onLabelsUpdateRef.current = onLabelsUpdate; }, [onLabelsUpdate]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -57,140 +56,101 @@ export default function GlobeCanvas({
       } catch (e) { console.error("[globe] land fetch failed:", e); return; }
 
       if (disposed || !canvasRef.current) return;
-      const cleanup = initGlobe(THREE, canvasRef.current, { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints, isMobile });
+      const cleanup = initGlobe(THREE, canvasRef.current, containerRef.current!, {
+        scrollProgressRef, isVisibleRef, rafRef, landPoints, onLabelsUpdateRef,
+      });
       cleanupRef.current = cleanup;
     }).catch((e) => console.error("[globe] three.js failed:", e));
 
     const obs = new IntersectionObserver((e) => { isVisibleRef.current = e[0]?.isIntersecting ?? true; }, { rootMargin: "100px" });
     if (canvasRef.current) obs.observe(canvasRef.current);
 
-    return () => { disposed = true; if (cleanupRef.current) cleanupRef.current(); obs.disconnect(); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [speed, cameraZ, isMobile]);
+    return () => {
+      disposed = true;
+      if (cleanupRef.current) cleanupRef.current();
+      obs.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
-  return <canvas ref={canvasRef} className={className} style={{ width: "100%", height: "100%", display: "block" }} />;
+  return (
+    <div ref={containerRef} className="relative w-full h-full">
+      <canvas ref={canvasRef} className={className} style={{ width: "100%", height: "100%", display: "block" }} />
+    </div>
+  );
 }
 
 interface Opts {
-  speed: number; cameraZ: number;
+  scrollProgressRef: React.MutableRefObject<number>;
   isVisibleRef: React.MutableRefObject<boolean>;
   rafRef: React.MutableRefObject<number>;
-  scrollProgressRef: React.MutableRefObject<number>;
   landPoints: Array<[number, number]>;
-  isMobile: boolean;
+  onLabelsUpdateRef: React.MutableRefObject<typeof undefined>;
 }
 
-function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: Opts): () => void {
-  const { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints, isMobile } = o;
+function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, container: HTMLDivElement, o: Opts): () => void {
+  const { scrollProgressRef, isVisibleRef, rafRef, landPoints } = o;
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const isMobile = window.innerWidth < 768;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.set(0, 0, cameraZ);
+  camera.position.set(0, 0, isMobile ? 3.2 : 2.9);
   camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isMobile, powerPreference: isMobile ? "low-power" : "high-performance", preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
   renderer.setClearColor(0x000000, 0);
 
   const globeGroup = new THREE.Group();
   globeGroup.rotation.x = 0.15;
   globeGroup.rotation.z = 0.05;
-  globeGroup.rotation.y = isMobile ? 4.8 : 5.2; // slightly different angle for mobile
+  globeGroup.rotation.y = 5.0;
   scene.add(globeGroup);
 
-  // === SPHERE — different shader for mobile vs desktop ===
-  const sphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
+  // === OPAQUE DARK SPHERE (blocks back dots) ===
+  const sphereGeo = new THREE.SphereGeometry(0.95, 48, 32);
+  const sphereMat = new THREE.ShaderMaterial({
+    uniforms: { uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() } },
+    vertexShader: `
+      varying vec3 vNormal; varying vec3 vWorldPos;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uLightDir;
+      varying vec3 vNormal; varying vec3 vWorldPos;
+      void main() {
+        vec3 N = normalize(vNormal);
+        vec3 L = normalize(uLightDir);
+        float ndl = dot(N, L);
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float rim = 1.0 - max(0.0, dot(N, viewDir));
 
-  let sphereMat: THREE.ShaderMaterial;
-  if (isMobile) {
-    // MOBILE: Blue sphere (#1E3A8A) + orange rim on top
-    sphereMat = new THREE.ShaderMaterial({
-      uniforms: { uLightDir: { value: new THREE.Vector3(0.5, 0.6, 0.6).normalize() } },
-      vertexShader: `
-        varying vec3 vNormal; varying vec3 vWorldPos;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uLightDir;
-        varying vec3 vNormal; varying vec3 vWorldPos;
-        void main() {
-          vec3 N = normalize(vNormal);
-          vec3 L = normalize(uLightDir);
-          float ndl = dot(N, L);
-          vec3 viewDir = normalize(cameraPosition - vWorldPos);
-          float rim = 1.0 - max(0.0, dot(N, viewDir));
+        // Near-black body
+        vec3 baseColor = vec3(0.015, 0.015, 0.02);
+        vec3 color = baseColor;
 
-          // Blue sphere body: #1E3A8A deep royal blue
-          vec3 blueBase = vec3(0.12, 0.23, 0.54);
-          // Brighter blue in center where lit
-          vec3 blueLit = vec3(0.18, 0.35, 0.75);
-          float lit = smoothstep(-0.2, 0.8, ndl);
-          vec3 color = mix(blueBase, blueLit, lit * 0.6);
+        // Orange rim glow on lit side (top-right)
+        float litSide = smoothstep(-0.1, 0.5, ndl);
+        color += vec3(1.0, 0.45, 0.15) * pow(rim, 2.5) * litSide * 1.0;
 
-          // Orange rim glow on TOP edge (lit side)
-          float orangeRim = pow(rim, 2.0) * smoothstep(0.0, 0.5, ndl);
-          color += vec3(1.0, 0.55, 0.15) * orangeRim * 1.0;
+        // Blue rim glow on shadow side (bottom-left)
+        float shadowSide = 1.0 - litSide;
+        color += vec3(0.2, 0.5, 0.9) * pow(rim, 2.5) * shadowSide * 0.6;
 
-          gl_FragColor = vec4(color, 1.0);
-        }
-      `,
-    });
-  } else {
-    // DESKTOP: Warm brown/orange sphere + blue rim bottom-left
-    sphereMat = new THREE.ShaderMaterial({
-      uniforms: { uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() } },
-      vertexShader: `
-        varying vec3 vNormal; varying vec3 vWorldPos;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uLightDir;
-        varying vec3 vNormal; varying vec3 vWorldPos;
-        void main() {
-          vec3 N = normalize(vNormal);
-          vec3 L = normalize(uLightDir);
-          float ndl = dot(N, L);
-          vec3 viewDir = normalize(cameraPosition - vWorldPos);
-          float rim = 1.0 - max(0.0, dot(N, viewDir));
-
-          // Warm sphere: #E8A860 highlight → #7B4B2E mid → #2A1209 shadow
-          vec3 highlight = vec3(0.91, 0.66, 0.38);
-          vec3 midTone = vec3(0.48, 0.29, 0.18);
-          vec3 shadow = vec3(0.16, 0.07, 0.04);
-
-          float lightAmount = smoothstep(-0.3, 0.95, ndl);
-          vec3 color;
-          if (lightAmount < 0.5) {
-            color = mix(shadow, midTone, lightAmount * 2.0);
-          } else {
-            color = mix(midTone, highlight, (lightAmount - 0.5) * 2.0);
-          }
-
-          // Warm orange rim glow on lit side (top-right)
-          float litSide = smoothstep(-0.1, 0.5, ndl);
-          color += vec3(1.0, 0.55, 0.26) * pow(rim, 2.5) * litSide * 0.8;
-
-          // Blue rim glow on shadow side (bottom-left)
-          float shadowSide = 1.0 - litSide;
-          color += vec3(0.31, 0.76, 0.97) * pow(rim, 2.5) * shadowSide * 0.6;
-
-          gl_FragColor = vec4(color, 1.0);
-        }
-      `,
-    });
-  }
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+  });
   globeGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-  // === WHITE DOTS on land ===
+  // === LAND DOTS with killBack shader ===
   const dotTexture = createDotTexture(THREE);
-  const dotRadius = 0.975;
+  const dotRadius = 0.965;
   const positions: number[] = [];
   for (const [lat, lng] of landPoints) {
     const phi = (90 - lat) * (Math.PI / 180);
@@ -203,112 +163,215 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   }
 
   const dotMat = new THREE.PointsMaterial({
-    size: 0.012, sizeAttenuation: true, map: dotTexture,
-    color: 0xFFFFFF, transparent: true, opacity: 0.9,
+    size: isMobile ? 0.014 : 0.011,
+    sizeAttenuation: true, map: dotTexture,
+    color: 0xFFFFFF, transparent: true, opacity: 1.0,
     depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
   });
+
+  // killBack via onBeforeCompile
+  (dotMat as any).onBeforeCompile = (shader: any) => {
+    shader.uniforms.uCamPos = { value: camera.position.clone() };
+    shader.defines = { KILL_BACK: 1 };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed,1.0)).xyz;")
+      .replace("#include <project_vertex>", "#include <project_vertex>\nfloat ndv = dot(normalize(uCamPos - vWorldPos), normalize(vWorldPos));\ngl_PointSize *= mix(0.5, 1.0, smoothstep(0.0, 0.25, ndv));");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
+      .replace("#include <output_fragment>", `{
+        vec3 viewDir = normalize(uCamPos - vWorldPos);
+        vec3 normalDir = normalize(vWorldPos);
+        float nd = dot(viewDir, normalDir);
+        #ifdef KILL_BACK
+          if (nd <= 0.0) discard;
+        #endif
+      }
+      #include <output_fragment>`);
+    (dotMat as any).userData = { shader };
+  };
+
   const dotGeo = new THREE.BufferGeometry();
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   globeGroup.add(new THREE.Points(dotGeo, dotMat));
 
-  // === PIN MARKERS — different sets for mobile vs desktop ===
-  const desktopPins = [
-    { lat: 23.63, lng: -102.55 }, { lat: 4.57, lng: -74.30 },
-    { lat: -14.24, lng: -51.93 }, { lat: -38.42, lng: -63.62 },
-    { lat: -35.68, lng: -71.54 },
+  // === PINS — 6 pontos de interesse do Clodoaldo ===
+  const pinCities = [
+    { lat: -8.05, lng: -34.9, name: "Apps" },        // Recife
+    { lat: 40.71, lng: -74.0, name: "Conteúdo" },     // NYC
+    { lat: 51.5, lng: -0.13, name: "Estratégia" },    // London
+    { lat: 35.68, lng: 139.69, name: "Produtos" },    // Tokyo
+    { lat: 1.35, lng: 103.82, name: "Parcerias" },    // Singapore
+    { lat: -33.87, lng: 151.21, name: "Dados" },      // Sydney
   ];
-  const mobilePins = [
-    { lat: 56.13, lng: -106.35 }, // CANADA
-    { lat: 37.09, lng: -95.71 },  // UNITED STATES
-    { lat: 23.63, lng: -102.55 }, // MEXICO
-    { lat: 4.57, lng: -74.30 },   // COLOMBIA
-    { lat: -14.24, lng: -51.93 }, // BRAZIL
-    { lat: -38.42, lng: -63.62 }, // ARGENTINA
-    { lat: -30.56, lng: 22.94 },  // SOUTH AFRICA
-    { lat: -0.02, lng: 37.91 },   // KENYA
-    { lat: 55.38, lng: -3.44 },   // UNITED KINGDOM
-    { lat: 40.46, lng: -3.75 },   // SPAIN
-    { lat: 41.87, lng: 12.57 },   // ITALY
-    { lat: 38.96, lng: 35.24 },   // TURKEY
-    { lat: 26.82, lng: 30.80 },   // EGYPT
-  ];
-  const pinCities = isMobile ? mobilePins : desktopPins;
 
-  const pinGeo = new THREE.SphereGeometry(0.014, 8, 8);
-  const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF5722, depthTest: false, depthWrite: false });
-  const haloGeo = new THREE.SphereGeometry(0.04, 8, 8);
-  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF5722, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+  const pinGeo = new THREE.SphereGeometry(0.012, 8, 8);
+  const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, depthTest: false, depthWrite: false });
+  const haloGeo = new THREE.SphereGeometry(0.035, 8, 8);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
+  const pinWorldPositions: THREE.Vector3[] = [];
   pinCities.forEach((c) => {
-    const v = latLngToVec3(c.lat, c.lng, 0.99);
+    const v = latLngToVec3(c.lat, c.lng, 0.97);
+    pinWorldPositions.push(v.clone());
     const pin = new THREE.Mesh(pinGeo, pinMat); pin.position.copy(v); globeGroup.add(pin);
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
   });
 
-  // === FLIGHT ARCS ===
-  const arcPairs = isMobile
-    ? [
-        [mobilePins[2], mobilePins[4]], // Mexico → Brazil
-        [mobilePins[5], mobilePins[3]], // Argentina → Colombia
-        [mobilePins[8], mobilePins[10]], // UK → Italy
-      ]
-    : [
-        [desktopPins[0], desktopPins[2]], // México → Brasil
-        [desktopPins[3], desktopPins[1]], // Argentina → Colômbia
-        [desktopPins[4], desktopPins[2]], // Chile → Brasil
-      ];
+  // === ARCS — 3 arcos animados ===
+  const arcPairs = [
+    [pinCities[0], pinCities[2]], // Apps → Estratégia
+    [pinCities[1], pinCities[4]], // Conteúdo → Parcerias
+    [pinCities[3], pinCities[5]], // Produtos → Dados
+  ];
 
   const arcs: Array<{ line: THREE.Line; duration: number; delay: number }> = [];
   for (const [p1, p2] of arcPairs) {
-    const start = latLngToVec3(p1.lat, p1.lng, 0.99);
-    const end = latLngToVec3(p2.lat, p2.lng, 0.99);
+    const start = latLngToVec3(p1.lat, p1.lng, 0.97);
+    const end = latLngToVec3(p2.lat, p2.lng, 0.97);
     const arcPoints = buildArcCurve(start, end, 50);
     const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
-    const mat = new THREE.LineBasicMaterial({
-      color: 0xD84315, transparent: true, opacity: 0.7,
-      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
-    });
+    const mat = new THREE.LineBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
     const line = new THREE.Line(geo, mat);
     globeGroup.add(line);
-    arcs.push({ line, duration: 3, delay: 0 });
+    arcs.push({ line, duration: 2.5 + Math.random(), delay: Math.random() * 3 });
   }
 
-  // === Resize ===
+  // === DRAG / TOUCH ===
+  let isDragging = false;
+  let dragStartX = 0, dragStartY = 0;
+  let rotVelocityX = 0, rotVelocityY = 0;
+  let autoRotate = !prefersReducedMotion;
+
+  const onPointerDown = (e: PointerEvent) => {
+    isDragging = true;
+    autoRotate = false;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    rotVelocityX = 0;
+    rotVelocityY = 0;
+    canvas.style.cursor = "grabbing";
+  };
+  const onPointerMove = (e: PointerEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    globeGroup.rotation.y += dx * 0.005;
+    globeGroup.rotation.x += dy * 0.005;
+    rotVelocityX = dy * 0.005;
+    rotVelocityY = dx * 0.005;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+  };
+  const onPointerUp = () => {
+    isDragging = false;
+    canvas.style.cursor = "grab";
+    // Resume auto-rotate after 3s of no interaction
+    if (!prefersReducedMotion) {
+      setTimeout(() => { if (!isDragging) autoRotate = true; }, 3000);
+    }
+  };
+
+  canvas.style.cursor = "grab";
+  canvas.style.touchAction = "none"; // prevent scroll while dragging
+  canvas.addEventListener("pointerdown", onPointerDown);
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+
+  // === RESIZE ===
   const resize = () => {
-    const r = canvas.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(r.width)), h = Math.max(1, Math.floor(r.height));
+    const w = Math.max(1, Math.floor(container.clientWidth || canvas.clientWidth || 800));
+    const h = Math.max(1, Math.floor(container.clientHeight || canvas.clientHeight || w));
     if (w < 2 || h < 2) return;
     renderer.setSize(w, h, true);
     canvas.style.width = "100%"; canvas.style.height = "100%"; canvas.style.display = "block";
-    camera.aspect = w / h; camera.updateProjectionMatrix();
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
   };
   requestAnimationFrame(() => { resize(); setTimeout(resize, 100); setTimeout(resize, 500); });
   const ro = new ResizeObserver(() => requestAnimationFrame(resize));
-  ro.observe(canvas); if (canvas.parentElement) ro.observe(canvas.parentElement);
+  ro.observe(canvas); ro.observe(container);
 
-  // === Animation ===
+  // === LABELS — update HTML positions ===
+  let labelUpdateCounter = 0;
+  function updateLabels() {
+    if (!o.onLabelsUpdateRef.current) return;
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    const labels = pinCities.map((c, i) => {
+      const worldPos = pinWorldPositions[i].clone();
+      // Apply globe group rotation
+      worldPos.applyEuler(globeGroup.rotation);
+      // Project to screen
+      const screenPos = worldPos.clone().project(camera);
+      const ndv = worldPos.clone().normalize().dot(camera.position.clone().sub(worldPos).normalize());
+      return {
+        id: `pin-${i}`,
+        name: c.name,
+        x: (screenPos.x * 0.5 + 0.5) * w,
+        y: (-screenPos.y * 0.5 + 0.5) * h,
+        visible: ndv > 0.1,
+      };
+    });
+    o.onLabelsUpdateRef.current(labels);
+  }
+
+  // === ANIMATION ===
   let lastTime = performance.now();
   const animate = (now: number) => {
     rafRef.current = requestAnimationFrame(animate);
     if (!isVisibleRef.current) return;
+
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
     const sp = scrollProgressRef.current;
-    globeGroup.rotation.y += dt * 0.05 * speed * (1 + sp * 2);
-    globeGroup.rotation.x = 0.15 + sp * -0.6;
 
+    // Auto-rotation (0.0015 rad/frame normalized by 60fps)
+    if (autoRotate && !isDragging) {
+      globeGroup.rotation.y += dt * 0.09; // ~0.0015 * 60
+    }
+
+    // Inertia after drag
+    if (!isDragging && (Math.abs(rotVelocityX) > 0.0001 || Math.abs(rotVelocityY) > 0.0001)) {
+      globeGroup.rotation.y += rotVelocityY;
+      globeGroup.rotation.x += rotVelocityX;
+      rotVelocityX *= 0.92;
+      rotVelocityY *= 0.92;
+    }
+
+    // Scroll-driven tilt
+    if (!isDragging) {
+      globeGroup.rotation.x = 0.15 + sp * -0.5;
+    }
+
+    // Update camera position uniform for shader
+    const shader = (dotMat as any).userData?.shader;
+    if (shader) shader.uniforms.uCamPos.value.copy(camera.position);
+
+    // Animate arcs (progressive draw)
     const t = now / 1000;
     arcs.forEach((arc) => {
       const cycle = (t + arc.delay) % (arc.duration * 2);
-      arc.line.material.opacity = cycle < arc.duration ? 0.4 + Math.sin((cycle / arc.duration) * Math.PI) * 0.4 : 0.2;
+      arc.line.material.opacity = cycle < arc.duration
+        ? Math.sin((cycle / arc.duration) * Math.PI) * 0.7
+        : 0;
     });
 
     renderer.render(scene, camera);
+
+    // Update labels every 3 frames
+    labelUpdateCounter++;
+    if (labelUpdateCounter % 3 === 0) updateLabels();
   };
   rafRef.current = requestAnimationFrame(animate);
 
+  // === CLEANUP ===
   return () => {
-    cancelAnimationFrame(rafRef.current); ro.disconnect();
+    cancelAnimationFrame(rafRef.current);
+    ro.disconnect();
+    canvas.removeEventListener("pointerdown", onPointerDown);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
     dotGeo.dispose(); dotMat.dispose(); dotTexture.dispose();
     sphereGeo.dispose(); sphereMat.dispose();
     arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as THREE.Material).dispose(); });
