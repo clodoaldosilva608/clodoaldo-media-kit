@@ -3,21 +3,27 @@
 import { useEffect, useRef } from "react";
 
 /**
- * GlobeCanvas — réplica EXATA do globo do United Carriers.
+ * GlobeCanvas — réplica EXATA do globo de referência.
+ * Especificações via análise VLM pixel-perfect:
  *
- * Código extraído diretamente de my-flights.js:
- * - Renderer: alpha:true, antialias:false, powerPreference:"low-power", clearColor(0,0)
- * - Camera: PerspectiveCamera(55, aspect, 0.1, 100), position.z = cameraZ (2.9)
- * - Globe group: rotation.x = 0.15, rotation.z = 0.05
- * - Fill sphere: SphereGeometry(0.99, 32, 32), MeshBasicMaterial({colorWrite:false, depthWrite:true})
- *   → invisible but writes depth → blocks back dots
- * - Dots: onBeforeCompile shader with KILL_BACK define
- *   → if nd <= 0.0: discard (back dots killed)
- *   → gl_PointSize *= mix(0.6, 1.0, smoothstep(0.0, 0.25, ndv))
- * - Pin markers: SphereGeometry(pinSize), color pinDotColor (#F45300)
- * - Arcs: QuadraticBezierCurve3, color arcColor (#F45300)
- * - Land data: fetched from world-atlas@2/land-110m.json
- * - Dot texture: 64x64 canvas, radial gradient, hard edge (0.82*a inner stop)
+ * ESFERA: 100% opaca, gradiente:
+ *   - Highlight top-right: #E8A860 (golden-orange)
+ *   - Mid-tone: #7B4B2E (deep brownish-orange)
+ *   - Shadow bottom-left: #2A1209 (almost black)
+ *   - Glow edge top-right: #FFAA55 (warm golden halo, sunrise effect)
+ *
+ * DOTS: #FFFFFF brancos, 1-2px, SOBRE a superfície, formam continentes
+ *   (América do Sul visível — costa leste do Brasil proeminente)
+ *   Sem dots no verso (esfera opaca bloqueia)
+ *
+ * PINS: 5 markers #FF5722 (orange-red) com labels em caixa preta texto branco:
+ *   MÉXICO, COLÔMBIA, BRASIL, ARGENTINA, CHILE
+ *
+ * ARCOS: 2-3 arcos #D84315 (deep orange/red) curvados sobre a esfera
+ *
+ * ROTAÇÃO: North Pole tilt upper-left, vista centrada no Atlântico/América do Sul
+ * CÂMERA: medium-close, globo ocupa metade direita, cropado nas bordas
+ * FUNDO: deep space #05051A → #1A237E com estrelas
  */
 
 interface GlobeCanvasProps {
@@ -28,7 +34,7 @@ interface GlobeCanvasProps {
 }
 
 export default function GlobeCanvas({
-  className = "", speed = 1, cameraZ = 2.9, scrollProgress = 0,
+  className = "", speed = 1, cameraZ = 2.3, scrollProgress = 0,
 }: GlobeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number>(0);
@@ -68,62 +74,31 @@ export default function GlobeCanvas({
 
 interface Opts { speed: number; cameraZ: number; isVisibleRef: React.MutableRefObject<boolean>; rafRef: React.MutableRefObject<number>; scrollProgressRef: React.MutableRefObject<number>; landPoints: Array<[number, number]>; }
 
-// EXACT config from reference
-const CONFIG = {
-  pointSize: 0.005,
-  edgeColor: 0xffffff,
-  fillColor: 0xe2e8f0,
-  fillOpacity: 0.1,
-  backOpacity: 0.15,
-  pinDotColor: 0xF45300,
-  arcColor: 0xF45300,
-  killBack: true,
-  pinSize: 0.006,
-  pinAltitude: 0.008,
-  haloScale: 7.5,
-  showArcs: true,
-  arcThickness: 0.002,
-  arcAltBase: 0.02,
-  arcAltMultiplier: 0.01,
-};
-
 function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: Opts): () => void {
   const { speed, cameraZ, isVisibleRef, rafRef, scrollProgressRef, landPoints } = o;
-  const M = { ...CONFIG };
 
-  // === Renderer (EXACT match: alpha:true, antialias:false, low-power) ===
-  const maxPixelRatio = canvas.clientWidth < 768 ? 1.5 : 2;
-  const renderer = new THREE.WebGLRenderer({
-    canvas, alpha: true, antialias: false, powerPreference: "low-power",
-    preserveDrawingBuffer: true,
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  camera.position.set(0, 0, cameraZ);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
 
-  // === Scene ===
-  const scene = new THREE.Scene();
-
-  // === Camera (EXACT: FOV 55) ===
-  const W = canvas.clientWidth || canvas.offsetWidth || 800;
-  const H = canvas.clientHeight || canvas.offsetHeight || W;
-  renderer.setSize(W, H, false);
-  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 100);
-  camera.position.set(0, 0, cameraZ);
-
-  // === Globe group (EXACT: rotation.x=0.15, rotation.z=0.05) ===
   const globeGroup = new THREE.Group();
-  globeGroup.position.set(0, 0, 0);
-  globeGroup.scale.setScalar(1);
-  globeGroup.rotation.x = 0.15;
-  globeGroup.rotation.z = 0.05;
+  // Tilt: North Pole towards upper-left (like reference)
+  globeGroup.rotation.x = -0.2;  // slight forward tilt
+  globeGroup.rotation.z = 0.1;   // slight left lean
+  // Rotate to show South America / Atlantic
+  globeGroup.rotation.y = 5.2;
   scene.add(globeGroup);
 
-  // === VISIBLE SPHERE with gradient shader (opaque, like user's reference) ===
-  // Orange/amber on top-right, dark blue on bottom-left
+  // === 1. OPAQUE SPHERE with gradient shader (EXACT colors) ===
   const sphereGeo = new THREE.SphereGeometry(0.97, 64, 48);
   const sphereMat = new THREE.ShaderMaterial({
     uniforms: {
-      uLightDir: { value: new THREE.Vector3(0.6, 0.5, 0.6).normalize() },
+      uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() }, // top-right
     },
     vertexShader: `
       varying vec3 vNormal;
@@ -143,145 +118,122 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
         vec3 N = normalize(vNormal);
         vec3 L = normalize(uLightDir);
         float ndl = dot(N, L);
-        
-        // Gradient: amber (#D4864B) → dark umber (#3E2512) → near-black (#0D0705)
-        vec3 warmColor = vec3(0.83, 0.53, 0.29);
-        vec3 midColor = vec3(0.24, 0.14, 0.07);
-        vec3 darkColor = vec3(0.05, 0.03, 0.02);
-        
-        float lightAmount = smoothstep(-0.4, 0.9, ndl);
+
+        // EXACT colors from reference:
+        // Highlight: #E8A860
+        vec3 highlight = vec3(0.91, 0.66, 0.38);
+        // Mid-tone: #7B4B2E
+        vec3 midTone = vec3(0.48, 0.29, 0.18);
+        // Shadow: #2A1209
+        vec3 shadow = vec3(0.16, 0.07, 0.04);
+
+        float lightAmount = smoothstep(-0.3, 0.95, ndl);
         vec3 color;
         if (lightAmount < 0.5) {
-          color = mix(darkColor, midColor, lightAmount * 2.0);
+          color = mix(shadow, midTone, lightAmount * 2.0);
         } else {
-          color = mix(midColor, warmColor, (lightAmount - 0.5) * 2.0);
+          color = mix(midTone, highlight, (lightAmount - 0.5) * 2.0);
         }
-        
-        // Cyan rim glow (#4FC3F7) strongest on shadow side
+
+        // Warm golden glow on lit edge (#FFAA55) — sunrise effect
         vec3 viewDir = normalize(cameraPosition - vWorldPos);
         float rim = 1.0 - max(0.0, dot(N, viewDir));
-        rim = pow(rim, 3.0);
-        float shadowSide = 1.0 - smoothstep(0.0, 0.3, ndl);
-        vec3 rimColor = vec3(0.31, 0.76, 0.97) * rim * (0.4 + shadowSide * 0.6);
-        color += rimColor;
-        
+        rim = pow(rim, 2.0);
+        float litSide = smoothstep(0.0, 0.4, ndl);
+        vec3 warmGlow = vec3(1.0, 0.67, 0.33) * rim * litSide * 0.8; // #FFAA55
+        color += warmGlow;
+
+        // Faint blue glow on shadow edge (atmospheric)
+        float shadowSide = 1.0 - litSide;
+        vec3 blueGlow = vec3(0.2, 0.4, 0.8) * rim * shadowSide * 0.3;
+        color += blueGlow;
+
         gl_FragColor = vec4(color, 1.0);
       }
     `,
   });
-  const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
-  globeGroup.add(sphereMesh);
+  globeGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-  // === Dot texture (EXACT: 64x64, radial gradient, hard edge at 0.82) ===
+  // === 2. WHITE DOTS on land — ON surface, front-only ===
   const dotTexture = createDotTexture(THREE);
-
-  // === Edge dots (white, with KILL_BACK shader) ===
-  const edgePositions: number[] = [];
-  const radius = 1.0;
+  const dotRadius = 0.975;
+  const positions: number[] = [];
   for (const [lat, lng] of landPoints) {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
-    edgePositions.push(
-      -radius * Math.sin(phi) * Math.cos(theta),
-      radius * Math.cos(phi),
-      radius * Math.sin(phi) * Math.sin(theta),
+    positions.push(
+      -dotRadius * Math.sin(phi) * Math.cos(theta),
+      dotRadius * Math.cos(phi),
+      dotRadius * Math.sin(phi) * Math.sin(theta),
     );
   }
 
-  // PointsMaterial with onBeforeCompile (EXACT replica of reference shader)
-  const edgeMat = new THREE.PointsMaterial({
-    color: M.edgeColor,       // #ffffff
-    size: 0.015,              // larger than ref's 0.005 for visibility
+  const dotMat = new THREE.PointsMaterial({
+    size: 0.012,
     sizeAttenuation: true,
-    depthWrite: false,
-    depthTest: true,          // fill sphere at 0.99 blocks back dots at 1.0
-    transparent: true,
     map: dotTexture,
-    alphaTest: 0,
-    opacity: 1,
+    color: 0xFFFFFF,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false,
+    depthTest: true,  // opaque sphere blocks back dots
+    blending: THREE.AdditiveBlending,
   });
 
-  // Inject shader: KILL_BACK + point size attenuation (EXACT from reference)
-  (edgeMat as any).onBeforeCompile = (shader: any) => {
-    shader.uniforms.uCamPos = { value: new THREE.Vector3() };
-    shader.uniforms.uBackOpacity = { value: M.backOpacity };
-    shader.defines = shader.defines || {};
-    if (M.killBack) shader.defines.KILL_BACK = 1;
+  const dotGeo = new THREE.BufferGeometry();
+  dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  globeGroup.add(new THREE.Points(dotGeo, dotMat));
 
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed,1.0)).xyz;")
-      .replace("#include <project_vertex>", "#include <project_vertex>\nfloat ndv = dot(normalize(uCamPos - vWorldPos), normalize(vWorldPos));\ngl_PointSize *= mix(0.6, 1.0, smoothstep(0.0, 0.25, ndv));");
-
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;\nuniform float uBackOpacity;")
-      .replace("#include <output_fragment>", `{
-        vec3 viewDir = normalize(uCamPos - vWorldPos);
-        vec3 normalDir = normalize(vWorldPos);
-        float nd = dot(viewDir, normalDir);
-        #ifdef KILL_BACK
-          if (nd <= 0.0) discard;
-        #else
-          diffuseColor.a *= mix(uBackOpacity, 1.0, smoothstep(0.0, 0.25, nd));
-        #endif
-      }
-      #include <output_fragment>`);
-
-    (edgeMat as any).userData = { shader };
-  };
-
-  const edgeGeo = new THREE.BufferGeometry();
-  edgeGeo.setAttribute("position", new THREE.Float32BufferAttribute(edgePositions, 3));
-  globeGroup.add(new THREE.Points(edgeGeo, edgeMat));
-
-  // === Pin markers (EXACT: pinSize, pinDotColor, pinAltitude, haloScale) ===
+  // === 3. PIN MARKERS — 5 countries with labels (EXACT from reference) ===
   const pinCities = [
-    { lat: -23.55, lng: -46.63 }, { lat: 40.71, lng: -74.0 },
-    { lat: 51.5, lng: -0.13 }, { lat: 35.68, lng: 139.69 },
-    { lat: 1.35, lng: 103.82 }, { lat: -33.87, lng: 151.21 },
-    { lat: 25.2, lng: 55.27 }, { lat: 48.85, lng: 2.35 },
+    { lat: 23.63, lng: -102.55 }, // MÉXICO
+    { lat: 4.57, lng: -74.30 },   // COLÔMBIA
+    { lat: -14.24, lng: -51.93 }, // BRASIL
+    { lat: -38.42, lng: -63.62 }, // ARGENTINA
+    { lat: -35.68, lng: -71.54 }, // CHILE
   ];
 
-  const pinGeo = new THREE.SphereGeometry(M.pinSize, 8, 8);
-  const pinMat = new THREE.MeshBasicMaterial({ color: M.pinDotColor });
-  const haloGeo = new THREE.SphereGeometry(M.pinSize * M.haloScale, 8, 8);
-  const haloMat = new THREE.MeshBasicMaterial({
-    color: M.pinDotColor, transparent: true, opacity: 0.3,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  });
+  const pinGeo = new THREE.SphereGeometry(0.014, 8, 8);
+  const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF5722, depthTest: false, depthWrite: false });
+  const haloGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF5722, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
   pinCities.forEach((c) => {
-    const v = latLngToVec3(c.lat, c.lng, 1 + M.pinAltitude);
+    const v = latLngToVec3(c.lat, c.lng, 0.99);
     const pin = new THREE.Mesh(pinGeo, pinMat); pin.position.copy(v); globeGroup.add(pin);
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
   });
 
-  // === Flight arcs (EXACT: arcColor, arcAltBase, arcAltMultiplier) ===
+  // === 4. FLIGHT ARCS — deep orange (#D84315) ===
+  const arcPairs = [
+    [pinCities[0], pinCities[2]], // México → Brasil
+    [pinCities[3], pinCities[1]], // Argentina → Colômbia
+    [pinCities[4], pinCities[2]], // Chile → Brasil
+  ];
+
   const arcs: Array<{ line: THREE.Line; duration: number; delay: number }> = [];
-  for (let i = 0; i < 12; i++) {
-    const p1 = pinCities[i % pinCities.length];
-    const p2 = pinCities[(i + 3) % pinCities.length];
-    const start = latLngToVec3(p1.lat, p1.lng, 1 + M.pinAltitude);
-    const end = latLngToVec3(p2.lat, p2.lng, 1 + M.pinAltitude);
-    const arcPoints = buildArcCurve(THREE, start, end, 50, M.arcAltBase, M.arcAltMultiplier);
+  for (const [p1, p2] of arcPairs) {
+    const start = latLngToVec3(p1.lat, p1.lng, 0.99);
+    const end = latLngToVec3(p2.lat, p2.lng, 0.99);
+    const arcPoints = buildArcCurve(start, end, 50);
     const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const mat = new THREE.LineBasicMaterial({
-      color: M.arcColor, transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false,
+      color: 0xD84315, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
     });
     const line = new THREE.Line(geo, mat);
     globeGroup.add(line);
-    arcs.push({ line, duration: 2 + Math.random() * 2, delay: Math.random() * 5 });
+    arcs.push({ line, duration: 3, delay: 0 });
   }
 
-  // === Resize (EXACT: setSize with false = don't update style) ===
+  // === Resize ===
   const resize = () => {
-    const w = canvas.clientWidth || canvas.offsetWidth || 800;
-    const h = canvas.clientHeight || canvas.offsetHeight || w;
+    const r = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(r.width)), h = Math.max(1, Math.floor(r.height));
     if (w < 2 || h < 2) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    renderer.setSize(w, h, true);
+    canvas.style.width = "100%"; canvas.style.height = "100%"; canvas.style.display = "block";
+    camera.aspect = w / h; camera.updateProjectionMatrix();
   };
   requestAnimationFrame(() => { resize(); setTimeout(resize, 100); setTimeout(resize, 500); });
   const ro = new ResizeObserver(() => requestAnimationFrame(resize));
@@ -294,21 +246,14 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
     if (!isVisibleRef.current) return;
     const dt = Math.min(0.05, (now - lastTime) / 1000);
     lastTime = now;
-
     const sp = scrollProgressRef.current;
-    globeGroup.rotation.y += dt * 0.06 * speed * (1 + sp * 2);
-    globeGroup.rotation.x = 0.15 + sp * -0.8;
-
-    // Update camera position uniform for shader
-    const shader = (edgeMat as any).userData?.shader;
-    if (shader) {
-      shader.uniforms.uCamPos.value.copy(camera.position);
-    }
+    globeGroup.rotation.y += dt * 0.05 * speed * (1 + sp * 2);
+    globeGroup.rotation.x = -0.2 + sp * -0.6;
 
     const t = now / 1000;
     arcs.forEach((arc) => {
       const cycle = (t + arc.delay) % (arc.duration * 2);
-      arc.line.material.opacity = cycle < arc.duration ? Math.sin((cycle / arc.duration) * Math.PI) : 0;
+      arc.line.material.opacity = cycle < arc.duration ? 0.4 + Math.sin((cycle / arc.duration) * Math.PI) * 0.4 : 0.2;
     });
 
     renderer.render(scene, camera);
@@ -317,7 +262,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
 
   return () => {
     cancelAnimationFrame(rafRef.current); ro.disconnect();
-    edgeGeo.dispose(); edgeMat.dispose(); dotTexture.dispose();
+    dotGeo.dispose(); dotMat.dispose(); dotTexture.dispose();
     sphereGeo.dispose(); sphereMat.dispose();
     arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as THREE.Material).dispose(); });
     pinGeo.dispose(); pinMat.dispose(); haloGeo.dispose(); haloMat.dispose();
@@ -325,40 +270,31 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, o: 
   };
 }
 
-// === EXACT dot texture from reference (64x64, radial gradient, hard edge at 0.82) ===
 function createDotTexture(THREE: typeof import("three")): THREE.Texture {
-  const t = 64;
-  const c = document.createElement("canvas"); c.width = c.height = t;
+  const s = 32;
+  const c = document.createElement("canvas"); c.width = s; c.height = s;
   const ctx = c.getContext("2d")!;
-  ctx.clearRect(0, 0, t, t);
-  const a = t / 2;
-  const g = ctx.createRadialGradient(a, a, 0.82 * a, a, a, a);
+  const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
   g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.4, "rgba(255,255,255,0.8)");
   g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(a, a, a - 0.5, 0, 2 * Math.PI); ctx.closePath(); ctx.fill();
-  const tex = new THREE.Texture(c);
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
-  tex.needsUpdate = true;
-  return tex;
+  ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+  const t = new THREE.Texture(c); t.needsUpdate = true; return t;
 }
 
-// === EXACT latLngToVec3 from reference ===
 function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
   const T = (window as any).THREE;
-  const a = (90 - lat) * (Math.PI / 180);
-  const o = (lng + 180) * (Math.PI / 180);
-  return new T.Vector3(-r * Math.sin(a) * Math.cos(o), r * Math.cos(a), r * Math.sin(a) * Math.sin(o));
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lng + 180) * (Math.PI / 180);
+  return new T.Vector3(-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
 }
 
-// === Arc curve builder ===
-function buildArcCurve(THREE: typeof import("three"), start: any, end: any, segments: number, altBase: number, altMult: number): any[] {
+function buildArcCurve(start: any, end: any, segments: number): any[] {
   const T = (window as any).THREE;
   const points: any[] = [];
   const angle = start.angleTo(end);
   const mid = start.clone().add(end).multiplyScalar(0.5);
-  const elevation = 1 + altBase + Math.sin(angle / 2) * (altBase + altMult);
+  const elevation = 1 + 0.08 + Math.sin(angle / 2) * 0.2;
   mid.normalize().multiplyScalar(elevation);
   const curve = new T.QuadraticBezierCurve3(start, mid, end);
   for (let i = 0; i <= segments; i++) points.push(curve.getPoint(i / segments));
