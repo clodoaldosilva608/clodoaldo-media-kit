@@ -14,11 +14,11 @@ function TikTokIcon({ size = 16 }: { size?: number }) {
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-background/80 backdrop-blur mt-12">
-      <div className="mx-auto max-w-7xl px-5 sm:px-8 py-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="border-t border-border bg-background/80 backdrop-blur mt-8 sm:mt-12">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 py-10 sm:py-12 grid gap-8 sm:gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-3">
-            <Logo className="h-10 w-10 object-contain" loading="lazy" />
+            <Logo className="h-9 w-9 sm:h-10 sm:w-10 object-contain" loading="lazy" />
             <div>
               <div className="font-display text-sm">
                 Clodoaldo <span className="text-primary">Silva</span>

@@ -19,7 +19,7 @@ const ITEMS = [
 export function Pricing() {
   const ref = useReveal<HTMLDivElement>();
   return (
-    <section id="valores" className="py-20 sm:py-28 bg-card/30">
+    <section id="valores" className="py-16 sm:py-20 md:py-28 bg-card/30">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="08"
@@ -58,7 +58,7 @@ export function Pricing() {
                 </div>
                 <div className="text-left sm:text-right shrink-0">
                   <div className="text-xs text-muted-foreground">A partir de</div>
-                  <div className="font-display font-medium text-2xl sm:text-3xl text-gradient-orange whitespace-nowrap">
+                  <div className="font-display font-medium text-xl sm:text-2xl md:text-3xl text-gradient-orange break-words">
                     {item.price}
                   </div>
                 </div>
@@ -67,23 +67,23 @@ export function Pricing() {
           </ul>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-border bg-card/60 p-6 shadow-card">
+        <div className="mt-8 grid gap-3 sm:gap-4 md:grid-cols-2">
+          <div className="rounded-3xl border border-border bg-card/60 p-5 sm:p-6 shadow-card">
             <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
               Biblioteca Digital
             </div>
-            <h3 className="mt-2 font-display text-2xl font-black">
+            <h3 className="mt-2 font-display text-xl sm:text-2xl font-black">
               E-books gratuitos e tripwires
             </h3>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
               Materiais de entrada para capturar leads, gerar confiança e criar novas portas de monetização.
             </p>
           </div>
-          <div className="rounded-3xl border border-primary/30 bg-primary/5 p-6 shadow-card">
+          <div className="rounded-3xl border border-primary/30 bg-primary/5 p-5 sm:p-6 shadow-card">
             <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
               Bônus automáticos
             </div>
-            <h3 className="mt-2 font-display text-2xl font-black">
+            <h3 className="mt-2 font-display text-xl sm:text-2xl font-black">
               Mais valor sem aumentar fricção
             </h3>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
@@ -92,17 +92,17 @@ export function Pricing() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-6 sm:mt-8 flex flex-wrap gap-2 sm:gap-3">
           <Link
             href="/#servicos"
-            className="group inline-flex items-center gap-2 rounded-full bg-gradient-orange px-7 py-3.5 min-h-11 text-sm sm:text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition"
+            className="group inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 sm:px-7 py-3 sm:py-3.5 min-h-11 text-xs sm:text-sm md:text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition"
           >
             Contratar Agora
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link
             href="/biblioteca"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-7 py-3.5 min-h-11 text-sm sm:text-base font-semibold hover:bg-card transition"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/40 px-5 sm:px-7 py-3 sm:py-3.5 min-h-11 text-xs sm:text-sm md:text-base font-semibold hover:bg-card transition"
           >
             Ver E-books
           </Link>

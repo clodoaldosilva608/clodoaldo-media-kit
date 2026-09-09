@@ -470,3 +470,113 @@
     transform: none !important;
   }
 }
+
+/* ============================================================
+   MOBILE OPTIMIZATIONS — Clodoaldo Silva landing page
+   ============================================================ */
+
+/* Touch-friendly tap targets (Apple/Google: min 44x44px) */
+@media (max-width: 767px) {
+  /* Only buttons + ARIA buttons + elements explicitly marked interactive get bigger tap area */
+  button:not(:disabled),
+  a[role="button"],
+  .btn-micro,
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Make sure form inputs are tappable on iOS (no zoom below 16px) */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="search"],
+  input[type="url"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Hero: reduce sticky height + scale down globe so it doesn't overlap text */
+  .hero-sticky {
+    height: 100vh !important;
+    padding-top: 80px;
+    padding-bottom: 24px;
+    align-items: flex-start !important;
+  }
+
+  /* Hide scroll indicator on mobile (it conflicts with content) */
+  .scroll-indicator {
+    display: none !important;
+  }
+
+  /* Larger tap area for mobile nav */
+  .mobile-nav-link {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Prevent horizontal overflow from large titles / numbers */
+  .text-gradient-orange,
+  .font-display {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  /* Stack fixed bottom-right buttons (WhatsApp + Share) to avoid overlap */
+  .floating-action-stack {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  /* Avoid content being hidden behind fixed WhatsApp/Share buttons */
+  main {
+    padding-bottom: 96px;
+  }
+}
+
+/* Hide scrollbar for carousels but keep functional */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Better focus-visible on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  :focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+}
+
+/* Landscape phone: reduce vertical padding for content density */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .hero-sticky {
+    height: 100vh !important;
+    padding-top: 64px;
+    padding-bottom: 12px;
+  }
+}
+
+/* Long-press / callout suppression on mobile for non-interactive elements */
+img,
+.no-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Safe-area insets for iPhone notch / bottom bar */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .floating-action-stack {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-menu-panel {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+}

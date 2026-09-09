@@ -13,7 +13,7 @@ const INTERESTS = [
 
 export function Audience() {
   return (
-    <section id="audiencia" className="py-20 sm:py-28 bg-card/30">
+    <section id="audiencia" className="py-16 sm:py-20 md:py-28 bg-card/30">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="02"
@@ -22,7 +22,7 @@ export function Audience() {
           subtitle="Um público qualificado, em fase de decisão de carreira e investimentos, com alto poder de consumo e influência."
         />
 
-        <div className="mt-14 grid lg:grid-cols-2 gap-5">
+        <div className="mt-10 sm:mt-14 grid lg:grid-cols-2 gap-4 sm:gap-5">
           <Card title="Gênero">
             <BarRow label="Masculino" value={65} />
             <BarRow label="Feminino" value={35} />
@@ -37,11 +37,11 @@ export function Audience() {
 
           <div className="lg:col-span-2">
             <Card title="Interesses Principais">
-              <div className="flex flex-wrap gap-3 pt-2">
+              <div className="flex flex-wrap gap-2 sm:gap-3 pt-2">
                 {INTERESTS.map((i) => (
                   <span
                     key={i.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background/50 px-4 py-2 text-sm font-medium"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background/50 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium"
                   >
                     <i.icon size={15} className="text-primary" />
                     {i.label}
@@ -67,10 +67,10 @@ function Card({
   return (
     <div
       ref={ref}
-      className="reveal rounded-2xl border border-border bg-card/70 backdrop-blur p-6 sm:p-7 shadow-card"
+      className="reveal rounded-2xl border border-border bg-card/70 backdrop-blur p-5 sm:p-6 md:p-7 shadow-card"
     >
-      <h3 className="font-display font-medium text-lg">{title}</h3>
-      <div className="mt-5 space-y-4">{children}</div>
+      <h3 className="font-display font-medium text-base sm:text-lg">{title}</h3>
+      <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">{children}</div>
     </div>
   );
 }

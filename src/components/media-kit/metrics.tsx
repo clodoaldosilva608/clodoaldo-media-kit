@@ -16,7 +16,7 @@ const METRICS = [
 
 export function Metrics() {
   return (
-    <section id="metricas" className="py-20 sm:py-28">
+    <section id="metricas" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="01"
@@ -25,7 +25,7 @@ export function Metrics() {
           subtitle="Impacto, escala e consistência — os indicadores que reduzem objeção antes da primeira reunião."
         />
 
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-12">
+        <div className="mt-10 sm:mt-16 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 sm:gap-x-10 gap-y-8 sm:gap-y-12">
           {METRICS.map((m, i) => (
             <MetricCard key={m.label} metric={m} delay={i * 80} />
           ))}
@@ -49,19 +49,19 @@ function MetricCard({
     <div
       ref={ref}
       style={{ animationDelay: `${delay}ms` }}
-      className="reveal group relative border-t border-border pt-6 pb-2 transition-colors duration-500 hover:border-primary/60"
+      className="reveal group relative border-t border-border pt-4 sm:pt-6 pb-2 transition-colors duration-500 hover:border-primary/60"
     >
-      <div className="flex items-start justify-between gap-3">
-        <Icon size={16} className="text-primary/80" />
-        <span className="inline-flex items-center gap-1 text-[0.6875rem] font-medium tracking-wide text-primary">
-          <TrendingUp size={11} />
-          {metric.growth}
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <Icon size={16} className="text-primary/80 shrink-0" />
+        <span className="inline-flex items-center gap-1 text-[0.625rem] sm:text-[0.6875rem] font-medium tracking-wide text-primary text-right">
+          <TrendingUp size={11} className="shrink-0" />
+          <span className="leading-tight">{metric.growth}</span>
         </span>
       </div>
-      <div className="mt-8 font-display font-medium text-4xl sm:text-5xl tracking-[-0.03em] tabular-nums">
+      <div className="mt-4 sm:mt-8 font-display font-medium text-3xl sm:text-5xl tracking-[-0.03em] tabular-nums">
         <CountUp end={metric.endValue} decimals={metric.decimals || 0} suffix={metric.suffix || ""} duration={2200} />
       </div>
-      <div className="mt-2 text-sm text-muted-foreground">{metric.label}</div>
+      <div className="mt-2 text-xs sm:text-sm text-muted-foreground leading-tight">{metric.label}</div>
     </div>
   );
 }
@@ -87,7 +87,7 @@ export function SectionHeader({
         <span className="eyebrow">{eyebrow}</span>
         <span className="hairline flex-1" />
       </div>
-      <h2 className="mt-6 font-display font-medium text-3xl sm:text-4xl lg:text-[3.25rem] leading-[1.05] tracking-[-0.03em]">
+      <h2 className="mt-4 sm:mt-6 font-display font-medium text-2xl sm:text-4xl lg:text-[3.25rem] leading-[1.1] sm:leading-[1.05] tracking-[-0.03em]">
         {title}
       </h2>
       {subtitle && (

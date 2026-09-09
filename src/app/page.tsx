@@ -25,17 +25,17 @@ export default function Home() {
       <main id="main-content">
         <Hero />
         {/* Foto do Clodoaldo — logo abaixo da seção do globo */}
-        <section className="relative py-16 sm:py-24 bg-background">
+        <section className="relative py-12 sm:py-16 md:py-24 bg-background">
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
-            <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
               <div className="order-2 lg:order-1">
                 <div className="text-xs font-bold uppercase tracking-[0.2em] text-primary">
                   Quem sou eu
                 </div>
-                <h2 className="mt-3 font-display font-medium text-2xl sm:text-4xl leading-tight">
+                <h2 className="mt-3 font-display font-medium text-2xl sm:text-3xl md:text-4xl leading-tight">
                   Clodoaldo Silva
                 </h2>
-                <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed">
+                <p className="mt-4 text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed">
                   Criador, desenvolvedor e estrategista digital. Há quase uma década
                   transforma ideias em produtos reais — apps, ferramentas, conteúdos
                   e soluções sob medida para quem quer sair do lugar.
@@ -45,16 +45,16 @@ export default function Home() {
                   respeito pela pessoa do outro. Cada projeto é pensado pra resolver
                   uma dor específica — não pra encaixar em um template genérico.
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                   <a
                     href="/sobre"
-                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-5 py-2.5 text-sm font-semibold text-primary hover:bg-primary/20 transition"
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 sm:px-5 py-2 sm:py-2.5 min-h-11 text-xs sm:text-sm font-semibold text-primary hover:bg-primary/20 transition"
                   >
                     Conhecer minha história
                   </a>
                   <a
                     href="/quiz"
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground hover:border-primary/50 transition"
+                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 sm:px-5 py-2 sm:py-2.5 min-h-11 text-xs sm:text-sm font-semibold text-foreground hover:border-primary/50 transition"
                   >
                     Fazer o quiz de recomendação
                   </a>
@@ -101,10 +101,10 @@ export default function Home() {
         <YouTubeSection />
         <Pricing />
         {/* Prova social — depoimentos de clientes */}
-        <section className="mx-auto max-w-5xl px-5 sm:px-8 py-16 sm:py-24" id="depoimentos">
-          <div className="text-center mb-10">
+        <section className="mx-auto max-w-5xl px-5 sm:px-8 py-12 sm:py-16 md:py-24" id="depoimentos">
+          <div className="text-center mb-8 sm:mb-10">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">Provas sociais</div>
-            <h2 className="mt-2 font-display font-medium text-3xl sm:text-4xl">
+            <h2 className="mt-2 font-display font-medium text-2xl sm:text-3xl md:text-4xl leading-tight">
               Como quem trabalhou comigo se sentiu
             </h2>
             <p className="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">
@@ -113,7 +113,7 @@ export default function Home() {
           </div>
           <SocialProofCarousel />
           {/* Carrossel adicional do banco (testimonials cadastrados via admin) */}
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             <TestimonialCarousel limit={6} />
           </div>
         </section>

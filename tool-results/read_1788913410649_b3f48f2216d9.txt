@@ -1,0 +1,519 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { AdminShell } from "@/components/admin/admin-shell";
+     5→import { Widget, Badge, EmptyState, Button, Input, Label, Select, Textarea } from "@/components/admin/ui";
+     6→import {
+     7→  Search, MapPin, Phone, Globe, Star, Plus, Save, Trash2, X, Loader2,
+     8→  AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
+     9→  MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
+    10→  Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
+    11→} from "lucide-react";
+    12→import {
+    13→  getRelevantObjections,
+    14→  getUrgencyHooks,
+    15→  formatObjectionForDisplay,
+    16→} from "@/lib/objections";
+    17→import { generatePreviewHTML } from "@/lib/preview-generator";
+    18→
+    19→interface Lead {
+    20→  place_id?: string; id?: string; name: string; phone?: string | null;
+    21→  whatsapp?: string | null; email?: string | null; formatted_address?: string;
+    22→  city?: string; lat?: number; lng?: number; category?: string; niche?: string;
+    23→  website?: string | null; instagram?: string | null; facebook?: string | null;
+    24→  rating?: number | null; user_ratings_total?: number; source?: string;
+    25→  hasWebsite?: boolean; hasEmail?: boolean; hasWhatsApp?: boolean;
+    26→  hasSocialMedia?: boolean; webDevOpportunity?: boolean; openingHours?: string | null;
+    27→  status?: string; priority?: string; notes?: string | null; created_at?: string;
+    28→}
+    29→
+    30→const NICHES = ["restaurante","barbearia","academia","salao de beleza","clinica estetica","escritorio de advocacia","consultorio odontologico","loja de roupas","papelaria","farmacia","pet shop","estetica automotiva","pizzaria","hamburgueria","cafeteria","loja de conveniencia","imobiliaria","contabilidade","agencia de marketing","estudio de pilates"];
+    31→
+    32→const KANBAN = [
+    33→  { key: "new", label: "Novo", color: "blue" },
+    34→  { key: "contacted", label: "Contatado", color: "amber" },
+    35→  { key: "qualified", label: "Qualificado", color: "violet" },
+    36→  { key: "won", label: "Ganho", color: "emerald" },
+    37→  { key: "lost", label: "Perdido", color: "rose" },
+    38→];
+    39→
+    40→export default function AdminParceirosPage() {
+    41→  const [view, setView] = useState<"search"|"kanban"|"salvos"|"envios"|"respostas"|"report">("search");
+    42→  const [niche, setNiche] = useState("restaurante");
+    43→  const [location, setLocation] = useState("Recife, PE");
+    44→  const [radius, setRadius] = useState(5000);
+    45→  const [searching, setSearching] = useState(false);
+    46→  const [results, setResults] = useState<Lead[]>([]);
+    47→  const [searchError, setSearchError] = useState<string|null>(null);
+    48→  const [searchMeta, setSearchMeta] = useState<any>(null);
+    49→  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+    50→  const [expandedLead, setExpandedLead] = useState<string|null>(null);
+    51→  const [copiedText, setCopiedText] = useState<string|null>(null);
+    52→  const [autoSaving, setAutoSaving] = useState(false);
+    53→  const [prospects, setProspects] = useState<Lead[]>([]);
+    54→  const [loadingProspects, setLoadingProspects] = useState(true);
+    55→  const [draggingId, setDraggingId] = useState<string|null>(null);
+    56→  const [dragOverCol, setDragOverCol] = useState<string|null>(null);
+    57→
+    58→  const loadProspects = useCallback(async () => {
+    59→    setLoadingProspects(true);
+    60→    try {
+    61→      const resp = await fetch("/api/admin/prospects?limit=500", { cache: "no-store" });
+    62→      const json = await resp.json();
+    63→      setProspects(json.data || []);
+    64→      const ids = new Set<string>();
+    65→      (json.data||[]).forEach((p:Lead) => { if(p.place_id) ids.add(p.place_id); });
+    66→      setSavedIds(ids);
+    67→    } catch { setProspects([]); }
+    68→    setLoadingProspects(false);
+    69→  }, []);
+    70→
+    71→  useEffect(() => { loadProspects(); }, [loadProspects]);
+    72→
+    73→  async function handleSearch() {
+    74→    setSearching(true); setSearchError(null); setResults([]); setSearchMeta(null);
+    75→    try {
+    76→      const resp = await fetch("/api/admin/prospect/search", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({niche,location,radius,limit:20}) });
+    77→      const json = await resp.json();
+    78→      if (!resp.ok) { setSearchError(json.error||"Erro"); return; }
+    79→      setResults(json.results||[]); setSearchMeta(json.search_meta);
+    80→      setAutoSaving(true);
+    81→      for (const lead of (json.results||[])) {
+    82→        if (lead.place_id && !savedIds.has(lead.place_id)) {
+    83→          try { await fetch("/api/admin/prospects", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...lead, status:"new", priority: lead.webDevOpportunity?"high":"medium"}) }); } catch {}
+    84→        }
+    85→      }
+    86→      setAutoSaving(false); await loadProspects();
+    87→    } catch(e:any) { setSearchError(e.message); }
+    88→    finally { setSearching(false); }
+    89→  }
+    90→
+    91→  async function updateStatus(id:string, status:string) {
+    92→    setProspects(prev => prev.map(p => p.id===id?{...p,status}:p));
+    93→    try { await fetch("/api/admin/prospects", { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id,status}) }); } catch { loadProspects(); }
+    94→  }
+    95→
+    96→  async function deleteProspect(id:string) {
+    97→    if(!confirm("Remover?")) return;
+    98→    setProspects(prev => prev.filter(p => p.id!==id));
+    99→    try { await fetch("/api/admin/prospects", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id}) }); } catch {}
+   100→  }
+   101→
+   102→  function copyToClipboard(text:string, id:string) { navigator.clipboard.writeText(text); setCopiedText(id); setTimeout(()=>setCopiedText(null),2000); }
+   103→
+   104→  function genWA(lead:Lead):string {
+   105→    const hasSite = lead.hasWebsite;
+   106→    const niche = lead.niche || lead.category || "estabelecimento";
+   107→    const hooks = getUrgencyHooks({
+   108→      name: lead.name,
+   109→      niche,
+   110→      hasWebsite: hasSite,
+   111→      rating: lead.rating ?? null,
+   112→    });
+   113→    return `Olá! Tudo bem?
+   114→
+   115→Meu nome é Clodoaldo Silva, sou especialista em marketing digital local.
+   116→
+   117→Encontrei o ${lead.name} no Google Maps e fiquei impressionado com a avaliação de ${lead.rating||"5"} estrelas — parabéns!
+   118→
+   119→Notei que ${hasSite?"seu site poderia ter performance muito melhor":"vocês ainda não têm um site profissional"}, e isso pode estar custando clientes todos os meses. Deixa eu te explicar:
+   120→
+   121→${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+   122→
+   123→Posso ajudar com:
+   124→✅ ${hasSite?"Redesign do site":"Criação de site profissional"} que converte visita em cliente
+   125→✅ SEO local — aparecer em primeiro nas buscas da cidade
+   126→✅ Integração com WhatsApp — cliente pede com 1 clique
+   127→✅ Google Meu Negócio otimizado — aparecer no Maps
+   128→
+   129→Cada mês sem isso = 30-50 clientes novos indo pro concorrente.
+   130→
+   131→Se tiver interesse em saber mais, é só me chamar no WhatsApp — respondo rápido:
+   132→📱 (81) 92005-1068
+   133→
+   134→— Clodoaldo Silva
+   135→🌐 clodoaldo.vercel.app`;
+   136→  }
+   137→
+   138→  function genEmail(lead:Lead):string {
+   139→    const hasSite = lead.hasWebsite;
+   140→    const niche = lead.niche || lead.category || "estabelecimento";
+   141→    const hooks = getUrgencyHooks({
+   142→      name: lead.name,
+   143→      niche,
+   144→      hasWebsite: hasSite,
+   145→      rating: lead.rating ?? null,
+   146→    });
+   147→    return `Assunto: ${lead.name} — como atrair mais clientes (e não perder para o concorrente)
+   148→
+   149→Olá, equipe ${lead.name}!
+   150→
+   151→Meu nome é Clodoaldo Silva. Encontrei vocês no Google Maps (${lead.rating||"5"} estrelas — parabéns!).
+   152→
+   153→Notei que ${hasSite?"seu site poderia ter melhor desempenho":"vocês não têm site profissional"}. Isso pode estar custando clientes todos os meses:
+   154→
+   155→${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+   156→
+   157→O que posso fazer por vocês:
+   158→1. ${hasSite?"Redesign":"Criação de site"} — rápido, responsivo, que converte
+   159→2. SEO local — aparecer nas buscas da cidade
+   160→3. Integração com WhatsApp
+   161→4. Google Meu Negócio otimizado
+   162→
+   163→Cada mês que passa sem isso = 30-50 clientes novos indo para o concorrente direto.
+   164→
+   165→Se tiver interesse em saber mais, é só me chamar no WhatsApp:
+   166→📱 (81) 92005-1068
+   167→
+   168→Clodoaldo Silva
+   169→🌐 clodoaldo.vercel.app`;
+   170→  }
+   171→
+   172→  function genPrompt(lead:Lead):string {
+   173→    const wa = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+   174→    const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||lead.city||location))}`;
+   175→    return `CRIE UMA LANDING PAGE RESPONSIVA para:\n\nNome: ${lead.name}\nTipo: ${lead.niche||lead.category||"estabelecimento"}\nEndereco: ${lead.formatted_address||"N/A"}\nCidade: ${lead.city||location}\nTelefone: ${lead.phone||"N/A"}\nWhatsApp: ${wa||"N/A"}\nAvaliacao: ${lead.rating?lead.rating+" estrelas":"N/A"}\n\nESTRUTURA:\n1. Hero (nome, subtitulo, avaliacao, botoes WhatsApp + Como Chegar)\n2. Sobre Nos\n3. Servicos (sem precos)\n4. Galeria (6 imagens)\n5. Mapa Google Maps + botao "Como Chegar" → ${maps}\n6. CTA final (WhatsApp + Telefone + Como Chegar)\n7. Footer ("Site criado por Clodoaldo Silva")\n\nREQUISITOS: 100% responsivo, SEO, sem precos, Google Maps embed: https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16&output=embed`;
+   176→  }
+   177→
+   178→  function genPreview(lead:Lead):string {
+   179→    return generatePreviewHTML({
+   180→      name: lead.name,
+   181→      niche: lead.niche,
+   182→      category: lead.category,
+   183→      formatted_address: lead.formatted_address,
+   184→      city: lead.city,
+   185→      phone: lead.phone,
+   186→      whatsapp: lead.whatsapp,
+   187→      website: lead.website,
+   188→      instagram: lead.instagram,
+   189→      facebook: lead.facebook,
+   190→      rating: lead.rating ?? null,
+   191→      user_ratings_total: lead.user_ratings_total ?? null,
+   192→      lat: lead.lat,
+   193→      lng: lead.lng,
+   194→    });
+   195→  }
+   196→
+   197→  function openPreview(lead:Lead) {
+   198→    const blob = new Blob([genPreview(lead)], {type:"text/html"});
+   199→    window.open(URL.createObjectURL(blob), "_blank");
+   200→  }
+   201→
+   202→  function getPreviewLink(lead:Lead):string {
+   203→    const id = lead.id || lead.place_id || "";
+   204→    return `https://clodoaldo.vercel.app/api/preview?lead=${id}`;
+   205→  }
+   206→
+   207→  function copyPreviewLink(lead:Lead) {
+   208→    const link = getPreviewLink(lead);
+   209→    navigator.clipboard.writeText(link);
+   210→    setCopiedText(`link-${lead.id || lead.place_id}`);
+   211→    setTimeout(() => setCopiedText(null), 3000);
+   212→  }
+   213→
+   214→  function openPreviewLink(lead:Lead) {
+   215→    window.open(getPreviewLink(lead), "_blank");
+   216→  }
+   217→
+   218→  const total = prospects.length;
+   219→  const opps = prospects.filter(p=>p.webDevOpportunity).length;
+   220→  const mapSrc = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${searchMeta?.lat||-8.0476},${searchMeta?.lng||-34.8770}&zoom=13`;
+   221→
+   222→  return (
+   223→    <AdminShell title="Parceiros — Prospeccao via Google Maps">
+   224→      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+   225→        <SB label="Total" value={total} icon={Users} c="emerald" />
+   226→        {KANBAN.map(k => <SB key={k.key} label={k.label} value={prospects.filter(p=>p.status===k.key).length} icon={Building2} c={k.color as any} />)}
+   227→        <SB label="Oportunidades" value={opps} icon={Zap} c="amber" />
+   228→      </div>
+   229→
+   230→      <div className="mb-4 flex flex-wrap gap-0.5 rounded-full border border-white/5 bg-white/[0.03] p-0.5 inline-flex">
+   231→        {[["search","Buscar",Search],["kanban","Pipeline ("+total+")",Layout],["salvos","Leads Salvos ("+total+")",CheckCircle2]].map(([k,l,I]:any) => (
+   232→          <button key={k} onClick={()=>setView(k)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view===k?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><I className="h-4 w-4" /> {l}</button>
+   233→        ))}
+   234→        <button onClick={()=>setView("envios")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="envios"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><MessageCircle className="h-4 w-4" /> Envios</button>
+   235→        <button onClick={()=>setView("respostas")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="respostas"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><Mail className="h-4 w-4" /> Respostas</button>
+   236→        <button onClick={()=>setView("report")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="report"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><RefreshCw className="h-4 w-4" /> Relatorio</button>
+   237→      </div>
+   238→
+   239→      {view==="search" && (
+   240→        <Widget title="Prospeccao de clientes via Google Maps" icon={<MapPin className="h-4 w-4 text-emerald-400" />}>
+   241→          <div className="mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+   242→            <div><Label>Nicho</Label><Select value={niche} onChange={e=>setNiche(e.target.value)}>{NICHES.map(n=><option key={n} value={n}>{n}</option>)}</Select></div>
+   243→            <div><Label>Cidade</Label><Input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Ex: Recife, PE" /></div>
+   244→            <div><Label>Raio</Label><Select value={String(radius)} onChange={e=>setRadius(Number(e.target.value))}><option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></Select></div>
+   245→            <div className="flex items-end"><Button variant="primary" onClick={handleSearch} disabled={searching} className="w-full">{searching?<Loader2 className="h-4 w-4 animate-spin" />:<Search className="h-4 w-4" />}{searching?"Buscando…":"Buscar"}</Button></div>
+   246→          </div>
+   247→          {autoSaving && <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"><Loader2 className="h-3 w-3 animate-spin" /> Salvando leads automaticamente…</div>}
+   248→          {searchError && <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300"><AlertCircle className="h-5 w-5 shrink-0 mt-0.5" /><span>{searchError}</span></div>}
+   249→          {searchMeta && <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-3 text-xs text-emerald-200"><strong>{searchMeta.total} estabelecimentos</strong> • fonte: {searchMeta.source} • {autoSaving?"salvando…":"✅ salvos no pipeline"}</div>}
+   250→          {results.length>0 && (
+   251→            <div className="grid gap-4 lg:grid-cols-[1fr_350px]">
+   252→              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+   253→                {results.map(lead => {
+   254→                  const exp = expandedLead===lead.place_id;
+   255→                  const wa = genWA(lead); const em = genEmail(lead); const pr = genPrompt(lead);
+   256→                  const num = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+   257→                  return (
+   258→                    <div key={lead.place_id} className={`rounded-xl border p-4 ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"}`}>
+   259→                      <div className="flex items-start justify-between gap-3">
+   260→                        <div className="min-w-0 flex-1 cursor-pointer" onClick={()=>setExpandedLead(exp?null:lead.place_id||null)}>
+   261→                          <div className="flex items-center gap-2 flex-wrap"><h4 className="text-sm font-bold text-white">{lead.name}</h4>{lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}</div>
+   262→                          <p className="mt-0.5 text-[11px] text-zinc-500 capitalize">{lead.category}</p>
+   263→                          <div className="mt-1 flex items-start gap-1 text-xs text-zinc-400"><MapPin className="h-3 w-3 shrink-0 mt-0.5" /><span className="truncate">{lead.formatted_address}</span></div>
+   264→                        </div>
+   265→                        {savedIds.has(lead.place_id!)&&<Badge variant="success"><CheckCircle2 className="h-3 w-3" /> Salvo</Badge>}
+   266→                      </div>
+   267→                      <div className="mt-3 flex flex-wrap gap-1.5">
+   268→                        {lead.hasWebsite?<Badge variant="info"><Globe className="h-3 w-3" /> Tem site</Badge>:<Badge variant="warning"><AlertTriangle className="h-3 w-3" /> Sem site</Badge>}
+   269→                        {lead.hasWhatsApp&&<Badge variant="success"><MessageCircle className="h-3 w-3" /> WhatsApp</Badge>}
+   270→                        {lead.webDevOpportunity&&<Badge variant="danger"><Zap className="h-3 w-3" /> Oportunidade</Badge>}
+   271→                      </div>
+   272→                      <div className="mt-3 flex flex-wrap gap-2">
+   273→                        {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
+   274→                        {lead.website&&<a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/25"><ExternalLink className="h-3.5 w-3.5" /> Site</a>}
+   275→                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||""))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"><MapPin className="h-3.5 w-3.5" /> Maps</a>
+   276→                        <button onClick={()=>setExpandedLead(exp?null:lead.place_id||null)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><Copy className="h-3.5 w-3.5" /> Copy + CTA</button>
+   277→                      </div>
+   278→                      {exp&&(
+   279→                        <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+   280→                          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</span><button onClick={()=>copyToClipboard(wa,`wa-${lead.place_id}`)} className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30">{copiedText===`wa-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{wa}</pre></div>
+   281→                          <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-blue-300"><Mail className="h-3.5 w-3.5" /> Email</span><button onClick={()=>copyToClipboard(em,`em-${lead.place_id}`)} className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30">{copiedText===`em-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{em}</pre></div>
+   282→                          <button onClick={()=>openPreview(lead)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.02] transition"><Eye className="h-4 w-4" /> Ver Preview do Site</button>
+   283→                          <div className="flex gap-2">
+   284→                            <button onClick={()=>copyPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition" title="Copiar link compartilhável">
+   285→                              {copiedText===`link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+   286→                              {copiedText===`link-${lead.id || lead.place_id}` ? "Link copiado!" : "Copiar link"}
+   287→                            </button>
+   288→                            <button onClick={()=>openPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 transition" title="Abrir link compartilhável">
+   289→                              <Share2 className="h-3.5 w-3.5" /> Abrir link
+   290→                            </button>
+   291→                          </div>
+   292→                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-amber-300"><Code2 className="h-3.5 w-3.5" /> Prompt do Site</span><button onClick={()=>copyToClipboard(pr,`pr-${lead.place_id}`)} className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30">{copiedText===`pr-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-48 overflow-y-auto">{pr}</pre></div>
+   293→
+   294→                          {/* === QUEBRA DE OBJEÇÕES === */}
+   295→                          {(() => {
+   296→                            const objections = getRelevantObjections({
+   297→                              niche: lead.niche || lead.category,
+   298→                              hasWebsite: lead.hasWebsite,
+   299→                            });
+   300→                            if (objections.length === 0) return null;
+   301→                            return (
+   302→                              <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-3">
+   303→                                <div className="mb-3 flex items-center gap-1.5">
+   304→                                  <Shield className="h-3.5 w-3.5 text-rose-300" />
+   305→                                  <span className="text-xs font-bold text-rose-200">
+   306→                                    Quebra de Objeções ({objections.length})
+   307→                                  </span>
+   308→                                </div>
+   309→                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+   310→                                  {objections.map((obj) => {
+   311→                                    const f = formatObjectionForDisplay(obj);
+   312→                                    const copyId = `obj-${lead.place_id}-${obj.id}`;
+   313→                                    return (
+   314→                                      <div key={obj.id} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+   315→                                        <div className="mb-1.5 text-[10px] font-bold text-rose-300/80 uppercase tracking-wide">
+   316→                                          {f.objectionLabel}
+   317→                                        </div>
+   318→                                        <div className="mb-2 text-[11px] text-zinc-300 italic">
+   319→                                          "{obj.objection}"
+   320→                                        </div>
+   321→                                        <div className="mb-1.5 text-[10px] font-bold text-emerald-300/80 uppercase tracking-wide">
+   322→                                          {f.breakLabel}
+   323→                                        </div>
+   324→                                        <div className="flex gap-2">
+   325→                                          <pre className="flex-1 whitespace-pre-wrap text-[10px] text-zinc-200 font-sans max-h-40 overflow-y-auto leading-relaxed">
+   326→                                            {obj.break}
+   327→                                          </pre>
+   328→                                          <button
+   329→                                            onClick={() => copyToClipboard(obj.break, copyId)}
+   330→                                            className="shrink-0 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 h-fit"
+   331→                                            title="Copiar resposta pronta"
+   332→                                          >
+   333→                                            {copiedText === copyId ? "✓" : <Copy className="h-3 w-3" />}
+   334→                                          </button>
+   335→                                        </div>
+   336→                                      </div>
+   337→                                    );
+   338→                                  })}
+   339→                                </div>
+   340→                                <div className="mt-2 pt-2 border-t border-rose-500/20 text-[10px] text-zinc-500">
+   341→                                  💡 As 2 objeções de prioridade 1 já estão embutidas na mensagem WhatsApp acima como ganchos preventivos.
+   342→                                </div>
+   343→                              </div>
+   344→                            );
+   345→                          })()}
+   346→                        </div>
+   347→                      )}
+   348→                    </div>
+   349→                  );
+   350→                })}
+   351→              </div>
+   352→              <div className="space-y-4">
+   353→                <div className="rounded-xl border border-white/5 overflow-hidden"><div className="bg-white/[0.02] px-3 py-2 border-b border-white/5"><div className="flex items-center gap-2 text-xs font-semibold text-zinc-300"><MapPin className="h-3.5 w-3.5 text-emerald-400" /> Mapa</div></div><iframe src={mapSrc} width="100%" height="250" style={{border:0}} loading="lazy" title="Mapa" /></div>
+   354→                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4"><div className="flex items-center gap-2 mb-3"><Zap className="h-4 w-4 text-amber-400" /><h4 className="text-sm font-bold text-white">Oportunidades</h4></div><div className="space-y-1.5 text-xs"><div className="flex justify-between"><span className="text-zinc-400">Sem site</span><span className="font-bold text-amber-300">{results.filter(r=>!r.hasWebsite).length}</span></div><div className="flex justify-between"><span className="text-zinc-400">Com WhatsApp</span><span className="font-bold text-emerald-300">{results.filter(r=>r.hasWhatsApp).length}</span></div></div></div>
+   355→              </div>
+   356→            </div>
+   357→          )}
+   358→          {!searching&&results.length===0&&!searchError&&!searchMeta&&<EmptyState title="Busque estabelecimentos no Google Maps" description="Os leads serao salvos automaticamente no pipeline." icon={<MapPin className="h-8 w-8" />} />}
+   359→        </Widget>
+   360→      )}
+   361→
+   362→      {view==="kanban" && (
+   363→        <div className="overflow-x-auto pb-4">
+   364→          <div className="flex gap-4 min-w-[1000px]">
+   365→            {KANBAN.map(col => {
+   366→              const items = prospects.filter(p=>p.status===col.key);
+   367→              const colors:Record<string,string> = {blue:"border-blue-500/30 bg-blue-500/[0.03]",amber:"border-amber-500/30 bg-amber-500/[0.03]",violet:"border-violet-500/30 bg-violet-500/[0.03]",emerald:"border-emerald-500/30 bg-emerald-500/[0.03]",rose:"border-rose-500/30 bg-rose-500/[0.03]"};
+   368→              const hc:Record<string,string> = {blue:"text-blue-300",amber:"text-amber-300",violet:"text-violet-300",emerald:"text-emerald-300",rose:"text-rose-300"};
+   369→              return (
+   370→                <div key={col.key} className={`flex-1 min-w-[200px] rounded-xl border ${colors[col.color]} p-3 ${dragOverCol===col.key?"ring-2 ring-emerald-500/40":""}`} onDragOver={e=>{e.preventDefault();setDragOverCol(col.key);}} onDrop={e=>{e.preventDefault();if(draggingId)updateStatus(draggingId,col.key);setDraggingId(null);setDragOverCol(null);}}>
+   371→                  <div className="mb-3 flex items-center justify-between"><h3 className={`text-sm font-bold ${hc[col.color]}`}>{col.label}</h3><span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold text-zinc-400">{items.length}</span></div>
+   372→                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+   373→                    {loadingProspects?<div className="py-4 text-center text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>:items.length===0?<div className="py-4 text-center text-xs text-zinc-600">Vazio</div>:
+   374→                    items.map(p => {
+   375→                      const num=(p.whatsapp||p.phone||"").replace(/\D/g,"");
+   376→                      const wa=genWA(p);
+   377→                      return (
+   378→                        <div key={p.id} draggable onDragStart={e=>setDraggingId(p.id!)} onDragEnd={()=>{setDraggingId(null);setDragOverCol(null);}} className="cursor-grab rounded-lg border border-white/5 bg-white/[0.04] p-3 hover:bg-white/[0.08] transition active:cursor-grabbing">
+   379→                          <div className="mb-1 flex items-start justify-between gap-2"><h4 className="text-xs font-bold text-white truncate flex-1">{p.name}</h4><button onClick={()=>deleteProspect(p.id!)} className="shrink-0 text-zinc-600 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button></div>
+   380→                          <p className="text-[10px] text-zinc-500 truncate mb-1">{p.formatted_address||p.city||""}</p>
+   381→                          <div className="flex flex-wrap gap-1 mb-2">
+   382→                            {p.hasWebsite?<Badge variant="info"><Globe className="h-2.5 w-2.5" /></Badge>:<Badge variant="warning"><AlertTriangle className="h-2.5 w-2.5" /></Badge>}
+   383→                            {p.hasWhatsApp&&<Badge variant="success"><MessageCircle className="h-2.5 w-2.5" /></Badge>}
+   384→                            {p.webDevOpportunity&&<Badge variant="danger"><Zap className="h-2.5 w-2.5" /></Badge>}
+   385→                            {p.rating&&<span className="text-[10px] text-amber-300">⭐{p.rating}</span>}
+   386→                          </div>
+   387→                          <div className="flex gap-1">
+   388→                            {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="flex-1 rounded bg-emerald-500/15 px-2 py-1 text-center text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25">WhatsApp</a>}
+   389→                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
+   390→                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview do site"><Eye className="h-3 w-3" /></button>
+   391→                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link do preview"><Link2 className="h-3 w-3" /></button>
+   392→                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link compartilhável"><Share2 className="h-3 w-3" /></button>
+   393→                          </div>
+   394→                        </div>
+   395→                      );
+   396→                    })}
+   397→                  </div>
+   398→                </div>
+   399→              );
+   400→            })}
+   401→          </div>
+   402→        </div>
+   403→      )}
+   404→
+   405→      {view==="salvos" && (
+   406→        <Widget title="Leads Salvos" icon={<CheckCircle2 className="h-4 w-4 text-emerald-400" />} action={<Button variant="outline" size="sm" onClick={loadProspects} disabled={loadingProspects}><RefreshCw className={`h-3 w-3 ${loadingProspects?"animate-spin":""}`} /><span className="ml-1">Atualizar</span></Button>}>
+   407→          {loadingProspects ? (
+   408→            <div className="py-12 text-center text-zinc-500"><RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin" />Carregando leads salvos...</div>
+   409→          ) : prospects.length === 0 ? (
+   410→            <EmptyState icon={<CheckCircle2 className="h-8 w-8 text-zinc-600" />} title="Nenhum lead salvo" description="Busque estabelecimentos e eles serão salvos automaticamente aqui." />
+   411→          ) : (
+   412→            <div className="overflow-x-auto">
+   413→              <table className="w-full text-sm">
+   414→                <thead>
+   415→                  <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
+   416→                    <th className="py-2 pr-3">Estabelecimento</th>
+   417→                    <th className="py-2 pr-3">Nicho</th>
+   418→                    <th className="py-2 pr-3">Cidade</th>
+   419→                    <th className="py-2 pr-3">Rating</th>
+   420→                    <th className="py-2 pr-3">Status</th>
+   421→                    <th className="py-2 pr-3 text-right">Ações</th>
+   422→                  </tr>
+   423→                </thead>
+   424→                <tbody>
+   425→                  {prospects.map((p) => {
+   426→                    const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+   427→                    const wa = genWA(p);
+   428→                    return (
+   429→                      <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
+   430→                        <td className="py-3 pr-3">
+   431→                          <div className="font-medium text-white">{p.name}</div>
+   432→                          {p.phone && <div className="flex items-center gap-1 text-xs text-zinc-500"><Phone className="h-3 w-3" /> {p.phone}</div>}
+   433→                        </td>
+   434→                        <td className="py-3 pr-3 text-xs text-zinc-300 capitalize">{p.niche || p.category || "—"}</td>
+   435→                        <td className="py-3 pr-3 text-xs text-zinc-400">{p.city || "—"}</td>
+   436→                        <td className="py-3 pr-3 text-xs text-amber-300">{p.rating ? `⭐ ${p.rating}` : "—"}</td>
+   437→                        <td className="py-3 pr-3"><span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span></td>
+   438→                        <td className="py-3 pr-3 text-right">
+   439→                          <div className="flex justify-end gap-1">
+   440→                            {num && <a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="WhatsApp"><MessageCircle className="h-3 w-3" /></a>}
+   441→                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
+   442→                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview"><Eye className="h-3 w-3" /></button>
+   443→                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link"><Link2 className="h-3 w-3" /></button>
+   444→                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link"><Share2 className="h-3 w-3" /></button>
+   445→                          </div>
+   446→                        </td>
+   447→                      </tr>
+   448→                    );
+   449→                  })}
+   450→                </tbody>
+   451→              </table>
+   452→            </div>
+   453→          )}
+   454→        </Widget>
+   455→      )}
+   456→
+   457→      {view==="envios" && <EnviosView />}
+   458→      {view==="respostas" && <RespostasView />}
+   459→      {view==="report" && <ReportView />}
+   460→    </AdminShell>
+   461→  );
+   462→}
+   463→
+   464→function EnviosView() {
+   465→  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true);
+   466→  useEffect(()=>{fetch("/api/admin/envios?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   467→  if(loading) return <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+   468→  return (
+   469→    <Widget title="Log de Envios" icon={<MessageCircle className="h-4 w-4 text-emerald-400" />}>
+   470→      {data.length===0?<EmptyState title="Nenhum envio" icon={<MessageCircle className="h-8 w-8" />} />:
+   471→      <div className="-mx-2 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-white/5 text-[11px] uppercase tracking-wider text-zinc-500"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Lead</th><th className="px-3 py-2">Variante</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Erro</th></tr></thead><tbody className="divide-y divide-white/5">{data.map((e:any)=><tr key={e.id} className="hover:bg-white/[0.02]"><td className="px-3 py-2.5 text-xs text-zinc-400">{new Date(e.sent_at).toLocaleString("pt-BR")}</td><td className="px-3 py-2.5 text-zinc-200">{e.prospect_name||"—"}</td><td className="px-3 py-2.5"><Badge variant="muted">{e.message_variant||"—"}</Badge></td><td className="px-3 py-2.5"><Badge variant={e.status==="sent"?"success":e.status==="failed"?"danger":"warning"}>{e.status}</Badge></td><td className="px-3 py-2.5 text-xs text-rose-300 max-w-[200px] truncate">{e.error||"—"}</td></tr>)}</tbody></table></div>}
+   472→    </Widget>
+   473→  );
+   474→}
+   475→
+   476→function RespostasView() {
+   477→  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true); const [showAdd,setShowAdd]=useState(false); const [reply,setReply]=useState({prospect_id:"",message_text:""});
+   478→  const load=useCallback(()=>{setLoading(true);fetch("/api/admin/respostas?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   479→  useEffect(()=>{load();},[load]);
+   480→  const cc:Record<string,any> = {permission_to_send:"info",interessado:"success",meeting_ready:"success",opt_out:"danger",pricing_question:"warning",ambiguous:"muted",unclassified:"muted"};
+   481→  async function submit(){if(!reply.prospect_id||!reply.message_text)return;await fetch("/api/admin/respostas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(reply)});setReply({prospect_id:"",message_text:""});setShowAdd(false);load();}
+   482→  return (
+   483→    <Widget title="Respostas Recebidas" icon={<Mail className="h-4 w-4 text-emerald-400" />} action={<Button size="sm" variant="primary" onClick={()=>setShowAdd(!showAdd)}><Plus className="h-3.5 w-3.5" /> Registrar</Button>}>
+   484→      {showAdd&&<div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 space-y-2"><Input placeholder="ID do prospect" value={reply.prospect_id} onChange={e=>setReply({...reply,prospect_id:e.target.value})} /><Textarea placeholder="Mensagem recebida…" value={reply.message_text} onChange={e=>setReply({...reply,message_text:e.target.value})} rows={3} /><Button size="sm" variant="primary" onClick={submit}>Classificar e Salvar</Button></div>}
+   485→      {loading?<div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>:
+   486→      data.length===0?<EmptyState title="Nenhuma resposta" icon={<Mail className="h-8 w-8" />} />:
+   487→      <div className="space-y-2">{data.map((r:any)=><div key={r.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-start justify-between gap-2 mb-2"><div><span className="text-sm font-bold text-white">{r.prospect_name||"—"}</span><span className="ml-2 text-[11px] text-zinc-500">{new Date(r.received_at).toLocaleString("pt-BR")}</span></div><Badge variant={cc[r.classification]||"muted"}>{r.classification}</Badge></div><p className="text-xs text-zinc-300 mb-2 italic">"{r.message_text}"</p><div className="flex gap-4 text-[11px] text-zinc-500"><span>📋 {r.action_taken||"—"}</span><span>→ {r.next_step||"—"}</span></div></div>)}</div>}
+   488→    </Widget>
+   489→  );
+   490→}
+   491→
+   492→function ReportView() {
+   493→  const [r,setR]=useState<any>(null); const [loading,setLoading]=useState(true);
+   494→  useEffect(()=>{fetch("/api/admin/prospect/report").then(r=>r.json()).then(d=>{setR(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   495→  if(loading) return <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+   496→  if(!r) return <EmptyState title="Erro ao carregar" icon={<AlertCircle className="h-8 w-8" />} />;
+   497→  const t=r.today||{}; const s=t.sends||{}; const rep=t.replies||{};
+   498→  return (
+   499→    <div className="space-y-4">
+   500→      <Widget title={`Relatorio — ${r.date}`} icon={<RefreshCw className="h-4 w-4 text-emerald-400" />}>
+   501→        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   502→          <SB label="Enviados hoje" value={s.confirmed||0} icon={MessageCircle} c="emerald" />
+   503→          <SB label="Falhas" value={s.failed||0} icon={AlertCircle} c="rose" />
+   504→          <SB label="Respostas" value={rep.total||0} icon={Mail} c="blue" />
+   505→          <SB label="Oportunidades" value={r.opportunities||0} icon={Zap} c="amber" />
+   506→        </div>
+   507→      </Widget>
+   508→      <Widget title="Pipeline por Status" icon={<Layout className="h-4 w-4 text-violet-400" />}>
+   509→        <div className="space-y-2">{(r.status_breakdown||[]).map((s:any)=><div key={s.status} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-3 py-2"><span className="text-sm text-zinc-300 capitalize">{s.status}</span><span className="font-bold text-white">{s.count}</span></div>)}</div>
+   510→      </Widget>
+   511→    </div>
+   512→  );
+   513→}
+   514→
+   515→function SB({label,value,icon:Icon,c="emerald"}:{label:string;value:number;icon:React.ComponentType<{className?:string}>;c?:"emerald"|"blue"|"amber"|"rose"|"violet"}) {
+   516→  const colors:Record<string,string> = {emerald:"text-emerald-300 bg-emerald-500/10",blue:"text-blue-300 bg-blue-500/10",amber:"text-amber-300 bg-amber-500/10",rose:"text-rose-300 bg-rose-500/10",violet:"text-violet-300 bg-violet-500/10"};
+   517→  return <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-center gap-2"><div className={`flex h-7 w-7 items-center justify-center rounded-lg ${colors[c]}`}><Icon className="h-3.5 w-3.5" /></div><div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div></div><div className="mt-1.5 text-xl font-bold text-white">{value}</div></div>;
+   518→}
+   519→

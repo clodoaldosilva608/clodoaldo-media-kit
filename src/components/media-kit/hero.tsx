@@ -25,6 +25,11 @@ export function Hero() {
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // On mobile, the 150vh hero creates too much empty scroll — collapse to ~110vh
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (isMobile && sectionRef.current) {
+      sectionRef.current.style.height = "110vh";
+    }
 
     let frame = 0;
     const onScroll = () => {
@@ -37,7 +42,7 @@ export function Hero() {
         const sectionHeight = el.offsetHeight;
         const viewportH = window.innerHeight;
         const scrolled = Math.max(0, -rect.top);
-        const maxScroll = sectionHeight - viewportH;
+        const maxScroll = Math.max(1, sectionHeight - viewportH);
         const p = Math.min(1, Math.max(0, scrolled / maxScroll));
         setScrollProgress(p);
 
@@ -109,7 +114,7 @@ export function Hero() {
       className="relative"
       style={{ height: "150vh", backgroundColor: "#06060a", color: "#fff" }}
     >
-      <div className="sticky top-0 h-screen overflow-hidden flex items-center">
+      <div className="hero-sticky sticky top-0 h-screen overflow-hidden flex items-center">
         {/* Background */}
         <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "rgb(6, 6, 10)" }} />
 
@@ -124,10 +129,11 @@ export function Hero() {
           }}
         />
 
-        {/* Globe — LARGE, centered-right, OVERLAPPING text area */}
+        {/* Globe — LARGE on desktop (right), SMALL behind text on mobile */}
         <div
           ref={globeWrapRef}
-          className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[1100px] h-[1100px] max-w-[95vw] max-h-[95vh] will-change-transform z-0"
+          className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[1100px] h-[1100px] max-w-[95vw] max-h-[95vh] will-change-transform z-0
+                     max-md:opacity-30 max-md:right-[-30%] max-md:top-[40%] max-md:w-[700px] max-md:h-[700px]"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />
@@ -136,19 +142,19 @@ export function Hero() {
         {/* Text content — ON TOP of globe, left-aligned */}
         <div
           ref={textWrapRef}
-          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform"
+          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:pt-16"
           style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
         >
           <div className="max-w-xl">
-            <div className="flex items-center gap-4 hero-text-reveal" style={{ animationDelay: "0ms" }}>
-              <span className="eyebrow">Criador · Desenvolvedor · Estrategista</span>
-              <span className="hairline flex-1 max-w-[120px]" />
-              <span className="text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-primary hidden sm:inline">
+            <div className="flex items-center gap-2 sm:gap-4 hero-text-reveal" style={{ animationDelay: "0ms" }}>
+              <span className="eyebrow text-[0.625rem] sm:text-[0.6875rem]">Criador · Desenvolvedor · Estrategista</span>
+              <span className="hairline flex-1 max-w-[120px] hidden sm:block" />
+              <span className="text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-primary hidden lg:inline">
                 Aberto a parcerias
               </span>
             </div>
 
-            <h1 className="mt-8 font-display text-[2.75rem] sm:text-6xl lg:text-[4.5rem] font-medium leading-[0.98] tracking-[-0.03em] text-foreground">
+            <h1 className="mt-5 sm:mt-8 font-display text-[2rem] sm:text-6xl lg:text-[4.5rem] font-medium leading-[1.02] sm:leading-[0.98] tracking-[-0.03em] text-foreground">
               {LINES.map((line, i) => (
                 <span key={line} className="hero-line-mask block">
                   <span style={{ animationDelay: `${200 + i * 150}ms` }}>
@@ -160,7 +166,7 @@ export function Hero() {
               ))}
             </h1>
 
-            <p className="mt-6 max-w-xl text-base sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
+            <p className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
               Estratégia, conteúdo e produtos digitais para transformar atenção em resultado.
               Ajudo <strong className="text-foreground">marcas</strong>,{" "}
               <strong className="text-foreground">creators</strong> e{" "}
@@ -168,14 +174,14 @@ export function Hero() {
               comunicarem valor e lançarem experiências digitais — do início ao fim.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3 hero-text-reveal" style={{ animationDelay: "800ms" }}>
+            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-2 sm:gap-3 hero-text-reveal" style={{ animationDelay: "800ms" }}>
               <a href="/quiz" onClick={() => trackEvent("entry_path_selected", { path: "quiz_principal" })}
-                className="group btn-micro inline-flex items-center gap-3 rounded-full bg-primary px-7 py-3.5 text-sm font-medium text-primary-foreground transition-all hover:opacity-90">
-                <Sparkles size={17} />
-                Encontrar a melhor solução
-                <ArrowUpRight size={17} className="arrow-hover transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                className="group btn-micro inline-flex items-center gap-2 sm:gap-3 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-medium text-primary-foreground transition-all hover:opacity-90">
+                <Sparkles size={16} />
+                <span className="whitespace-nowrap">Encontrar a melhor solução</span>
+                <ArrowUpRight size={16} className="arrow-hover transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </a>
-              <a href="#contato" className="inline-flex items-center gap-2 px-2 py-3.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <a href="#contato" className="inline-flex items-center gap-2 px-3 py-3.5 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
                 Ver media kit
               </a>
             </div>
@@ -183,22 +189,22 @@ export function Hero() {
             {/* Entry path cards */}
             <div
               ref={cardsRef}
-              className="mt-10 grid sm:grid-cols-3 gap-3 max-w-xl hero-text-reveal"
+              className="mt-6 sm:mt-10 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 max-w-xl hero-text-reveal"
               style={{ animationDelay: "950ms", transition: "opacity 0.2s ease-out, transform 0.2s ease-out" }}
             >
               {ENTRY_PATHS.map((path) => {
                 const Icon = path.icon;
                 return (
                   <a key={path.id} href={path.href} onClick={() => trackEvent("entry_path_selected", { path: path.id })}
-                    className="group card-tilt rounded-2xl border border-border bg-card/60 backdrop-blur p-4 transition-all hover:border-primary/50 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <div className={`inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br ${path.color} text-white shadow-glow`}>
-                      <Icon size={16} />
+                    className="group card-tilt rounded-2xl border border-border bg-card/60 backdrop-blur p-3 sm:p-4 transition-all hover:border-primary/50 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <div className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-br ${path.color} text-white shadow-glow`}>
+                      <Icon size={15} />
                     </div>
-                    <div className="mt-3 font-display font-semibold text-sm text-foreground leading-tight">{path.title}</div>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{path.promise}</p>
-                    <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                    <div className="mt-2 sm:mt-3 font-display font-semibold text-xs sm:text-sm text-foreground leading-tight">{path.title}</div>
+                    <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-2">{path.promise}</p>
+                    <div className="mt-2 sm:mt-3 inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-primary">
                       {path.cta}
-                      <ArrowUpRight size={12} className="arrow-hover transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      <ArrowUpRight size={11} className="arrow-hover transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                     </div>
                   </a>
                 );
@@ -207,8 +213,8 @@ export function Hero() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div ref={scrollIndicatorRef} className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
+        {/* Scroll indicator — hidden on mobile via CSS .scroll-indicator class */}
+        <div ref={scrollIndicatorRef} className="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
           Scroll ↓
         </div>
       </div>

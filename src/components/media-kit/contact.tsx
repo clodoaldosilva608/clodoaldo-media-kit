@@ -34,7 +34,7 @@ export function Contact() {
   }
 
   return (
-    <section id="contato" className="py-20 sm:py-28">
+    <section id="contato" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="09"
@@ -43,13 +43,13 @@ export function Contact() {
           subtitle="Conte sobre o seu projeto. Respondo todas as propostas em até 48 horas."
         />
 
-        <div className="mt-14 grid lg:grid-cols-5 gap-6">
+        <div className="mt-10 sm:mt-14 grid lg:grid-cols-5 gap-4 sm:gap-6">
           <div
             ref={ref}
-            className="reveal lg:col-span-3 rounded-3xl border border-border bg-card/70 backdrop-blur p-6 sm:p-8 shadow-card"
+            className="reveal lg:col-span-3 rounded-3xl border border-border bg-card/70 backdrop-blur p-5 sm:p-6 md:p-8 shadow-card"
           >
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid sm:grid-cols-2 gap-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
                 <Field label="Nome" name="nome" required />
                 <Field label="Empresa" name="empresa" />
               </div>
@@ -63,18 +63,18 @@ export function Contact() {
                   required
                   rows={5}
                   placeholder="Conte sobre seu projeto, objetivos e prazos."
-                  className="w-full rounded-xl bg-background/60 border border-border px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
+                  className="w-full rounded-xl bg-background/60 border border-border px-4 py-3 text-base sm:text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
                 />
               </div>
               <button
                 type="submit"
-                className="group inline-flex items-center gap-2 rounded-full bg-gradient-orange px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-95 transition"
+                className="group inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-gradient-orange px-6 sm:px-7 py-3 sm:py-3.5 min-h-12 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-95 transition"
               >
                 <Send size={16} />
                 Enviar Proposta
               </button>
               {sent && (
-                <p className="text-sm text-primary">
+                <p className="text-sm text-primary break-words">
                   Abrindo seu cliente de e-mail… se nada acontecer, escreva
                   diretamente para {EMAIL}.
                 </p>
@@ -82,20 +82,20 @@ export function Contact() {
             </form>
           </div>
 
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3 sm:space-y-4">
             <a
               href={`mailto:${EMAIL}`}
-              className="block rounded-2xl border border-border bg-card/70 backdrop-blur p-6 shadow-card hover:border-primary/50 transition"
+              className="block rounded-2xl border border-border bg-card/70 backdrop-blur p-4 sm:p-6 shadow-card hover:border-primary/50 transition"
             >
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-gradient-orange grid place-items-center text-primary-foreground">
-                  <Mail size={20} />
+                <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-orange grid place-items-center text-primary-foreground shrink-0">
+                  <Mail size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">
                     E-mail profissional
                   </div>
-                  <div className="font-semibold break-all">{EMAIL}</div>
+                  <div className="font-semibold break-all text-sm sm:text-base">{EMAIL}</div>
                 </div>
               </div>
             </a>
@@ -104,26 +104,26 @@ export function Contact() {
               href={WHATSAPP}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-2xl border border-success/30 bg-success/10 backdrop-blur p-6 hover:border-success/60 transition"
+              className="block rounded-2xl border border-success/30 bg-success/10 backdrop-blur p-4 sm:p-6 hover:border-success/60 transition"
             >
               <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-xl bg-success grid place-items-center text-success-foreground">
+                <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-success grid place-items-center text-success-foreground shrink-0">
                   <WhatsAppIcon />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs uppercase tracking-wider text-muted-foreground">
                     Resposta rápida
                   </div>
-                  <div className="font-semibold">Falar no WhatsApp</div>
+                  <div className="font-semibold text-sm sm:text-base">Falar no WhatsApp</div>
                 </div>
               </div>
             </a>
 
-            <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-6 shadow-card">
+            <div className="rounded-2xl border border-border bg-card/70 backdrop-blur p-4 sm:p-6 shadow-card">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">
                 Siga nas redes sociais
               </div>
-              <div className="mt-4 grid gap-3">
+              <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3">
                 <FollowButton href={INSTAGRAM} label="Seguir no Instagram" handle="@clodoaldo_c_silva" tone="instagram">
                   <Instagram size={18} />
                 </FollowButton>
@@ -163,7 +163,7 @@ function Field({
         name={name}
         type={type}
         required={required}
-        className="w-full rounded-xl bg-background/60 border border-border px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
+        className="w-full rounded-xl bg-background/60 border border-border px-4 py-3 text-base sm:text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
       />
     </div>
   );

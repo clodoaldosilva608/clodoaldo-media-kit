@@ -54,6 +54,7 @@ export default function AdminParceirosPage() {
   const [loadingProspects, setLoadingProspects] = useState(true);
   const [draggingId, setDraggingId] = useState<string|null>(null);
   const [dragOverCol, setDragOverCol] = useState<string|null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const loadProspects = useCallback(async () => {
     setLoadingProspects(true);
@@ -409,49 +410,78 @@ Clodoaldo Silva
           ) : prospects.length === 0 ? (
             <EmptyState icon={<CheckCircle2 className="h-8 w-8 text-zinc-600" />} title="Nenhum lead salvo" description="Busque estabelecimentos e eles serão salvos automaticamente aqui." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
-                    <th className="py-2 pr-3">Estabelecimento</th>
-                    <th className="py-2 pr-3">Nicho</th>
-                    <th className="py-2 pr-3">Cidade</th>
-                    <th className="py-2 pr-3">Rating</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prospects.map((p) => {
-                    const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
-                    const wa = genWA(p);
-                    return (
-                      <tr key={p.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="py-3 pr-3">
-                          <div className="font-medium text-white">{p.name}</div>
-                          {p.phone && <div className="flex items-center gap-1 text-xs text-zinc-500"><Phone className="h-3 w-3" /> {p.phone}</div>}
-                        </td>
-                        <td className="py-3 pr-3 text-xs text-zinc-300 capitalize">{p.niche || p.category || "—"}</td>
-                        <td className="py-3 pr-3 text-xs text-zinc-400">{p.city || "—"}</td>
-                        <td className="py-3 pr-3 text-xs text-amber-300">{p.rating ? `⭐ ${p.rating}` : "—"}</td>
-                        <td className="py-3 pr-3"><span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span></td>
-                        <td className="py-3 pr-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            {num && <a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="WhatsApp"><MessageCircle className="h-3 w-3" /></a>}
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
-                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview"><Eye className="h-3 w-3" /></button>
-                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link"><Link2 className="h-3 w-3" /></button>
-                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link"><Share2 className="h-3 w-3" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-3 py-2 text-xs text-blue-200">
+                💡 Dica: clique em qualquer linha para ver todos os detalhes do lead, mensagens prontas (WhatsApp/Email), prompt do site, preview e quebra de objeções.
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
+                      <th className="py-2 pr-3">Estabelecimento</th>
+                      <th className="py-2 pr-3">Nicho</th>
+                      <th className="py-2 pr-3">Cidade</th>
+                      <th className="py-2 pr-3">Rating</th>
+                      <th className="py-2 pr-3">Status</th>
+                      <th className="py-2 pr-3 text-right">Ações rápidas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {prospects.map((p) => {
+                      const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+                      const wa = genWA(p);
+                      return (
+                        <tr
+                          key={p.id}
+                          onClick={() => setSelectedLead(p)}
+                          className="border-b border-white/5 hover:bg-emerald-500/[0.04] hover:border-emerald-500/20 cursor-pointer transition group"
+                        >
+                          <td className="py-3 pr-3">
+                            <div className="flex items-center gap-2">
+                              <div className="font-medium text-white group-hover:text-emerald-300 transition">{p.name}</div>
+                              {p.webDevOpportunity && <Zap className="h-3 w-3 text-amber-400 shrink-0" />}
+                            </div>
+                            {p.phone && <div className="flex items-center gap-1 text-xs text-zinc-500"><Phone className="h-3 w-3" /> {p.phone}</div>}
+                            {p.formatted_address && <div className="flex items-center gap-1 text-[10px] text-zinc-600 truncate max-w-[200px]"><MapPin className="h-2.5 w-2.5" /> {p.formatted_address}</div>}
+                          </td>
+                          <td className="py-3 pr-3 text-xs text-zinc-300 capitalize">{p.niche || p.category || "—"}</td>
+                          <td className="py-3 pr-3 text-xs text-zinc-400">{p.city || "—"}</td>
+                          <td className="py-3 pr-3 text-xs text-amber-300">{p.rating ? `⭐ ${p.rating}` : "—"}</td>
+                          <td className="py-3 pr-3"><span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span></td>
+                          <td className="py-3 pr-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1">
+                              {num && <a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="WhatsApp"><MessageCircle className="h-3 w-3" /></a>}
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
+                              <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview"><Eye className="h-3 w-3" /></button>
+                              <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link"><Link2 className="h-3 w-3" /></button>
+                              <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link"><Share2 className="h-3 w-3" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </Widget>
+      )}
+
+      {/* Modal de detalhes do lead — mostra todas as informações + copy+CTA */}
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          onClose={() => setSelectedLead(null)}
+          genWA={genWA}
+          genEmail={genEmail}
+          genPrompt={genPrompt}
+          openPreview={openPreview}
+          copyPreviewLink={copyPreviewLink}
+          openPreviewLink={openPreviewLink}
+          copyToClipboard={copyToClipboard}
+          copiedText={copiedText}
+        />
       )}
 
       {view==="envios" && <EnviosView />}
@@ -515,4 +545,333 @@ function ReportView() {
 function SB({label,value,icon:Icon,c="emerald"}:{label:string;value:number;icon:React.ComponentType<{className?:string}>;c?:"emerald"|"blue"|"amber"|"rose"|"violet"}) {
   const colors:Record<string,string> = {emerald:"text-emerald-300 bg-emerald-500/10",blue:"text-blue-300 bg-blue-500/10",amber:"text-amber-300 bg-amber-500/10",rose:"text-rose-300 bg-rose-500/10",violet:"text-violet-300 bg-violet-500/10"};
   return <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-center gap-2"><div className={`flex h-7 w-7 items-center justify-center rounded-lg ${colors[c]}`}><Icon className="h-3.5 w-3.5" /></div><div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div></div><div className="mt-1.5 text-xl font-bold text-white">{value}</div></div>;
+}
+
+// =====================================================
+// MODAL DETALHES DO LEAD — mostra todas as informações
+// + mensagens WhatsApp/Email + Prompt + Preview + Objeções
+// =====================================================
+function LeadDetailModal({
+  lead, onClose, genWA, genEmail, genPrompt,
+  openPreview, copyPreviewLink, openPreviewLink,
+  copyToClipboard, copiedText,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  genWA: (l: Lead) => string;
+  genEmail: (l: Lead) => string;
+  genPrompt: (l: Lead) => string;
+  openPreview: (l: Lead) => void;
+  copyPreviewLink: (l: Lead) => void;
+  openPreviewLink: (l: Lead) => void;
+  copyToClipboard: (text: string, id: string) => void;
+  copiedText: string | null;
+}) {
+  const wa = genWA(lead);
+  const em = genEmail(lead);
+  const pr = genPrompt(lead);
+  const num = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
+  const leadId = lead.id || lead.place_id || "";
+
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  const objections = getRelevantObjections({
+    niche: lead.niche || lead.category,
+    hasWebsite: lead.hasWebsite,
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        {/* Header sticky */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">{lead.name}</h3>
+              {lead.rating && (
+                <span className="flex items-center gap-0.5 text-xs">
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-semibold text-amber-300">{lead.rating}</span>
+                  {lead.user_ratings_total && <span className="text-zinc-500">({lead.user_ratings_total})</span>}
+                </span>
+              )}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <Badge variant="muted">{lead.niche || lead.category || "estabelecimento"}</Badge>
+              {lead.hasWebsite ? <Badge variant="info"><Globe className="h-3 w-3" /> Tem site</Badge> : <Badge variant="warning"><AlertTriangle className="h-3 w-3" /> Sem site</Badge>}
+              {lead.hasWhatsApp && <Badge variant="success"><MessageCircle className="h-3 w-3" /> WhatsApp</Badge>}
+              {lead.webDevOpportunity && <Badge variant="danger"><Zap className="h-3 w-3" /> Oportunidade</Badge>}
+              <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{lead.status || "new"}</span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* === INFORMAÇÕES PRINCIPAIS === */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:p-4">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">Informações</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              {lead.formatted_address && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-zinc-500">Endereço</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm break-words">{lead.formatted_address}</div>
+                  </div>
+                </div>
+              )}
+              {lead.city && (
+                <div className="flex items-start gap-2">
+                  <Building2 className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div>
+                    <div className="text-[10px] uppercase text-zinc-500">Cidade</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm">{lead.city}</div>
+                  </div>
+                </div>
+              )}
+              {lead.phone && (
+                <div className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div>
+                    <div className="text-[10px] uppercase text-zinc-500">Telefone</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm">{lead.phone}</div>
+                  </div>
+                </div>
+              )}
+              {lead.whatsapp && (
+                <div className="flex items-start gap-2">
+                  <MessageCircle className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                  <div>
+                    <div className="text-[10px] uppercase text-zinc-500">WhatsApp</div>
+                    <div className="text-emerald-300 text-xs sm:text-sm">{lead.whatsapp}</div>
+                  </div>
+                </div>
+              )}
+              {lead.email && (
+                <div className="flex items-start gap-2">
+                  <Mail className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-zinc-500">Email</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm break-all">{lead.email}</div>
+                  </div>
+                </div>
+              )}
+              {lead.website && (
+                <div className="flex items-start gap-2">
+                  <Globe className="h-4 w-4 shrink-0 mt-0.5 text-blue-400" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-zinc-500">Website</div>
+                    <a href={lead.website} target="_blank" rel="noreferrer" className="text-blue-300 text-xs sm:text-sm break-all hover:underline">{lead.website}</a>
+                  </div>
+                </div>
+              )}
+              {lead.instagram && (
+                <div className="flex items-start gap-2">
+                  <Smartphone className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-zinc-500">Instagram</div>
+                    <a href={lead.instagram} target="_blank" rel="noreferrer" className="text-pink-300 text-xs sm:text-sm break-all hover:underline">{lead.instagram}</a>
+                  </div>
+                </div>
+              )}
+              {lead.openingHours && (
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase text-zinc-500">Horário</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm whitespace-pre-line">{lead.openingHours}</div>
+                  </div>
+                </div>
+              )}
+              {lead.created_at && (
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+                  <div>
+                    <div className="text-[10px] uppercase text-zinc-500">Salvo em</div>
+                    <div className="text-zinc-200 text-xs sm:text-sm">{new Date(lead.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Localização + Maps button */}
+            <div className="mt-3 flex flex-wrap gap-2 pt-3 border-t border-white/5">
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name + " " + (lead.formatted_address || ""))}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"
+              >
+                <MapPin className="h-3.5 w-3.5" /> Abrir no Google Maps
+              </a>
+              {lead.lat && lead.lng && (
+                <a
+                  href={`https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+                >
+                  <MapPin className="h-3.5 w-3.5" /> Ver coordenadas
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* === WHATSAPP MESSAGE + CTA === */}
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+                <MessageCircle className="h-3.5 w-3.5" /> Mensagem WhatsApp
+              </span>
+              <div className="flex gap-1.5">
+                {num && (
+                  <a
+                    href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 inline-flex items-center gap-1"
+                  >
+                    <MessageCircle className="h-3 w-3" /> Abrir
+                  </a>
+                )}
+                <button
+                  onClick={() => copyToClipboard(wa, `wa-${leadId}`)}
+                  className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30"
+                >
+                  {copiedText === `wa-${leadId}` ? "✓ Copiado" : "Copiar"}
+                </button>
+              </div>
+            </div>
+            <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-48 overflow-y-auto leading-relaxed">{wa}</pre>
+          </div>
+
+          {/* === EMAIL MESSAGE === */}
+          <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                <Mail className="h-3.5 w-3.5" /> Mensagem Email
+              </span>
+              <button
+                onClick={() => copyToClipboard(em, `em-${leadId}`)}
+                className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30"
+              >
+                {copiedText === `em-${leadId}` ? "✓ Copiado" : "Copiar"}
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-48 overflow-y-auto leading-relaxed">{em}</pre>
+          </div>
+
+          {/* === PREVIEW DO SITE === */}
+          <button
+            onClick={() => openPreview(lead)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition"
+          >
+            <Eye className="h-4 w-4" /> Ver Preview do Site
+          </button>
+
+          {/* === LINK COMPARTILHÁVEL === */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => copyPreviewLink(lead)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition"
+              title="Copiar link compartilhável"
+            >
+              {copiedText === `link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+              {copiedText === `link-${lead.id || lead.place_id}` ? "Link copiado!" : "Copiar link"}
+            </button>
+            <button
+              onClick={() => openPreviewLink(lead)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 transition"
+              title="Abrir link compartilhável"
+            >
+              <Share2 className="h-3.5 w-3.5" /> Abrir link
+            </button>
+          </div>
+
+          {/* === PROMPT DO SITE === */}
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <Code2 className="h-3.5 w-3.5" /> Prompt do Site
+              </span>
+              <button
+                onClick={() => copyToClipboard(pr, `pr-${leadId}`)}
+                className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30"
+              >
+                {copiedText === `pr-${leadId}` ? "✓ Copiado" : "Copiar"}
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-56 overflow-y-auto leading-relaxed">{pr}</pre>
+          </div>
+
+          {/* === QUEBRA DE OBJEÇÕES === */}
+          {objections.length > 0 && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-3">
+              <div className="mb-3 flex items-center gap-1.5">
+                <Shield className="h-3.5 w-3.5 text-rose-300" />
+                <span className="text-xs font-bold text-rose-200">
+                  Quebra de Objeções ({objections.length})
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {objections.map((obj) => {
+                  const f = formatObjectionForDisplay(obj);
+                  const copyId = `obj-${leadId}-${obj.id}`;
+                  return (
+                    <div key={obj.id} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+                      <div className="mb-1.5 text-[10px] font-bold text-rose-300/80 uppercase tracking-wide">
+                        {f.objectionLabel}
+                      </div>
+                      <div className="mb-2 text-[11px] text-zinc-300 italic">
+                        &ldquo;{obj.objection}&rdquo;
+                      </div>
+                      <div className="mb-1.5 text-[10px] font-bold text-emerald-300/80 uppercase tracking-wide">
+                        {f.breakLabel}
+                      </div>
+                      <div className="flex gap-2">
+                        <pre className="flex-1 whitespace-pre-wrap text-[10px] text-zinc-200 font-sans max-h-40 overflow-y-auto leading-relaxed">
+                          {obj.break}
+                        </pre>
+                        <button
+                          onClick={() => copyToClipboard(obj.break, copyId)}
+                          className="shrink-0 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 h-fit"
+                          title="Copiar resposta pronta"
+                        >
+                          {copiedText === copyId ? "✓" : <Copy className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-2 pt-2 border-t border-rose-500/20 text-[10px] text-zinc-500">
+                💡 As 2 objeções de prioridade 1 já estão embutidas na mensagem WhatsApp acima como ganchos preventivos.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

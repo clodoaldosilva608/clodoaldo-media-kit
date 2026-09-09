@@ -13,7 +13,7 @@ import { SectionHeader } from "./metrics";
 
 export function Services() {
   return (
-    <section id="servicos" className="py-20 sm:py-28">
+    <section id="servicos" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="03"
@@ -48,12 +48,12 @@ function ServiceGroup({
   services: Service[];
 }) {
   return (
-    <div className="mt-14 first:mt-14">
-      <div className="mb-6 max-w-2xl">
-        <h3 className="font-display text-2xl sm:text-3xl font-black">{title}</h3>
+    <div className="mt-10 sm:mt-14 first:mt-10 sm:first:mt-14">
+      <div className="mb-5 sm:mb-6 max-w-2xl">
+        <h3 className="font-display text-xl sm:text-2xl md:text-3xl font-black">{title}</h3>
         <p className="mt-2 text-sm sm:text-base text-muted-foreground">{description}</p>
       </div>
-      <div className="grid sm:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
         {services.map((s) => (
           <ServiceCard key={s.slug} service={s} />
         ))}
@@ -89,11 +89,11 @@ function ServiceCard({ service }: { service: Service }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/25 to-transparent pointer-events-none" />
       </div>
-      <div className="p-6 sm:p-7">
+      <div className="p-5 sm:p-6 md:p-7">
         <div className="text-xs font-semibold uppercase tracking-wider text-primary">
           {service.tag}
         </div>
-        <h3 className="mt-1.5 font-display font-medium text-xl sm:text-2xl">
+        <h3 className="mt-1.5 font-display font-medium text-lg sm:text-xl md:text-2xl">
           {service.shortName}
         </h3>
         <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
@@ -110,16 +110,16 @@ function ServiceCard({ service }: { service: Service }) {
         <div className="mt-6 flex flex-wrap items-end justify-between gap-3 pt-5 border-t border-border">
           <div>
             <div className="text-xs text-muted-foreground">A partir de</div>
-            <div className="font-display font-medium text-2xl text-gradient-orange leading-none">
+            <div className="font-display font-medium text-xl sm:text-2xl text-gradient-orange leading-none break-words">
               {service.priceLabel}
             </div>
           </div>
           <Link
             href={requiresQueue(service.slug) ? `/fila/${service.slug}` : `/checkout/${service.slug}`}
-            className="group/btn inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition"
+            className="group/btn inline-flex items-center gap-2 rounded-full bg-gradient-orange px-4 sm:px-5 py-2.5 sm:py-3 min-h-11 text-xs sm:text-sm font-semibold text-primary-foreground shadow-glow hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition"
             aria-label={`${requiresQueue(service.slug) ? "Verificar disponibilidade" : service.ctaLabel} — ${service.shortName}`}
           >
-            {requiresQueue(service.slug) ? "Verificar disponibilidade" : service.ctaLabel}
+            <span className="whitespace-nowrap">{requiresQueue(service.slug) ? "Verificar disponibilidade" : service.ctaLabel}</span>
             <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
           </Link>
         </div>

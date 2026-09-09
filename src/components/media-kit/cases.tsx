@@ -27,7 +27,7 @@ const CASES = [
 
 export function Cases() {
   return (
-    <section id="cases" className="py-20 sm:py-28">
+    <section id="cases" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
           index="06"
@@ -36,7 +36,7 @@ export function Cases() {
           subtitle="Exemplos de como estrutura, posicionamento e narrativa elevam percepção de valor e performance comercial."
         />
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
+        <div className="mt-10 sm:mt-14 grid gap-4 sm:gap-6 lg:grid-cols-3">
           {CASES.map((item, index) => (
             <CaseCard key={item.title} item={item} index={index} />
           ))}
@@ -59,26 +59,26 @@ function CaseCard({
     <article
       ref={ref}
       style={{ animationDelay: `${index * 80}ms` }}
-      className="reveal rounded-3xl border border-border bg-card/60 backdrop-blur p-6 shadow-card"
+      className="reveal rounded-3xl border border-border bg-card/60 backdrop-blur p-5 sm:p-6 shadow-card"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <BadgeCheck size={20} />
+        <div className="inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <BadgeCheck size={18} />
         </div>
-        <div className="font-display text-3xl font-black text-gradient-orange">
+        <div className="font-display text-2xl sm:text-3xl font-black text-gradient-orange break-words">
           {item.metric}
         </div>
       </div>
-      <h3 className="mt-5 font-display text-xl font-black">{item.title}</h3>
+      <h3 className="mt-4 sm:mt-5 font-display text-lg sm:text-xl font-black">{item.title}</h3>
       <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
         <strong className="text-foreground">Desafio:</strong> {item.challenge}
       </p>
       <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
         <strong className="text-foreground">Resultado:</strong> {item.result}
       </p>
-      <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary">
+      <div className="mt-4 sm:mt-5 inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-primary">
         Posicionamento, conteúdo e conversão
-        <ArrowUpRight size={16} />
+        <ArrowUpRight size={14} />
       </div>
     </article>
   );

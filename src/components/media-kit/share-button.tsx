@@ -38,7 +38,7 @@ export function ShareButton() {
         type="button"
         onClick={tryNativeShare}
         aria-label="Compartilhar este Media Kit"
-        className="fixed z-40 bottom-5 right-5 h-12 w-12 rounded-full bg-gradient-orange text-primary-foreground shadow-glow grid place-items-center hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition"
+        className="floating-action-stack fixed z-40 bottom-5 right-5 h-12 w-12 rounded-full bg-gradient-orange text-primary-foreground shadow-glow grid place-items-center hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition hidden md:grid"
       >
         <Share2 size={20} aria-hidden="true" />
       </button>
@@ -53,7 +53,7 @@ export function ShareButton() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-3xl border border-border bg-card shadow-card p-5"
+            className="w-full max-w-sm rounded-3xl border border-border bg-card shadow-card p-5 mb-4 sm:mb-0"
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-medium text-lg">Compartilhar</h2>

@@ -50,7 +50,7 @@ export function WhatsAppButton() {
   const positionClass = config.position === "bottom-left" ? "left-4" : "right-4";
 
   return (
-    <div className={`fixed bottom-4 ${positionClass} z-30 flex flex-col items-end gap-2`}>
+    <div className={`floating-action-stack fixed bottom-4 ${positionClass} z-30 flex flex-col items-end gap-2`}>
       {showTooltip && !dismissed && (
         <div className="relative max-w-[260px] rounded-2xl rounded-br-sm border border-white/10 bg-white p-3 shadow-2xl">
           <button

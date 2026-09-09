@@ -106,48 +106,48 @@ export function SocialProofCarousel() {
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card/80 via-card/40 to-transparent p-8 sm:p-12 shadow-card"
+      className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card/80 via-card/40 to-transparent p-5 sm:p-8 md:p-12 shadow-card"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <Quote className="absolute right-6 top-6 h-16 w-16 text-primary/10 pointer-events-none" />
+      <Quote className="absolute right-4 sm:right-6 top-4 sm:top-6 h-10 w-10 sm:h-16 sm:w-16 text-primary/10 pointer-events-none" />
       <button
         onClick={prev}
         aria-label="Depoimento anterior"
-        className="absolute left-3 top-1/2 -translate-y-1/2 hidden sm:flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card transition"
+        className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card transition z-20"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <button
         onClick={next}
         aria-label="Próximo depoimento"
-        className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card transition"
+        className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card transition z-20"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
-      <div className="relative">
-        <div className="mb-5 flex items-center gap-1">
+      <div className="relative px-7 sm:px-0">
+        <div className="mb-4 sm:mb-5 flex items-center gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star
               key={i}
-              className={`h-5 w-5 ${i < t.rating ? "fill-amber-400 text-amber-400" : "fill-zinc-700 text-zinc-700"}`}
+              className={`h-4 sm:h-5 w-4 sm:w-5 ${i < t.rating ? "fill-amber-400 text-amber-400" : "fill-zinc-700 text-zinc-700"}`}
             />
           ))}
         </div>
-        <blockquote className="mb-7 text-lg sm:text-xl font-medium leading-relaxed text-foreground">
+        <blockquote className="mb-5 sm:mb-7 text-base sm:text-lg md:text-xl font-medium leading-relaxed text-foreground">
           &ldquo;{t.content}&rdquo;
         </blockquote>
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-sm font-bold text-background">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-xs sm:text-sm font-bold text-background shrink-0">
             {t.authorInitials}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-semibold text-foreground">{t.authorName}</div>
             <div className="text-xs text-muted-foreground">{t.authorContext}</div>
           </div>
         </div>
         {items.length > 1 && (
-          <div className="mt-7 flex items-center gap-1.5">
+          <div className="mt-5 sm:mt-7 flex items-center gap-1.5 flex-wrap">
             {items.map((_, i) => (
               <button
                 key={i}

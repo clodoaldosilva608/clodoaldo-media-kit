@@ -12,21 +12,21 @@ export function QuizCTASection() {
       <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
       <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl" />
 
-      <div className="relative mx-auto max-w-5xl px-5 sm:px-8 py-16 sm:py-24">
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 p-8 sm:p-12 backdrop-blur-sm">
-          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+      <div className="relative mx-auto max-w-5xl px-5 sm:px-8 py-12 sm:py-16 md:py-24">
+        <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 p-5 sm:p-8 md:p-12 backdrop-blur-sm">
+          <div className="grid gap-6 sm:gap-8 lg:grid-cols-2 lg:items-center">
             {/* Left: copy */}
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
                 <Sparkles className="h-3 w-3" /> Quiz gratuito · 2 minutos
               </div>
-              <h2 className="mt-4 font-display font-medium text-3xl sm:text-4xl tracking-tight">
+              <h2 className="mt-3 sm:mt-4 font-display font-medium text-2xl sm:text-3xl md:text-4xl tracking-tight leading-tight">
                 Não sabe por onde começar?
               </h2>
               <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
                 Responda 5 perguntas rápidas e receba uma <strong className="text-foreground">recomendação personalizada</strong> com a oferta ideal para o seu momento — entre 14 serviços, e-books e apps disponíveis.
               </p>
-              <ul className="mt-5 space-y-2 text-sm">
+              <ul className="mt-4 sm:mt-5 space-y-2 text-sm">
                 {[
                   { icon: Target, text: "Oferta certa para seu objetivo e orçamento" },
                   { icon: Gift, text: "Bônus exclusivos liberados no resultado" },
@@ -34,13 +34,13 @@ export function QuizCTASection() {
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-2 text-muted-foreground">
                     <item.icon className="h-4 w-4 shrink-0 text-primary" />
-                    {item.text}
+                    <span className="leading-tight">{item.text}</span>
                   </li>
                 ))}
               </ul>
               <Link
                 href="/quiz"
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-orange px-6 py-3.5 min-h-12 text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105"
+                className="mt-5 sm:mt-6 inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 sm:px-6 py-3 sm:py-3.5 min-h-12 text-xs sm:text-sm font-bold text-primary-foreground shadow-lg transition hover:scale-105"
               >
                 Fazer o quiz agora <ArrowRight className="h-4 w-4" />
               </Link>
