@@ -412,56 +412,131 @@ Clodoaldo Silva
           ) : (
             <>
               <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-3 py-2 text-xs text-blue-200">
-                💡 Dica: clique em qualquer linha para ver todos os detalhes do lead, mensagens prontas (WhatsApp/Email), prompt do site, preview e quebra de objeções.
+                💡 Dica: clique em qualquer lead (card) para ver todos os detalhes — mensagens prontas (WhatsApp/Email), prompt do site, preview e quebra de objeções.
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
-                      <th className="py-2 pr-3">Estabelecimento</th>
-                      <th className="py-2 pr-3">Nicho</th>
-                      <th className="py-2 pr-3">Cidade</th>
-                      <th className="py-2 pr-3">Rating</th>
-                      <th className="py-2 pr-3">Status</th>
-                      <th className="py-2 pr-3 text-right">Ações rápidas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {prospects.map((p) => {
-                      const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
-                      const wa = genWA(p);
-                      return (
-                        <tr
-                          key={p.id}
-                          onClick={() => setSelectedLead(p)}
-                          className="border-b border-white/5 hover:bg-emerald-500/[0.04] hover:border-emerald-500/20 cursor-pointer transition group"
-                        >
-                          <td className="py-3 pr-3">
-                            <div className="flex items-center gap-2">
-                              <div className="font-medium text-white group-hover:text-emerald-300 transition">{p.name}</div>
-                              {p.webDevOpportunity && <Zap className="h-3 w-3 text-amber-400 shrink-0" />}
+              <div className="space-y-2">
+                {prospects.map((p) => {
+                  const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+                  const wa = genWA(p);
+                  return (
+                    <div
+                      key={p.id || p.place_id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedLead(p)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedLead(p);
+                        }
+                      }}
+                      className="block w-full text-left rounded-xl border border-white/5 bg-white/[0.02] hover:bg-emerald-500/[0.06] hover:border-emerald-500/30 active:bg-emerald-500/[0.1] p-3 sm:p-4 transition group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-white text-sm sm:text-base group-hover:text-emerald-300 transition truncate">{p.name}</span>
+                            {p.rating && (
+                              <span className="flex items-center gap-0.5 text-xs shrink-0">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                <span className="font-semibold text-amber-300">{p.rating}</span>
+                                {p.user_ratings_total && <span className="text-zinc-500">({p.user_ratings_total})</span>}
+                              </span>
+                            )}
+                            {p.webDevOpportunity && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded shrink-0">
+                                <Zap className="h-2.5 w-2.5" /> Oportunidade
+                              </span>
+                            )}
+                          </div>
+                          {p.formatted_address && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{p.formatted_address}</span>
                             </div>
-                            {p.phone && <div className="flex items-center gap-1 text-xs text-zinc-500"><Phone className="h-3 w-3" /> {p.phone}</div>}
-                            {p.formatted_address && <div className="flex items-center gap-1 text-[10px] text-zinc-600 truncate max-w-[200px]"><MapPin className="h-2.5 w-2.5" /> {p.formatted_address}</div>}
-                          </td>
-                          <td className="py-3 pr-3 text-xs text-zinc-300 capitalize">{p.niche || p.category || "—"}</td>
-                          <td className="py-3 pr-3 text-xs text-zinc-400">{p.city || "—"}</td>
-                          <td className="py-3 pr-3 text-xs text-amber-300">{p.rating ? `⭐ ${p.rating}` : "—"}</td>
-                          <td className="py-3 pr-3"><span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span></td>
-                          <td className="py-3 pr-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1">
-                              {num && <a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="WhatsApp"><MessageCircle className="h-3 w-3" /></a>}
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
-                              <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview"><Eye className="h-3 w-3" /></button>
-                              <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link"><Link2 className="h-3 w-3" /></button>
-                              <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link"><Share2 className="h-3 w-3" /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          )}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 capitalize">{p.niche || p.category || "—"}</span>
+                            {p.city && <span className="text-[10px] text-zinc-500">📍 {p.city}</span>}
+                            {p.hasWebsite ? (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-300 bg-blue-500/15 px-1.5 py-0.5 rounded"><Globe className="h-2.5 w-2.5" /> Tem site</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded"><AlertTriangle className="h-2.5 w-2.5" /> Sem site</span>
+                            )}
+                            {p.hasWhatsApp && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded"><MessageCircle className="h-2.5 w-2.5" /> WhatsApp</span>
+                            )}
+                            <span className="rounded-md bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span>
+                          </div>
+                        </div>
+                        {/* Indicador visual de "clique para ver detalhes" */}
+                        <div className="shrink-0 flex flex-col items-end gap-2">
+                          <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 group-hover:bg-emerald-500/25 transition whitespace-nowrap">
+                            <Eye className="h-3 w-3" /> Detalhes
+                          </div>
+                          {/* Ações rápidas — stopPropagation evita abrir o modal */}
+                          <div
+                            className="flex gap-1"
+                            role="group"
+                            aria-label="Ações rápidas"
+                          >
+                            {num && (
+                              <a
+                                href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded bg-emerald-500/15 p-2 text-emerald-300 hover:bg-emerald-500/30 transition"
+                                title="Abrir WhatsApp"
+                                aria-label="Abrir WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + " " + (p.formatted_address || ""))}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded bg-amber-500/15 p-2 text-amber-300 hover:bg-amber-500/30 transition"
+                              title="Ver no Google Maps"
+                              aria-label="Ver no Google Maps"
+                            >
+                              <MapPin className="h-3.5 w-3.5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openPreview(p); }}
+                              className="rounded bg-amber-500/15 p-2 text-amber-300 hover:bg-amber-500/30 transition"
+                              title="Preview do site"
+                              aria-label="Preview do site"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); copyPreviewLink(p); }}
+                              className="rounded bg-blue-500/15 p-2 text-blue-300 hover:bg-blue-500/30 transition"
+                              title="Copiar link compartilhável"
+                              aria-label="Copiar link compartilhável"
+                            >
+                              {copiedText === `link-${p.id || p.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openPreviewLink(p); }}
+                              className="rounded bg-emerald-500/15 p-2 text-emerald-300 hover:bg-emerald-500/30 transition"
+                              title="Abrir link compartilhável"
+                              aria-label="Abrir link compartilhável"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
