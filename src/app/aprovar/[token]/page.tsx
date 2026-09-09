@@ -5,13 +5,14 @@ import { useParams } from "next/navigation";
 import {
   CheckCircle2, Clock, Send, AlertCircle, MessageCircle, DollarSign,
   Eye, ExternalLink, Sun, Moon, Smartphone, Globe, FileText, Package,
-  X, ChevronLeft, ChevronRight, MapPin, Reply, Loader2,
+  X, ChevronLeft, ChevronRight, MapPin, Reply, Loader2, FileDown,
 } from "lucide-react";
 import {
   STATUS_LABELS, STATUS_COLORS, CR_STATUS_LABELS, CR_STATUS_COLORS,
   CATEGORY_LABELS, formatCurrency, type ApprovalProject, type ApprovalRevision,
   type ApprovalChangeRequest, type AdditionalService, type ApprovalImageComment,
 } from "@/lib/approvals";
+import { exportProjectToPDF } from "@/app/admin/aprovacoes/export-pdf";
 
 interface PublicData {
   project: ApprovalProject;
@@ -189,6 +190,22 @@ export default function ApprovalPage() {
             <span className={`hidden sm:inline-flex rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${STATUS_COLORS[project.status]}`}>
               {STATUS_LABELS[project.status]}
             </span>
+            <button
+              onClick={() => {
+                exportProjectToPDF({
+                  project,
+                  revisions,
+                  changeRequests: change_requests,
+                  imageComments: image_comments,
+                  accessLogs: [],
+                  settings,
+                });
+              }}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[10px] font-semibold ${theme === "dark" ? "bg-white/5 hover:bg-white/10 text-zinc-300" : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700"}`}
+              title="Baixar histórico completo em PDF"
+            >
+              <FileDown className="h-3.5 w-3.5" /> <span className="hidden sm:inline">PDF</span>
+            </button>
             <button
               onClick={toggleTheme}
               className={`rounded-full p-2 ${theme === "dark" ? "bg-white/5 hover:bg-white/10" : "bg-zinc-100 hover:bg-zinc-200"}`}

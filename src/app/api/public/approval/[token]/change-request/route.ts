@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { notifyApprovalChangeRequest } from "@/lib/telegram";
+import { CATEGORY_LABELS } from "@/lib/approvals";
 
 /** Cliente pede alteração. Verifica limite de revisões. */
 export async function POST(
@@ -109,6 +111,19 @@ Acesse o painel admin para responder.`,
         });
       } catch {}
     }
+
+    // Notifica Telegram (best effort) — se configurado
+    try {
+      await notifyApprovalChangeRequest({
+        clientName: project.client_name,
+        projectTitle: project.project_title,
+        message: body.message,
+        category: CATEGORY_LABELS[body.category as keyof typeof CATEGORY_LABELS] || body.category,
+        hasExtraCost: body.force_with_cost || false,
+        forceWithCost: body.force_with_cost || false,
+        adminUrl: `https://clodoaldo.vercel.app/admin/aprovacoes`,
+      });
+    } catch {}
 
     return NextResponse.json({ data: cr });
   } catch (e: any) {

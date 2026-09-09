@@ -5,7 +5,7 @@ import { Widget, Badge, Button, Input, Label, Select, Textarea, EmptyState } fro
 import {
   ArrowLeft, Send, Eye, Copy, Check, Trash2, Loader2, ExternalLink,
   MessageCircle, DollarSign, CheckCircle2, XCircle, Clock, Smartphone,
-  Share2,
+  Share2, FileDown, X,
 } from "lucide-react";
 import {
   STATUS_LABELS, STATUS_COLORS, CR_STATUS_LABELS, CR_STATUS_COLORS,
@@ -13,6 +13,9 @@ import {
   type ApprovalProject, type ApprovalRevision, type ApprovalChangeRequest,
 } from "@/lib/approvals";
 import { ShareProjectModal } from "./share-modal";
+import { ImageUploader } from "./image-uploader";
+import { exportProjectToPDF } from "./export-pdf";
+import { PROJECT_TEMPLATES, type ProjectTemplate } from "./templates";
 
 interface ProjectEditorProps {
   projectId: string | null;
@@ -41,10 +44,12 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
 
   // Para enviar nova revisão
   const [newRevision, setNewRevision] = useState({
-    preview_url: "", preview_html: "", notes: "", images: "",
+    preview_url: "", preview_html: "", notes: "", images: [] as string[],
   });
 
   const [showShare, setShowShare] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,9 +145,7 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
     if (!projectId) return;
     setSaving(true);
     try {
-      const images = newRevision.images
-        ? newRevision.images.split("\n").map((s) => s.trim()).filter(Boolean)
-        : null;
+      const images = newRevision.images.length > 0 ? newRevision.images : null;
       await fetch(`/api/admin/approvals/projects/${projectId}/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -153,7 +156,7 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
           images,
         }),
       });
-      setNewRevision({ preview_url: "", preview_html: "", notes: "", images: "" });
+      setNewRevision({ preview_url: "", preview_html: "", notes: "", images: [] });
       await load();
       setActiveTab("revisions");
     } finally {
@@ -175,6 +178,25 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
     if (!confirm("Excluir projeto? Esta ação não pode ser desfeita.")) return;
     await fetch(`/api/admin/approvals/projects/${projectId}`, { method: "DELETE" });
     onSaved();
+  }
+
+  function applyTemplate(tpl: ProjectTemplate) {
+    if (tpl.id === "blank") {
+      setShowTemplates(false);
+      return;
+    }
+    if (!confirm(`Aplicar template "${tpl.name}"? Os campos atuais serão substituídos pelos valores do template.`)) return;
+    setForm((prev) => ({
+      ...prev,
+      project_title: tpl.fields.project_title || prev.project_title,
+      project_type: tpl.fields.project_type || prev.project_type,
+      notes_for_client: tpl.fields.notes_for_client || prev.notes_for_client,
+      project_scope: tpl.fields.project_scope || prev.project_scope,
+      out_of_scope_examples: tpl.fields.out_of_scope_examples || prev.out_of_scope_examples,
+      max_revisions: tpl.fields.max_revisions ?? prev.max_revisions,
+    }));
+    setSelectedTemplate(tpl.id);
+    setShowTemplates(false);
   }
 
   function copyLink() {
@@ -216,6 +238,32 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
             <Share2 className="h-3 w-3" /> Compartilhar
           </button>
           <button
+            onClick={() => {
+              if (!project) return;
+              exportProjectToPDF({
+                project,
+                revisions,
+                changeRequests,
+                imageComments: [],
+                accessLogs: [],
+                settings: null,
+              });
+            }}
+            className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25 shrink-0"
+            title="Exportar histórico completo em PDF"
+          >
+            <FileDown className="h-3 w-3" /> PDF
+          </button>
+          {!projectId && (
+            <button
+              onClick={() => setShowTemplates(true)}
+              className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-3 py-1.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/25 shrink-0"
+              title="Escolher template para pré-preencher campos"
+            >
+              📋 Templates
+            </button>
+          )}
+          <button
             onClick={copyLink}
             className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 shrink-0"
           >
@@ -247,6 +295,57 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
           clientWhatsapp={project.client_whatsapp}
           clientEmail={project.client_email}
         />
+      )}
+
+      {/* Modal de templates — apenas para novo projeto */}
+      {!projectId && showTemplates && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowTemplates(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+          >
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-white">Escolher template</h3>
+                <p className="mt-1 text-xs text-zinc-400">Pré-preenche o projeto com escopo e mensagens do tipo selecionado</p>
+              </div>
+              <button
+                onClick={() => setShowTemplates(false)}
+                aria-label="Fechar"
+                className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-5 grid sm:grid-cols-2 gap-3">
+              {PROJECT_TEMPLATES.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  onClick={() => applyTemplate(tpl)}
+                  className={`text-left rounded-xl border p-4 transition ${
+                    selectedTemplate === tpl.id
+                      ? "border-emerald-500/50 bg-emerald-500/[0.06]"
+                      : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-emerald-500/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">{tpl.icon}</span>
+                    <h4 className="font-bold text-white text-sm">{tpl.name}</h4>
+                  </div>
+                  <p className="text-xs text-zinc-400 mb-2">{tpl.description}</p>
+                  {tpl.fields.project_scope && (
+                    <div className="mt-2 pt-2 border-t border-white/5">
+                      <p className="text-[10px] text-zinc-500 line-clamp-2">{tpl.fields.project_scope.substring(0, 100)}...</p>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Tabs */}
@@ -405,9 +504,14 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
             <Textarea rows={3} value={newRevision.notes} onChange={(e) => setNewRevision({ ...newRevision, notes: e.target.value })} placeholder="Ex: Ajustes solicitados na última rodada foram aplicados..." />
           </div>
           <div>
-            <Label>URLs de imagens (uma por linha)</Label>
-            <Textarea rows={4} value={newRevision.images} onChange={(e) => setNewRevision({ ...newRevision, images: e.target.value })} placeholder={"https://.../imagem1.png\nhttps://.../imagem2.png"} />
-            <p className="mt-1 text-[10px] text-zinc-500">Use o upload do Supabase Storage ou URLs públicas das artes.</p>
+            <Label>Imagens da revisão (mockups, artes, capturas)</Label>
+            <ImageUploader
+              images={newRevision.images}
+              onChange={(imgs) => setNewRevision({ ...newRevision, images: imgs })}
+              projectId={projectId || "general"}
+              max={20}
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">PNG, JPG, WebP ou GIF. Máx 10MB por arquivo.</p>
           </div>
           <Button variant="primary" onClick={sendRevision} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

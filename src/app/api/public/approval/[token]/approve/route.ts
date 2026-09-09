@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { notifyProjectApproved } from "@/lib/telegram";
 
 /** Cliente aprova o projeto (somente se não aprovado/arquivado/expirado) */
 export async function POST(
@@ -80,6 +81,16 @@ Próximo passo: entrar em contato para finalizar entrega.`,
         });
       } catch {}
     }
+
+    // Notifica Telegram (best effort) — se configurado
+    try {
+      await notifyProjectApproved({
+        clientName: project.client_name,
+        projectTitle: project.project_title,
+        approvedAt: now,
+        adminUrl: `https://clodoaldo.vercel.app/admin/aprovacoes`,
+      });
+    } catch {}
 
     return NextResponse.json({ data: updated });
   } catch (e: any) {

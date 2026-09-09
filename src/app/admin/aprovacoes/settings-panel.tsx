@@ -185,6 +185,38 @@ export function SettingsPanel() {
             Emails disparados: projeto enviado ao cliente, cliente pediu alteração, cliente aprovou, custo adicional comunicado.
           </p>
         </Section>
+
+        {/* Integrações opcionais */}
+        <Section title="Integrações opcionais (configurar via .env.local)">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-xs text-amber-200 mb-3">
+            ⚠️ <strong>Configurações via arquivo .env.local</strong> — não podem ser editadas por aqui. Edite o arquivo <code className="bg-black/30 px-1 rounded">.env.local</code> no servidor e faça redeploy.
+          </div>
+
+          <div className="space-y-3 text-xs">
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+              <div className="font-bold text-zinc-200 mb-1">📍 Google Maps API Key</div>
+              <p className="text-zinc-400 mb-2">Para prospecção de leads em <code className="bg-black/30 px-1 rounded">/admin/parceiros</code>. Sem esta chave, a busca no Google Maps usa fallback (OpenStreetMap + Overpass).</p>
+              <ol className="list-decimal list-inside text-zinc-500 space-y-1 ml-2">
+                <li>Acesse <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="text-blue-400 underline">console.cloud.google.com</a></li>
+                <li>Crie projeto → habilite <strong>Places API</strong> e <strong>Geocoding API</strong></li>
+                <li>Credentials → Create API Key</li>
+                <li>Cole em <code className="bg-black/30 px-1 rounded">GOOGLE_MAPS_API_KEY</code> no <code className="bg-black/30 px-1 rounded">.env.local</code></li>
+              </ol>
+            </div>
+
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+              <div className="font-bold text-zinc-200 mb-1">📱 Telegram Bot (notificações push)</div>
+              <p className="text-zinc-400 mb-2">Receba no Telegram: novas vendas, recuperação de carrinho, pedidos de alteração no Portal, projetos aprovados.</p>
+              <ol className="list-decimal list-inside text-zinc-500 space-y-1 ml-2">
+                <li>Telegram → procure <strong>@BotFather</strong> → /newbot</li>
+                <li>Escolha nome + username (ex: <code className="bg-black/30 px-1 rounded">clodoaldo_alertas_bot</code>)</li>
+                <li>BotFather responde com <strong>token</strong> → cole em <code className="bg-black/30 px-1 rounded">TELEGRAM_BOT_TOKEN</code></li>
+                <li>Abra seu bot no Telegram → /start</li>
+                <li>Acesse <strong>@userinfobot</strong> → responde seu <strong>chat_id</strong> → cole em <code className="bg-black/30 px-1 rounded">TELEGRAM_CHAT_ID</code></li>
+              </ol>
+            </div>
+          </div>
+        </Section>
       </div>
     </Widget>
   );

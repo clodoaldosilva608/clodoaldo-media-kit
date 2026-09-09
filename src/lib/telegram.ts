@@ -147,3 +147,108 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+
+// ============================================================
+// Portal de Aprovação — notificações
+// ============================================================
+
+/**
+ * Notifica quando cliente pede alteração no projeto.
+ */
+export async function notifyApprovalChangeRequest(input: {
+  clientName: string;
+  projectTitle: string;
+  message: string;
+  category: string;
+  hasExtraCost: boolean;
+  forceWithCost: boolean;
+  adminUrl: string;
+}): Promise<boolean> {
+  const text = [
+    `🛠️ <b>Nova alteração solicitada</b>`,
+    ``,
+    `<b>Cliente:</b> ${escapeHtml(input.clientName)}`,
+    `<b>Projeto:</b> ${escapeHtml(input.projectTitle)}`,
+    `<b>Categoria:</b> ${escapeHtml(input.category)}`,
+    `${input.forceWithCost ? "⚠️ <b>Cliente ciente de possível custo adicional</b>" : ""}`,
+    ``,
+    `<b>Mensagem:</b>`,
+    escapeHtml(input.message),
+  ].join("\n");
+
+  return sendTelegram({
+    text,
+    parseMode: "HTML",
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "🔗 Responder no admin", url: input.adminUrl }],
+      ],
+    },
+  });
+}
+
+/**
+ * Notifica quando cliente aprova o projeto.
+ */
+export async function notifyProjectApproved(input: {
+  clientName: string;
+  projectTitle: string;
+  approvedAt: string;
+  adminUrl: string;
+}): Promise<boolean> {
+  const text = [
+    `✅ <b>Projeto aprovado!</b>`,
+    ``,
+    `<b>Cliente:</b> ${escapeHtml(input.clientName)}`,
+    `<b>Projeto:</b> ${escapeHtml(input.projectTitle)}`,
+    `<b>Aprovado em:</b> ${new Date(input.approvedAt).toLocaleString("pt-BR")}`,
+    ``,
+    `Próximo passo: entrar em contato para finalizar a entrega.`,
+  ].join("\n");
+
+  return sendTelegram({
+    text,
+    parseMode: "HTML",
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "🔗 Ver no admin", url: input.adminUrl }],
+      ],
+    },
+  });
+}
+
+/**
+ * Notifica quando cliente confirmou pagamento de custo adicional.
+ * (Ainda não implementado - cliente envia comprovante via WhatsApp)
+ * Esta função serve para uso futuro quando houver webhook de pagamento.
+ */
+export async function notifyPaymentConfirmed(input: {
+  clientName: string;
+  projectTitle: string;
+  amount: number;
+  adminUrl: string;
+}): Promise<boolean> {
+  const total = (input.amount).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+  const text = [
+    `💰 <b>Pagamento de custo adicional</b>`,
+    ``,
+    `<b>Cliente:</b> ${escapeHtml(input.clientName)}`,
+    `<b>Projeto:</b> ${escapeHtml(input.projectTitle)}`,
+    `<b>Valor:</b> ${total}`,
+    ``,
+    `Confirme o recebimento no admin.`,
+  ].join("\n");
+
+  return sendTelegram({
+    text,
+    parseMode: "HTML",
+    replyMarkup: {
+      inline_keyboard: [
+        [{ text: "🔗 Ver no admin", url: input.adminUrl }],
+      ],
+    },
+  });
+}
