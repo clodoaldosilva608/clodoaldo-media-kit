@@ -8,6 +8,7 @@ import {
   AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
   Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
+  FileCheck,
 } from "lucide-react";
 import {
   getRelevantObjections,
@@ -331,6 +332,9 @@ Clodoaldo Silva`;
                           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</span><button onClick={()=>copyToClipboard(wa,`wa-${lead.place_id}`)} className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30">{copiedText===`wa-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{wa}</pre></div>
                           <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-blue-300"><Mail className="h-3.5 w-3.5" /> Email</span><button onClick={()=>copyToClipboard(em,`em-${lead.place_id}`)} className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30">{copiedText===`em-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{em}</pre></div>
                           <button onClick={()=>openPreview(lead)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.02] transition"><Eye className="h-4 w-4" /> Ver Preview do Site</button>
+                          <a href={`/admin/aprovacoes?new=1&client_name=${encodeURIComponent(lead.name)}&client_whatsapp=${encodeURIComponent(lead.whatsapp || lead.phone || "")}&client_email=${encodeURIComponent(lead.email || "")}&project_title=${encodeURIComponent("Projeto para " + lead.name)}&prospect_id=${encodeURIComponent(lead.id || lead.place_id || "")}&preview_url=${encodeURIComponent(getPreviewLink(lead))}`} className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-500/15 border border-violet-500/30 py-3 text-sm font-bold text-violet-300 hover:bg-violet-500/25 transition">
+                            <FileCheck className="h-4 w-4" /> Criar projeto de aprovação
+                          </a>
                           <div className="flex gap-2">
                             <button onClick={()=>copyPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition" title="Copiar link compartilhável">
                               {copiedText===`link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
