@@ -105,69 +105,121 @@ export default function AdminParceirosPage() {
   function genWA(lead:Lead):string {
     const hasSite = lead.hasWebsite;
     const niche = lead.niche || lead.category || "estabelecimento";
-    const hooks = getUrgencyHooks({
-      name: lead.name,
-      niche,
-      hasWebsite: hasSite,
-      rating: lead.rating ?? null,
-    });
-    return `Olá! Tudo bem?
+    const rating = lead.rating || null;
+    const isFoodNiche = /(restaurante|pizzaria|hamburgueria|cafeteria|loja de conveniencia|bar|lanchonete|padaria|confeitaria)/i.test(niche);
 
-Meu nome é Clodoaldo Silva, sou especialista em marketing digital local.
+    // Avaliação só elogia se rating existir
+    const ratingLine = rating
+      ? `Vi sua avaliação de ${rating} estrelas no Google Maps — parabéns pelo trabalho bem feito! 🙌`
+      : `Vi seu cadastro no Google Maps e gostei do que encontrei.`;
 
-Encontrei o ${lead.name} no Google Maps e fiquei impressionado com a avaliação de ${lead.rating||"5"} estrelas — parabéns!
+    // Diagnóstico inicial
+    const diagLine = hasSite
+      ? `Notei que seu site atual está perdendo clientes por ser lento/desatualizado.`
+      : `Notei que vocês ainda NÃO têm um site profissional — e isso está custando clientes todos os meses.`;
 
-Notei que ${hasSite?"seu site poderia ter performance muito melhor":"vocês ainda não têm um site profissional"}, e isso pode estar custando clientes todos os meses. Deixa eu te explicar:
+    return `Olá! Tudo bem? 👋
 
-${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+Meu nome é Clodoaldo Silva, sou especialista em marketing digital local aqui da região.
 
-Posso ajudar com:
-✅ ${hasSite?"Redesign do site":"Criação de site profissional"} que converte visita em cliente
-✅ SEO local — aparecer em primeiro nas buscas da cidade
+${ratingLine}
+
+Cheguei até você pesquisando "${niche} perto de mim" no Google. ${diagLine} Deixa eu te mostrar o que está acontecendo:
+
+🔍 Pesquisando "${niche} em ${lead.city || "sua cidade"}", seus concorrentes aparecem em primeiro — e estão ganhando os clientes que poderiam estar vindo até você. São 150-400 buscas/mês só na sua região.
+
+📱 87% das pessoas pesquisam online ANTES de decidir onde comprar. Sem presença digital forte, você está invisível para esse público.
+
+📉 A cada mês sem isso = 30-50 clientes novos indo direto pro concorrente.
+
+Mais que um site, eu ofereço um **ecossistema completo** para o seu negócio crescer:
+
+✅ ${hasSite ? "Redesign do site atual" : "Criação de site profissional"} — rápido, responsivo, que converte visita em cliente
+✅ SEO local — aparecer em 1º nas buscas "${niche} em ${lead.city || "sua cidade"}"
+✅ Google Meu Negócio otimizado — destaque no Maps
 ✅ Integração com WhatsApp — cliente pede com 1 clique
-✅ Google Meu Negócio otimizado — aparecer no Maps
+${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular, sem app, sem download
+✅ Edição/atualização de cardápio — fotos profissionais + descrições que vendem
+✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar` : `✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar
+✅ Gestão de redes sociais opcional — poste sem trabalho extra`}
+✅ Pacote de recorrência mensal — site + artes + SEO + suporte, sem contratação de funcionário
+✅ E diversos outros produtos digitais sob medida (e-books, landing pages de campanhas, auditoria de perfil, criativos para tráfego pago...)
 
-Cada mês sem isso = 30-50 clientes novos indo pro concorrente.
+💰 **Custo-benefício que faz sentido:** um único site seu custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que você paga pra sempre), o site é seu, trabalha 24/7 por anos.
 
-Se tiver interesse em saber mais, é só me chamar no WhatsApp — respondo rápido:
+✅ **Sem fidelidade:** você pode cancelar a recorrência quando quiser.
+✅ **Garantia:** se em 90 dias você não ver resultado, devolvo seu investimento.
+✅ **Sem trabalho pra você:** eu cuido de tudo — design, conteúdo, publicação. Você só aprova o resultado final.
+
+Sei que provavelmente está ocupado(a) — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama aqui no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu te mostro exatamente o que dá pra fazer pro ${lead.name}.
+
+👉 Posso te enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" aqui no WhatsApp.
+
 📱 (81) 92005-1068
+🌐 clodoaldo.vercel.app
 
-— Clodoaldo Silva
-🌐 clodoaldo.vercel.app`;
+Abraço,
+Clodoaldo Silva`;
   }
 
   function genEmail(lead:Lead):string {
     const hasSite = lead.hasWebsite;
     const niche = lead.niche || lead.category || "estabelecimento";
-    const hooks = getUrgencyHooks({
-      name: lead.name,
-      niche,
-      hasWebsite: hasSite,
-      rating: lead.rating ?? null,
-    });
-    return `Assunto: ${lead.name} — como atrair mais clientes (e não perder para o concorrente)
+    const rating = lead.rating || null;
+    const isFoodNiche = /(restaurante|pizzaria|hamburgueria|cafeteria|loja de conveniencia|bar|lanchonete|padaria|confeitaria)/i.test(niche);
+
+    const ratingLine = rating
+      ? `Vi sua avaliação de ${rating} estrelas no Google Maps — parabéns pelo trabalho bem feito!`
+      : `Vi seu cadastro no Google Maps e gostei do que encontrei.`;
+
+    const diagLine = hasSite
+      ? `Notei que seu site atual está perdendo clientes por ser lento/desatualizado.`
+      : `Notei que vocês ainda NÃO têm um site profissional — e isso está custando clientes todos os meses.`;
+
+    return `Assunto: ${lead.name} — como atrair 30-50 clientes novos por mês (sem depender de indicação)
 
 Olá, equipe ${lead.name}!
 
-Meu nome é Clodoaldo Silva. Encontrei vocês no Google Maps (${lead.rating||"5"} estrelas — parabéns!).
+Meu nome é Clodoaldo Silva, sou especialista em marketing digital local aqui da região.
 
-Notei que ${hasSite?"seu site poderia ter melhor desempenho":"vocês não têm site profissional"}. Isso pode estar custando clientes todos os meses:
+${ratingLine}
 
-${hooks.map((h, i) => `${i+1}. ${h}`).join("\n\n")}
+Cheguei até vocês pesquisando "${niche} perto de mim" no Google. ${diagLine} Deixa eu explicar o que está acontecendo:
 
-O que posso fazer por vocês:
-1. ${hasSite?"Redesign":"Criação de site"} — rápido, responsivo, que converte
-2. SEO local — aparecer nas buscas da cidade
-3. Integração com WhatsApp
-4. Google Meu Negócio otimizado
+1. 🔍 Pesquisando "${niche} em ${lead.city || "sua cidade"}", seus concorrentes aparecem em primeiro — e estão ganhando os clientes que poderiam estar vindo até vocês. São 150-400 buscas/mês só na região.
 
-Cada mês que passa sem isso = 30-50 clientes novos indo para o concorrente direto.
+2. 📱 87% das pessoas pesquisam online ANTES de decidir onde comprar. Sem presença digital forte, vocês estão invisíveis para esse público.
 
-Se tiver interesse em saber mais, é só me chamar no WhatsApp:
+3. 📉 A cada mês sem isso = 30-50 clientes novos indo direto pro concorrente. Em 6 meses, são 200+ clientes que poderiam ser de vocês.
+
+Mais que um site, eu ofereço um **ecossistema completo** para o ${lead.name} crescer:
+
+✅ ${hasSite ? "Redesign do site atual" : "Criação de site profissional"} — rápido, responsivo, que converte visita em cliente
+✅ SEO local — aparecer em 1º nas buscas "${niche} em ${lead.city || "sua cidade"}"
+✅ Google Meu Negócio otimizado — destaque no Maps
+✅ Integração com WhatsApp — cliente pede com 1 clique
+${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular, sem app, sem download
+✅ Edição/atualização de cardápio — fotos profissionais + descrições que vendem
+✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar` : `✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar
+✅ Gestão de redes sociais opcional — você posta sem trabalho extra`}
+✅ Pacote de recorrência mensal — site + artes + SEO + suporte, sem contratar funcionário
+✅ E diversos outros produtos digitais sob medida (e-books, landing pages de campanhas, auditoria de perfil, criativos para tráfego pago...)
+
+💰 **Custo-benefício que faz sentido:** um único site profissional custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que se paga pra sempre), o site é de vocês, trabalha 24/7 por anos.
+
+✅ Sem fidelidade — vocês podem cancelar a recorrência quando quiserem.
+✅ Garantia — se em 90 dias não houver resultado, devolvo o investimento.
+✅ Sem trabalho pra vocês — eu cuido de tudo (design, conteúdo, publicação). Vocês só aprovam o resultado final.
+
+Sei que provavelmente estão ocupados — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu mostro exatamente o que dá pra fazer pro ${lead.name}.
+
+👉 Posso enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" no WhatsApp.
+
 📱 (81) 92005-1068
+🌐 https://clodoaldo.vercel.app
 
-Clodoaldo Silva
-🌐 clodoaldo.vercel.app`;
+Abraço,
+Clodoaldo Silva`;
   }
 
   function genPrompt(lead:Lead):string {
