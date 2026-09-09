@@ -148,7 +148,6 @@ ${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular
 💰 **Custo-benefício que faz sentido:** um único site seu custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que você paga pra sempre), o site é seu, trabalha 24/7 por anos.
 
 ✅ **Sem fidelidade:** você pode cancelar a recorrência quando quiser.
-✅ **Garantia:** se em 90 dias você não ver resultado, devolvo seu investimento.
 ✅ **Sem trabalho pra você:** eu cuido de tudo — design, conteúdo, publicação. Você só aprova o resultado final.
 
 Sei que provavelmente está ocupado(a) — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama aqui no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu te mostro exatamente o que dá pra fazer pro ${lead.name}.
@@ -208,7 +207,6 @@ ${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular
 💰 **Custo-benefício que faz sentido:** um único site profissional custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que se paga pra sempre), o site é de vocês, trabalha 24/7 por anos.
 
 ✅ Sem fidelidade — vocês podem cancelar a recorrência quando quiserem.
-✅ Garantia — se em 90 dias não houver resultado, devolvo o investimento.
 ✅ Sem trabalho pra vocês — eu cuido de tudo (design, conteúdo, publicação). Vocês só aprovam o resultado final.
 
 Sei que provavelmente estão ocupados — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu mostro exatamente o que dá pra fazer pro ${lead.name}.

@@ -57,7 +57,7 @@ Se tiver interesse em saber como garantir fila de cliente novo sem depender só 
 
 Site profissional + Google Meu Negócio otimizado custa menos que 1 mês de aluguel da sua loja. E diferente do aluguel (que você paga pra sempre), o site você paga uma vez e ele trabalha 24/7 por você por anos.
 
-Posso montar um plano em 3x que cabe no fluxo de caixa. E se em 90 dias você não ver resultado, devolvo seu dinheiro. Se quiser entender melhor, me chama no WhatsApp: 📱 (81) 92005-1068`,
+Posso montar um plano em 3x que cabe no fluxo de caixa. Sem fidelidade — você pode cancelar a recorrência quando quiser. Se quiser entender melhor, me chama no WhatsApp: 📱 (81) 92005-1068`,
     contextTags: ["todos"],
     priority: 1,
   },
@@ -158,7 +158,7 @@ A diferença do meu trabalho:
 ❌ Site bonito que ninguém vê = R$ desperdiçado
 ✅ Site bonito + SEO local + otimização para conversão = investimento que se paga
 
-Posso te mostrar cases reais da sua região. E mais: trabalho com garantia — se em 90 dias você não ver resultado, devolvo seu investimento.
+Posso te mostrar cases reais da sua região. Sem fidelidade — você pode cancelar a recorrência quando quiser, sem multa.
 
 Você não está pagando por um site. Está pagando por cliente novo. Se quiser ver os cases, me chama no WhatsApp: 📱 (81) 92005-1068`,
     contextTags: ["tem_site", "todos"],
