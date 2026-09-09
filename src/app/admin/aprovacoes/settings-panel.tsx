@@ -186,6 +186,11 @@ export function SettingsPanel() {
           </p>
         </Section>
 
+        {/* Integração Google OAuth */}
+        <Section title="Integração Google (Gmail, Sheets, Drive, Calendar, YouTube, Blogger)">
+          <GoogleOAuthSection />
+        </Section>
+
         {/* Integrações opcionais */}
         <Section title="Integrações opcionais (configurar via .env.local)">
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-xs text-amber-200 mb-3">
@@ -227,6 +232,100 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="border border-white/5 rounded-xl p-4">
       <h3 className="mb-3 text-sm font-bold text-zinc-300">{title}</h3>
       <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+
+function GoogleOAuthSection() {
+  const [connected, setConnected] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check URL params for connection result
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_connected") === "1") {
+      const emailParam = params.get("google_email");
+      setConnected(true);
+      setEmail(emailParam);
+      // Clean URL
+      window.history.replaceState({}, "", "/admin/aprovacoes");
+    }
+    if (params.get("google_error")) {
+      alert("Erro ao conectar Google: " + params.get("google_error"));
+      window.history.replaceState({}, "", "/admin/aprovacoes");
+    }
+
+    // Check status
+    fetch("/api/oauth/google/status")
+      .then((r) => r.json())
+      .then((data) => {
+        setConnected(data.connected);
+        setEmail(data.email);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleDisconnect() {
+    if (!confirm("Desconectar Google?")) return;
+    await fetch("/api/oauth/google/disconnect", { method: "POST" });
+    setConnected(false);
+    setEmail(null);
+  }
+
+  if (loading) return <div className="text-xs text-zinc-500">Verificando conexão...</div>;
+
+  if (connected) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-bold text-emerald-300">✅ Google conectado{email ? ` como ${email}` : ""}</div>
+            <div className="text-[10px] text-zinc-500 mt-1">OAuth 2.0 ativo.</div>
+          </div>
+          <button onClick={handleDisconnect} className="rounded-md bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/25">
+            Desconectar
+          </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {[
+            { name: "Gmail", ok: true, desc: "Envio de emails" },
+            { name: "Sheets", ok: true, desc: "Exportar leads" },
+            { name: "Drive", ok: true, desc: "Upload arquivos" },
+            { name: "Calendar", ok: true, desc: "Criar reuniões" },
+            { name: "YouTube", ok: true, desc: "API Key (sem OAuth)" },
+            { name: "Blogger", ok: true, desc: "API Key (sem OAuth)" },
+          ].map((s) => (
+            <div key={s.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-emerald-400 text-xs">✅</span>
+                <span className="text-xs font-bold text-zinc-200">{s.name}</span>
+              </div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-400">
+        Conecte sua conta Google para habilitar envio de email (Gmail), exportação de leads (Sheets), upload de arquivos (Drive) e criação de reuniões (Calendar). YouTube e Blogger usam API Key (leitura pública) e não precisam de OAuth.
+      </p>
+      <a
+        href="/api/oauth/google/start"
+        className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition"
+      >
+        🔑 Conectar Google
+      </a>
+      <div className="flex flex-wrap gap-1.5">
+        {["gmail.send", "spreadsheets", "drive.file", "calendar", "youtube.readonly", "blogger"].map((s) => (
+          <span key={s} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-zinc-400">{s}</span>
+        ))}
+      </div>
     </div>
   );
 }
