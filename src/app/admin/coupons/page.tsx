@@ -63,12 +63,11 @@ export default function AdminCouponsPage() {
       min_order_cents: Number(editing.min_order_cents) || 0,
       max_uses: Number(editing.max_uses) || 0,
     };
-    const { error } = editing.id
-      ? adminUpdate("coupons", editing.id, payload)
-      : adminInsert("coupons", payload);
+    const { error } = await (editing.id ? adminUpdate("coupons", editing.id, payload)
+      : adminInsert("coupons", payload));
     setSaving(false);
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     setEditing(null);
@@ -77,17 +76,17 @@ export default function AdminCouponsPage() {
 
   async function remove(c: Coupon) {
     if (!confirm(`Remover cupom ${c.code}?`)) return;
-    const { error } = adminDelete("coupons", c.id);
+    const { error } = await adminDelete("coupons", c.id);
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     await load();
   }
 
   async function toggleActive(c: Coupon) {
-    const { error } = adminUpdate("coupons", c.id, { active: !c.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("coupons", c.id, { active: !c.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

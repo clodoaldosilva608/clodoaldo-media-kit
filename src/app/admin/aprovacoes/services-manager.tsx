@@ -162,7 +162,7 @@ function ServiceForm({
         </div>
         <div>
           <Label>Categoria</Label>
-          <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+          <Select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as AdditionalService["category"] })}>
             {CATEGORIES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </Select>
         </div>

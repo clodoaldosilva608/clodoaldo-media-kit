@@ -68,12 +68,11 @@ export default function AdminOffersPage() {
             .map((s: string) => s.trim())
             .filter(Boolean),
     };
-    const { error } = editing.id
-      ? adminUpdate("offers", editing.id, payload)
-      : adminInsert("offers", payload);
+    const { error } = await (editing.id ? adminUpdate("offers", editing.id, payload)
+      : adminInsert("offers", payload));
     setSaving(false);
     if (error) {
-      alert("Erro ao salvar: " + error.message);
+      alert("Erro ao salvar: " + error);
       return;
     }
     setEditing(null);
@@ -82,18 +81,18 @@ export default function AdminOffersPage() {
 
   async function remove(o: Offer) {
     if (!confirm(`Remover a oferta "${o.name}"?`)) return;
-    const { error } = adminDelete("offers", o.id);
+    const { error } = await adminDelete("offers", o.id);
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     await load();
   }
 
   async function toggleActive(o: Offer) {
-    const { error } = adminUpdate("offers", o.id, { active: !o.active });
+    const { error } = await adminUpdate("offers", o.id, { active: !o.active });
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     await load();

@@ -69,32 +69,31 @@ export default function AdminEmailPage() {
   async function save() {
     if (!editing) return;
     setSaving(true);
-    const { error } = editing.id
-      ? adminUpdate("email_templates", editing.id, editing)
-      : adminInsert("email_templates", editing);
+    const { error } = await (editing.id ? adminUpdate("email_templates", editing.id, editing)
+      : adminInsert("email_templates", editing));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setEditing(null);
     await load();
   }
 
   async function remove(t: Template) {
     if (!confirm(`Remover template "${t.name}"?`)) return;
-    const { error } = adminDelete("email_templates", t.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("email_templates", t.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleActive(t: Template) {
-    const { error } = adminUpdate("email_templates", t.id, { active: !t.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("email_templates", t.id, { active: !t.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function removeSub(s: Subscriber) {
     if (!confirm(`Remover ${s.email}?`)) return;
-    const { error } = adminDelete("email_subscribers", s.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("email_subscribers", s.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

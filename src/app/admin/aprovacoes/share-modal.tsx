@@ -23,7 +23,7 @@ interface NetworkOption {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   /** Build share URL given message + URL */
-  buildUrl: (url: string, message: string, subject: string) => string;
+  buildUrl: (url: string, message: string, subject: string, phone?: string, email?: string) => string;
   /** Whether this network supports pre-filling message (some only support URL) */
   supportsMessage: boolean;
   /** Optional pre-fill with specific phone/email */

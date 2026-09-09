@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Select } from "@/components/admin/ui";
-import { fetchAdminData, brl, timeAgo, formatDateTime, statusColor } from "@/lib/admin/data";
+import { fetchAdminData, adminUpdate, brl, timeAgo, formatDateTime, statusColor } from "@/lib/admin/data";
 import { ShoppingCart, Search, Download, RefreshCw, Filter, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,7 @@ export default function AdminOrdersPage() {
   async function updateStatus(order: Order, status: string) {
     const { error } = await adminUpdate("orders", order.id, { status, updated_at: new Date().toISOString() });
     if (error) {
-      alert("Erro ao atualizar: " + error.message);
+      alert("Erro ao atualizar: " + error);
       return;
     }
     await load();

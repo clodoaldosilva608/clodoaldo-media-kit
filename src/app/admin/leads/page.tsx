@@ -48,9 +48,9 @@ export default function AdminLeadsPage() {
 
   async function deleteLead(id: string) {
     if (!confirm("Tem certeza que deseja remover este lead?")) return;
-    const { error } = adminDelete("leads", id);
+    const { error } = await adminDelete("leads", id);
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     await load();

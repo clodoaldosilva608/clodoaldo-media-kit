@@ -56,25 +56,24 @@ export default function AdminPixelsPage() {
   async function save() {
     if (!editing) return;
     setSaving(true);
-    const { error } = editing.id
-      ? adminUpdate("pixels", editing.id, editing)
-      : adminInsert("pixels", editing);
+    const { error } = await (editing.id ? adminUpdate("pixels", editing.id, editing)
+      : adminInsert("pixels", editing));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setEditing(null);
     await load();
   }
 
   async function remove(p: Pixel) {
     if (!confirm(`Remover pixel "${p.name}"?`)) return;
-    const { error } = adminDelete("pixels", p.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("pixels", p.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleActive(p: Pixel) {
-    const { error } = adminUpdate("pixels", p.id, { active: !p.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("pixels", p.id, { active: !p.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

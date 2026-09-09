@@ -487,7 +487,7 @@ function ChangeRequestCard({ cr, onRespond }: { cr: ApprovalChangeRequest; onRes
             </Button>
             {showCostForm && (
               <Button
-                variant="warning"
+                variant="outline"
                 size="sm"
                 onClick={() => onRespond(cr.id, {
                   status: "awaiting_payment",
@@ -509,30 +509,30 @@ function ChangeRequestCard({ cr, onRespond }: { cr: ApprovalChangeRequest; onRes
             >
               <XCircle className="h-3 w-3" /> Rejeitar
             </Button>
-            {cr.status === "awaiting_payment" && (
-              <Button
-                variant="success"
-                size="sm"
+            {cr.status === "awaiting_payment" as string && (
+              <button
+                type="button"
                 onClick={() => onRespond(cr.id, {
                   payment_status: "confirmed",
                   payment_confirmed_at: new Date().toISOString(),
                   status: "in_progress",
                 })}
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25"
               >
                 <CheckCircle2 className="h-3 w-3" /> Confirmar pagamento
-              </Button>
+              </button>
             )}
-            {cr.status === "in_progress" && (
-              <Button
-                variant="success"
-                size="sm"
+            {cr.status === "in_progress" as string && (
+              <button
+                type="button"
                 onClick={() => onRespond(cr.id, {
                   status: "resolved",
                   resolved_at: new Date().toISOString(),
                 })}
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25"
               >
                 <CheckCircle2 className="h-3 w-3" /> Marcar como resolvido
-              </Button>
+              </button>
             )}
           </div>
         </div>

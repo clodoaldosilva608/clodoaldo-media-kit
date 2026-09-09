@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   STATUS_LABELS, STATUS_COLORS, CR_STATUS_LABELS, CR_STATUS_COLORS,
-  CATEGORY_LABELS, type ApprovalProject, type ApprovalRevision,
+  CATEGORY_LABELS, formatCurrency, type ApprovalProject, type ApprovalRevision,
   type ApprovalChangeRequest, type AdditionalService, type ApprovalImageComment,
 } from "@/lib/approvals";
 

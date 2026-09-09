@@ -71,26 +71,25 @@ export default function AdminAffiliatesPage() {
       slug: editing.slug || genSlug(editing.name || "afiliado"),
       commission_percent: Number(editing.commission_percent) || 20,
     };
-    const { error } = editing.id
-      ? adminUpdate("affiliates", editing.id, payload)
-      : adminInsert("affiliates", payload);
+    const { error } = await (editing.id ? adminUpdate("affiliates", editing.id, payload)
+      : adminInsert("affiliates", payload));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setEditing(null);
     await load();
   }
 
   async function remove(a: Affiliate) {
     if (!confirm(`Remover afiliado ${a.name}?`)) return;
-    const { error } = adminDelete("affiliates", a.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("affiliates", a.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleStatus(a: Affiliate) {
     const next = a.status === "active" ? "blocked" : "active";
-    const { error } = adminUpdate("affiliates", a.id, { status: next });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("affiliates", a.id, { status: next });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

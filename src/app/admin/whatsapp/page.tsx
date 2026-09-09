@@ -50,11 +50,10 @@ export default function AdminWhatsAppPage() {
       position: config.position,
       active: config.active,
     };
-    const { error } = config.id
-      ? adminUpdate("whatsapp", config.id, payload)
-      : adminInsert("whatsapp", payload);
+    const { error } = await (config.id ? adminUpdate("whatsapp", config.id, payload)
+      : adminInsert("whatsapp", payload));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     alert("WhatsApp atualizado!");
     await load();
   }

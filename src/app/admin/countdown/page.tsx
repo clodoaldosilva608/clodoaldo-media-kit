@@ -57,25 +57,24 @@ export default function AdminCountdownPage() {
   async function save() {
     if (!editing) return;
     setSaving(true);
-    const { error } = editing.id
-      ? adminUpdate("countdown", editing.id, editing)
-      : adminInsert("countdown", editing);
+    const { error } = await (editing.id ? adminUpdate("countdown", editing.id, editing)
+      : adminInsert("countdown", editing));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setEditing(null);
     await load();
   }
 
   async function remove(c: Campaign) {
     if (!confirm(`Remover campanha "${c.name}"?`)) return;
-    const { error } = adminDelete("countdown", c.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("countdown", c.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleActive(c: Campaign) {
-    const { error } = adminUpdate("countdown", c.id, { active: !c.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("countdown", c.id, { active: !c.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

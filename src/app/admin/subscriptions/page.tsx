@@ -76,25 +76,24 @@ export default function AdminSubscriptionsPage() {
             .map((s: string) => s.trim())
             .filter(Boolean),
     };
-    const { error } = editing.id
-      ? adminUpdate("subscription_plans", editing.id, payload)
-      : adminInsert("subscription_plans", payload);
+    const { error } = await (editing.id ? adminUpdate("subscription_plans", editing.id, payload)
+      : adminInsert("subscription_plans", payload));
     setSaving(false);
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setEditing(null);
     await load();
   }
 
   async function remove(p: Plan) {
     if (!confirm(`Remover plano "${p.name}"?`)) return;
-    const { error } = adminDelete("subscription_plans", p.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("subscription_plans", p.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleActive(p: Plan) {
-    const { error } = adminUpdate("subscription_plans", p.id, { active: !p.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("subscription_plans", p.id, { active: !p.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 

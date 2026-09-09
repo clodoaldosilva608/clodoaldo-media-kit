@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Select, Textarea } from "@/components/admin/ui";
-import { fetchAdminData, timeAgo, formatDateTime, statusColor } from "@/lib/admin/data";
+import { fetchAdminData, adminUpdate, timeAgo, formatDateTime, statusColor } from "@/lib/admin/data";
 import { FileText, Search, RefreshCw, Eye, Mail, Phone } from "lucide-react";
 
 interface Briefing {
@@ -54,7 +54,7 @@ export default function AdminBriefingsPage() {
   async function updateStatus(b: Briefing, status: string) {
     const { error } = await adminUpdate("briefings", b.id, { status, updated_at: new Date().toISOString() });
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     await load();

@@ -34,7 +34,7 @@ export default function AdminNotificationsPage() {
   }, [load]);
 
   async function markRead(n: Notification) {
-    const { error } = adminUpdate("notifications", n.id, { read: true });
+    const { error } = await adminUpdate("notifications", n.id, { read: true });
     if (error) return;
     await load();
   }
@@ -49,13 +49,13 @@ export default function AdminNotificationsPage() {
 
   async function sendNotification() {
     if (!form.title) return alert("Digite um título");
-    const { error } = adminInsert("notifications", {
+    const { error } = await adminInsert("notifications", {
       kind: form.kind,
       title: form.title,
       body: form.body,
       href: form.href || null,
     });
-    if (error) return alert("Erro: " + error.message);
+    if (error) return alert("Erro: " + error);
     setForm({ kind: "info", title: "", body: "", href: "" });
     setShowComposer(false);
     await load();

@@ -58,12 +58,11 @@ export default function AdminTestimonialsPage() {
   async function save() {
     if (!editing) return;
     setSaving(true);
-    const { error } = editing.id
-      ? adminUpdate("testimonials", editing.id, editing)
-      : adminInsert("testimonials", editing);
+    const { error } = await (editing.id ? adminUpdate("testimonials", editing.id, editing)
+      : adminInsert("testimonials", editing));
     setSaving(false);
     if (error) {
-      alert("Erro: " + error.message);
+      alert("Erro: " + error);
       return;
     }
     setEditing(null);
@@ -72,20 +71,20 @@ export default function AdminTestimonialsPage() {
 
   async function remove(t: Testimonial) {
     if (!confirm(`Remover depoimento de ${t.author_name}?`)) return;
-    const { error } = adminDelete("testimonials", t.id);
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminDelete("testimonials", t.id);
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleActive(t: Testimonial) {
-    const { error } = adminUpdate("testimonials", t.id, { active: !t.active });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("testimonials", t.id, { active: !t.active });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
   async function toggleFeatured(t: Testimonial) {
-    const { error } = adminUpdate("testimonials", t.id, { featured: !t.featured });
-    if (error) return alert("Erro: " + error.message);
+    const { error } = await adminUpdate("testimonials", t.id, { featured: !t.featured });
+    if (error) return alert("Erro: " + error);
     await load();
   }
 
