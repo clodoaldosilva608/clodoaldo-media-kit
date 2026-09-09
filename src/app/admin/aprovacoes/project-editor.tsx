@@ -5,12 +5,14 @@ import { Widget, Badge, Button, Input, Label, Select, Textarea, EmptyState } fro
 import {
   ArrowLeft, Send, Eye, Copy, Check, Trash2, Loader2, ExternalLink,
   MessageCircle, DollarSign, CheckCircle2, XCircle, Clock, Smartphone,
+  Share2,
 } from "lucide-react";
 import {
   STATUS_LABELS, STATUS_COLORS, CR_STATUS_LABELS, CR_STATUS_COLORS,
   CATEGORY_LABELS, PROJECT_TYPE_LABELS, formatCurrency, buildPublicUrl,
   type ApprovalProject, type ApprovalRevision, type ApprovalChangeRequest,
 } from "@/lib/approvals";
+import { ShareProjectModal } from "./share-modal";
 
 interface ProjectEditorProps {
   projectId: string | null;
@@ -41,6 +43,8 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
   const [newRevision, setNewRevision] = useState({
     preview_url: "", preview_html: "", notes: "", images: "",
   });
+
+  const [showShare, setShowShare] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,6 +209,13 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
           <span className="text-xs font-bold text-emerald-300">Link público do cliente:</span>
           <code className="text-[11px] text-zinc-300 break-all flex-1 min-w-0">{publicUrl}</code>
           <button
+            onClick={() => setShowShare(true)}
+            className="inline-flex items-center gap-1 rounded-md bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 text-[10px] font-bold text-white hover:opacity-90 shrink-0 shadow-md"
+            title="Compartilhar em diversas redes sociais + email"
+          >
+            <Share2 className="h-3 w-3" /> Compartilhar
+          </button>
+          <button
             onClick={copyLink}
             className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 shrink-0"
           >
@@ -223,6 +234,19 @@ export function ProjectEditor({ projectId, onClose, onSaved }: ProjectEditorProp
             {STATUS_LABELS[project.status]}
           </span>
         </div>
+      )}
+
+      {/* Modal de compartilhamento */}
+      {project && (
+        <ShareProjectModal
+          open={showShare}
+          onClose={() => setShowShare(false)}
+          publicUrl={publicUrl}
+          projectTitle={project.project_title}
+          clientName={project.client_name}
+          clientWhatsapp={project.client_whatsapp}
+          clientEmail={project.client_email}
+        />
       )}
 
       {/* Tabs */}
