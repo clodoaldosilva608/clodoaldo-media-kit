@@ -129,11 +129,11 @@ export function Hero() {
           }}
         />
 
-        {/* Globe — LARGE on desktop (right), SMALL behind text on mobile */}
+        {/* Globe — idêntico em desktop e mobile (mesma opacidade, posicionamento proporcional) */}
         <div
           ref={globeWrapRef}
           className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[1100px] h-[1100px] max-w-[95vw] max-h-[95vh] will-change-transform z-0
-                     max-md:opacity-30 max-md:right-[-30%] max-md:top-[40%] max-md:w-[700px] max-md:h-[700px]"
+                     max-md:right-[-15%] max-md:top-1/2 max-md:w-[900px] max-md:h-[900px]"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />
@@ -142,7 +142,7 @@ export function Hero() {
         {/* Text content — ON TOP of globe, left-aligned */}
         <div
           ref={textWrapRef}
-          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:pt-16"
+          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:pt-20 max-md:max-w-md"
           style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
         >
           <div className="max-w-xl">
