@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       return {
         lead: {
           id: m.lead.id,
+          place_id: m.lead.place_id, // Include place_id for envios logging lookup
           name: m.lead.name,
           niche: m.lead.niche || m.lead.category,
           city: m.lead.city,
@@ -96,26 +97,31 @@ async function generateWithGemini(
     .map((l, i) => `${i + 1}. Nome: ${l.name} | Nicho: ${l.niche || l.category || "estabelecimento"} | Cidade: ${l.city || "—"} | Avaliação: ${l.rating || "sem avaliação"} | Tem site: ${l.hasWebsite ? "sim" : "não"}`)
     .join("\n");
 
-  const prompt = `Você é um especialista em prospecção via WhatsApp para marketing digital local. Gere UMA mensagem curta (máximo 3 linhas, ~40 palavras) para CADA um dos ${leads.length} estabelecimentos abaixo.
+  const prompt = `Você é um especialista em prospecção via WhatsApp para marketing digital local. Gere UMA mensagem curta para CADA um dos ${leads.length} estabelecimentos abaixo.
 
-REGRA OBRIGATÓRIA para cada mensagem:
-- Primeira linha: cumprimento breve + personalização com nome do estabelecimento
-- Segunda linha: UMA observação específica (sem site / site desatualizado / avaliação boa / oportunidade local)
-- Terceira linha (CTA): "${ctaLine}"
+FORMATO DE RESPOSTA (OBRIGATÓRIO):
+- Responda APENAS com as ${leads.length} mensagens, separadas por uma linha em branco entre elas.
+- Cada mensagem DEVE começar com o número entre colchetes: [1], [2], [3], etc.
+- Após o número, escreva a mensagem completa em uma única linha (sem quebras de linha dentro da mensagem).
 
-REGRAS:
-- Máximo 40 palavras por mensagem
-- Tom amigável, próximo, NÃO robótico
-- NÃO use bullet points nem emojis exagerados (máx 1 emoji)
-- Mencione o nome do estabelecimento em cada mensagem
-- Varie a estrutura entre as mensagens (não comece todas com "Olá")
+EXEMPLO de formato:
+[1] Boa noite! Vi o Barbearia Silva no Google Maps. Notei que ainda não têm site profissional. Caso tenha interesse, é só me chamar aqui no WhatsApp. 🙌
+
+[2] Boa tarde! Parabéns pela avaliação de 4.8★! Sou o Clodoaldo, posso ajudar com marketing digital. Caso tenha interesse, é só me chamar aqui no WhatsApp. 🙌
+
+REGRA PARA CADA MENSAGEM:
+- Cumprimento + nome do estabelecimento + UMA observação (sem site/site ruim/avaliação boa) + CTA: "${ctaLine}"
+- Máximo 40 palavras
+- Tom amigável, NÃO robótico
+- 1 emoji no máximo
+- Varie o cumprimento (Bom dia/Boa tarde/Boa noite/Olá/Tudo bem?)
 - Em PORTUGUÊS do Brasil
-- Não inclua números de telefone nem links
+- Sem telefone nem links
 
 Estabelecimentos:
 ${leadList}
 
-Responda APENAS com as mensagens, uma por linha, numeradas (1., 2., ...) para corresponder à ordem acima. Nada mais.`;
+Responda agora com as ${leads.length} mensagens no formato [N] mensagem:`;
 
   const resp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
@@ -124,7 +130,7 @@ Responda APENAS com as mensagens, uma por linha, numeradas (1., 2., ...) para co
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.8, maxOutputTokens: 1500 },
+        generationConfig: { temperature: 0.8, maxOutputTokens: 4000, topP: 0.9 },
       }),
     }
   );
@@ -137,32 +143,38 @@ Responda APENAS com as mensagens, uma por linha, numeradas (1., 2., ...) para co
   const text: string =
     data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-  // Parse numbered lines
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => /^\d+[\.\)]\s/.test(l));
-
-  if (lines.length < leads.length) {
-    throw new Error(
-      `Gemini returned ${lines.length} messages, expected ${leads.length}`
-    );
+  // Parse messages: split by blank lines OR by [N] markers
+  // Strategy: use regex to find all [N] ... patterns (greedy until next [N] or end)
+  const msgByIndex: Record<number, string> = {};
+  // Match [N] followed by message content (until next [N] or end of text)
+  const msgRegex = /\[(\d+)\]\s*([^\[]+)/g;
+  let match;
+  while ((match = msgRegex.exec(text)) !== null) {
+    const idx = parseInt(match[1], 10);
+    const msg = match[2].trim();
+    if (msg) msgByIndex[idx] = msg;
   }
 
-  // Match by number prefix
-  const msgByIndex: Record<number, string> = {};
-  for (const line of lines) {
-    const match = line.match(/^(\d+)[\.\)]\s+(.+)$/);
-    if (match) {
-      const idx = parseInt(match[1], 10);
-      msgByIndex[idx] = match[2].trim();
+  // Fallback: if regex didn't work, try line-by-line with number prefix
+  if (Object.keys(msgByIndex).length < leads.length) {
+    const lines = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^(\d+)[\.\)]\s+/.test(l));
+    for (const line of lines) {
+      const m = line.match(/^(\d+)[\.\)]\s+(.+)$/);
+      if (m) {
+        const idx = parseInt(m[1], 10);
+        if (!msgByIndex[idx]) msgByIndex[idx] = m[2].trim();
+      }
     }
   }
 
+  // Build results — fall back to local generation for any missing indices
   return leads.map((lead, i) => ({
     lead,
     message: msgByIndex[i + 1] || fallbackMessage(lead, ctaLine),
-    variant: "ai-gemini",
+    variant: msgByIndex[i + 1] ? "ai-gemini" : "ai-local-fallback",
   }));
 }
 

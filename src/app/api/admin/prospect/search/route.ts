@@ -77,6 +77,185 @@ const GOOGLE_CATEGORIES: Record<string, string> = {
   "estúdio de pilates": "gym",
 };
 
+// === Niche validation rules ===
+// For each niche, define:
+//   - keywords: words that should appear in the place name (any of them)
+//   - allowedTypes: Google place_types that confirm the niche (any of them)
+//   - blockedTypes: Google place_types that DISQUALIFY the lead (e.g., gas_station in restaurante)
+//   - blockedKeywords: words that DISQUALIFY (e.g., "posto" in restaurante)
+interface NicheRule {
+  keywords: string[];
+  allowedTypes: string[];
+  blockedTypes?: string[];
+  blockedKeywords?: string[];
+}
+
+const NICHE_RULES: Record<string, NicheRule> = {
+  restaurante: {
+    keywords: ["restaurante", "restaurante", "restaurant", "comida", "cozinha", "sabor", "panela", "fogão", "chef", "gastronomia", "buffet", "self service", "self-service", "comida caseira", "marmita"],
+    allowedTypes: ["restaurant", "meal_takeaway", "meal_delivery", "food"],
+    blockedTypes: ["gas_station", "car_wash", "car_repair", "parking", "atm", "bank", "pharmacy", "hospital", "doctor", "veterinary_care", "school", "church", "city_hall", "police", "fire_station"],
+    blockedKeywords: ["posto", "combustível", "gasolina", "alcool", "alcohol", "farmácia", "pharmacy", "banco", "bank", "escola", "school", "igreja", "church"],
+  },
+  pizzaria: {
+    keywords: ["pizza", "pizzaria", "pizzas", "pizza"],
+    allowedTypes: ["restaurant", "meal_takeaway", "meal_delivery", "food"],
+    blockedTypes: ["gas_station", "pharmacy", "bank"],
+    blockedKeywords: ["posto", "farmácia", "banco"],
+  },
+  hamburgueria: {
+    keywords: ["burger", "hamburguer", "hambúrguer", "hamburgueria", "burger", "smash", "lanchonete", "lanche", "burger"],
+    allowedTypes: ["restaurant", "meal_takeaway", "meal_delivery", "food"],
+    blockedTypes: ["gas_station", "pharmacy", "bank"],
+    blockedKeywords: ["posto", "farmácia", "banco"],
+  },
+  barbearia: {
+    keywords: ["barbearia", "barbeiro", "barberos", "barber", "corte", "cabelo", "navalha", "bigode", "barba"],
+    allowedTypes: ["hair_care", "beauty_salon", "spa"],
+    blockedTypes: ["gas_station", "pharmacy", "bank", "veterinary_care", "car_repair"],
+    blockedKeywords: ["posto", "farmácia", "banco", "veterinário", "mecânica", "posto"],
+  },
+  academia: {
+    keywords: ["academia", "gym", "fitness", "musculação", "crossfit", "treino", "ginástica", "personal", "pilates", "spinning"],
+    allowedTypes: ["gym", "spa", "stadium"],
+    blockedTypes: ["gas_station", "pharmacy", "bank"],
+    blockedKeywords: ["posto", "farmácia", "banco"],
+  },
+  "salão de beleza": {
+    keywords: ["salão", "salon", "beleza", "beauty", "cabelo", "cabeleireiro", "manicure", "pedicure", "escova", "corte", "maquiagem", "makeup", "estética"],
+    allowedTypes: ["beauty_salon", "hair_care", "spa"],
+    blockedTypes: ["gas_station", "pharmacy", "bank", "veterinary_care", "car_repair"],
+    blockedKeywords: ["posto", "farmácia", "banco", "veterinário", "mecânica"],
+  },
+  "clínica estética": {
+    keywords: ["estética", "estetic", "botox", "preenchimento", "laser", "depilação", "massagem", "esteticista", "clinica", "clínica"],
+    allowedTypes: ["beauty_salon", "spa", "health", "doctor"],
+    blockedTypes: ["gas_station", "veterinary_care"],
+    blockedKeywords: ["posto", "veterinário"],
+  },
+  "escritório de advocacia": {
+    keywords: ["advocacia", "advogado", "advocacia", "lawyer", "law office", "jurídico", "juridico", "direito", "law", "tribunal", "justiça"],
+    allowedTypes: ["lawyer"],
+    blockedTypes: ["gas_station", "pharmacy", "bank", "restaurant"],
+    blockedKeywords: ["posto", "farmácia", "restaurante"],
+  },
+  "consultório odontológico": {
+    keywords: ["odontolog", "dentista", "dentista", "dente", "dental", "sorriso", "consultório dent", "implante dent", "ortodontia"],
+    allowedTypes: ["dentist", "health", "doctor"],
+    blockedTypes: ["gas_station", "pharmacy", "veterinary_care"],
+    blockedKeywords: ["posto", "veterinário"],
+  },
+  "loja de roupas": {
+    keywords: ["roupa", "roupas", "clothing", "moda", "fashion", "boutique", "vestuário", "vestuario", "camiseta", "calça", "vestido", "loja de roupas", "butique"],
+    allowedTypes: ["clothing_store", "shoe_store", "store"],
+    blockedTypes: ["gas_station", "pharmacy", "bank", "restaurant"],
+    blockedKeywords: ["posto", "farmácia", "restaurante"],
+  },
+  papelaria: {
+    keywords: ["papelaria", "papel", "papelaria", "escritório", "material escolar", "escolar", "caneta", "lápis", "caderno", "cartolina"],
+    allowedTypes: ["store", "book_store"],
+    blockedTypes: ["gas_station", "pharmacy", "bank"],
+    blockedKeywords: ["posto", "farmácia", "banco"],
+  },
+  farmácia: {
+    keywords: ["farmácia", "farmacia", "pharmacy", "drogaria", "droga", "medicamento", "remédio", "remedios", "manipulação"],
+    allowedTypes: ["pharmacy", "health"],
+    blockedTypes: ["gas_station", "restaurant", "bank"],
+    blockedKeywords: ["posto", "restaurante", "banco"],
+  },
+  "pet shop": {
+    keywords: ["pet", "pet shop", "petshop", "animais", "cão", "cachorro", "gato", "veterinário", "ração", "pet", "aquário", "veterinaria"],
+    allowedTypes: ["pet_store", "veterinary_care", "store"],
+    blockedTypes: ["gas_station", "restaurant"],
+    blockedKeywords: ["posto", "restaurante"],
+  },
+  "estética automotiva": {
+    keywords: ["estética automotiva", "automotiva", "auto", "carro", "lavagem", "lava-jato", "lava jato", "polimento", "vitificação", "estetica auto", "auto center", "auto center"],
+    allowedTypes: ["car_repair", "car_wash"],
+    blockedTypes: ["gas_station", "restaurant", "pharmacy"],
+    blockedKeywords: ["posto de gasolina", "restaurante", "farmácia"],
+  },
+  cafeteria: {
+    keywords: ["café", "cafe", "cafeteria", "coffee", "coffee shop", "cafeteria", "padaria", "confeitaria", "pão", "pao"],
+    allowedTypes: ["cafe", "bakery", "restaurant", "meal_takeaway"],
+    blockedTypes: ["gas_station", "pharmacy", "bank"],
+    blockedKeywords: ["posto", "farmácia", "banco"],
+  },
+  "loja de conveniência": {
+    keywords: ["conveniência", "conveniencia", "convenience", "loja de conveniência", "minimercado", "mini mercado", "7eleven", "lojinha"],
+    allowedTypes: ["convenience_store", "store"],
+    blockedTypes: ["gas_station", "pharmacy"],
+    blockedKeywords: ["posto de gasolina", "farmácia"],
+  },
+  imobiliária: {
+    keywords: ["imobiliária", "imobiliaria", "imóveis", "imoveis", "real estate", "realty", "apartamento", "casa", "aluguel", "venda de imóveis"],
+    allowedTypes: ["real_estate_agency"],
+    blockedTypes: ["gas_station", "restaurant"],
+    blockedKeywords: ["posto", "restaurante"],
+  },
+  contabilidade: {
+    keywords: ["contabilidade", "contabil", "contador", "contadora", "contábil", "escritório de contabilidade", "assessoria contábil", "fiscal"],
+    allowedTypes: ["accounting", "finance"],
+    blockedTypes: ["gas_station", "restaurant", "pharmacy"],
+    blockedKeywords: ["posto", "restaurante", "farmácia"],
+  },
+  "agência de marketing": {
+    keywords: ["marketing", "publicidade", "propaganda", "agência", "agencia", "advertising", "digital", "tráfego", "trafego", "mídia", "midia", "social media", "agência digital"],
+    allowedTypes: ["advertising_agency", "marketing_agency"],
+    blockedTypes: ["gas_station", "restaurant"],
+    blockedKeywords: ["posto", "restaurante"],
+  },
+  "estúdio de pilates": {
+    keywords: ["pilates", "estúdio", "estudio", "studio", "core", "alongamento", "postura"],
+    allowedTypes: ["gym", "spa", "health"],
+    blockedTypes: ["gas_station", "restaurant"],
+    blockedKeywords: ["posto", "restaurante"],
+  },
+};
+
+// === Validation function ===
+// Returns { valid: boolean, reason?: string }
+function validateNicheMatch(
+  niche: string,
+  placeName: string,
+  placeTypes: string[] = []
+): { valid: boolean; reason?: string } {
+  const rule = NICHE_RULES[niche];
+  if (!rule) return { valid: true }; // unknown niche → accept (no rule)
+
+  const name = (placeName || "").toLowerCase();
+  const types = placeTypes.map(t => t.toLowerCase());
+
+  // 1. Check blocked types — instant disqualification
+  if (rule.blockedTypes) {
+    for (const bt of rule.blockedTypes) {
+      if (types.includes(bt.toLowerCase())) {
+        return { valid: false, reason: `blocked_type:${bt}` };
+      }
+    }
+  }
+
+  // 2. Check blocked keywords — instant disqualification
+  if (rule.blockedKeywords) {
+    for (const bk of rule.blockedKeywords) {
+      if (name.includes(bk.toLowerCase())) {
+        return { valid: false, reason: `blocked_keyword:${bk}` };
+      }
+    }
+  }
+
+  // 3. Check name contains ANY of the keywords
+  const nameMatch = rule.keywords.some(k => name.includes(k.toLowerCase()));
+  if (nameMatch) return { valid: true };
+
+  // 4. If name doesn't match, check if types match allowed types
+  const typeMatch = rule.allowedTypes.some(t => types.includes(t.toLowerCase()));
+  if (typeMatch) return { valid: true };
+
+  // 5. Neither name nor type matches — reject
+  return { valid: false, reason: "no_match" };
+}
+
 interface Lead {
   name: string;
   phone: string | null;
@@ -127,10 +306,13 @@ export async function POST(req: NextRequest) {
 
     let leads: Lead[] = [];
     let source = "";
+    let validationStats: { rejected: number; totalFound: number; reasons: Record<string, number> } | undefined;
 
     // Tentativa 1: Google Places API (se API key configurada)
     if (GOOGLE_MAPS_API_KEY) {
-      leads = await searchGoogleMaps(niche, location, lat, lng, radius, limit);
+      const result = await searchGoogleMaps(niche, location, lat, lng, radius, limit);
+      leads = result.leads;
+      validationStats = result.validation;
       if (leads.length > 0) source = "google_maps";
     }
 
@@ -164,6 +346,7 @@ export async function POST(req: NextRequest) {
         total: leads.length,
         source,
         google_maps_enabled: !!GOOGLE_MAPS_API_KEY,
+        validation: validationStats,
       },
       warning: source === "demo" ? "Google Maps e OpenStreetMap indisponíveis. Mostrando leads de demonstração." : undefined,
     });
@@ -215,20 +398,35 @@ async function searchViaMeucorre(niche: string, location: string, lat: number, l
 }
 
 // ===== Google Places API =====
-async function searchGoogleMaps(niche: string, location: string, lat: number, lng: number, radius: number, limit: number): Promise<Lead[]> {
+async function searchGoogleMaps(niche: string, location: string, lat: number, lng: number, radius: number, limit: number): Promise<{ leads: Lead[]; validation: { rejected: number; totalFound: number; reasons: Record<string, number> } }> {
   const googleType = GOOGLE_CATEGORIES[niche] || "restaurant";
-  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${googleType}&language=pt-BR&key=${GOOGLE_MAPS_API_KEY}`;
+  // Use keyword parameter to filter by niche name in Portuguese — this dramatically
+  // improves relevance (Google filters results by matching name + vicinity + category)
+  const keyword = encodeURIComponent(niche);
+  // Use type + keyword together: type narrows to category, keyword filters by niche
+  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${googleType}&keyword=${keyword}&language=pt-BR&key=${GOOGLE_MAPS_API_KEY}`;
 
   try {
     const res = await fetch(url);
-    if (!res.ok) return [];
+    if (!res.ok) return { leads: [], validation: { rejected: 0, totalFound: 0, reasons: {} } };
     const data = await res.json();
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") return [];
+    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") return { leads: [], validation: { rejected: 0, totalFound: 0, reasons: {} } };
 
-    const places = (data.results || []).slice(0, limit);
+    const places = (data.results || []);
     const leads: Lead[] = [];
+    let rejectedCount = 0;
+    const rejectionReasons: Record<string, number> = {};
 
     for (const place of places) {
+      // === Validate niche match BEFORE fetching details (saves API quota) ===
+      const validation = validateNicheMatch(niche, place.name || "", place.types || []);
+      if (!validation.valid) {
+        rejectedCount++;
+        const reason = validation.reason || "unknown";
+        rejectionReasons[reason] = (rejectionReasons[reason] || 0) + 1;
+        continue;
+      }
+
       let phone: string | null = null;
       let website: string | null = null;
 
@@ -265,11 +463,26 @@ async function searchGoogleMaps(niche: string, location: string, lat: number, ln
         hasWebsite,
         webDevOpportunity: !hasWebsite,
       });
+
+      // Stop when we have enough validated leads
+      if (leads.length >= limit) break;
     }
 
-    return leads;
+    // Log validation stats for debugging
+    if (rejectedCount > 0) {
+      console.log(`[prospect/search] niche="${niche}" rejected ${rejectedCount}/${places.length} places. Reasons:`, rejectionReasons);
+    }
+
+    return {
+      leads,
+      validation: {
+        rejected: rejectedCount,
+        totalFound: places.length,
+        reasons: rejectionReasons,
+      },
+    };
   } catch {
-    return [];
+    return { leads: [], validation: { rejected: 0, totalFound: 0, reasons: {} } };
   }
 }
 
@@ -306,6 +519,14 @@ async function searchOpenStreetMap(niche: string, location: string, lat: number,
             const addr = [tags["addr:street"], tags["addr:housenumber"], tags["addr:suburb"]].filter(Boolean).join(", ");
             const phone = tags.phone || tags["contact:phone"] || null;
             const website = tags.website || tags["contact:website"] || null;
+            // Build a pseudo-types array from OSM tags for niche validation
+            const osmTypes: string[] = [];
+            if (tags.amenity) osmTypes.push(`amenity=${tags.amenity}`);
+            if (tags.shop) osmTypes.push(`shop=${tags.shop}`);
+            if (tags.office) osmTypes.push(`office=${tags.office}`);
+            if (tags.leisure) osmTypes.push(`leisure=${tags.leisure}`);
+            if (tags.healthcare) osmTypes.push(`healthcare=${tags.healthcare}`);
+            if (tags.craft) osmTypes.push(`craft=${tags.craft}`);
             return {
               name: tags.name || "Sem nome",
               phone,
@@ -324,7 +545,28 @@ async function searchOpenStreetMap(niche: string, location: string, lat: number,
               search_location: location,
               hasWebsite: !!website,
               webDevOpportunity: !website,
-            } as Lead;
+              _osmTypes: osmTypes, // for validation
+            } as Lead & { _osmTypes: string[] };
+          })
+          // === Validate niche match for OSM results ===
+          .filter((item) => {
+            // OSM doesn't have Google-style types; we use a simpler name-based check
+            const rule = NICHE_RULES[niche];
+            if (!rule) return true;
+            const name = item.name.toLowerCase();
+            // Check blocked keywords first
+            if (rule.blockedKeywords) {
+              for (const bk of rule.blockedKeywords) {
+                if (name.includes(bk.toLowerCase())) return false;
+              }
+            }
+            // Check if name contains any keyword OR any osm type contains an allowed type
+            const nameMatch = rule.keywords.some(k => name.includes(k.toLowerCase()));
+            if (nameMatch) return true;
+            // Check OSM types loosely
+            const osmTypeStr = item._osmTypes.join(" ").toLowerCase();
+            const osmMatch = rule.allowedTypes.some(t => osmTypeStr.includes(t.toLowerCase().split("_")[0]));
+            return osmMatch;
           })
           .slice(0, limit);
       }

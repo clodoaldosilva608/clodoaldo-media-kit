@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const url = req.nextUrl;
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search");
+    const excludeContacted = url.searchParams.get("exclude_contacted") === "true";
     const limit = Math.min(Number(url.searchParams.get("limit") || 500), 2000);
     const client = await getMeucorrePool().connect();
     try {
@@ -15,6 +16,11 @@ export async function GET(req: NextRequest) {
       const params: any[] = [];
       let idx = 1;
       if (status && status !== "all") { conditions.push(`status = $${idx++}`); params.push(status); }
+      if (excludeContacted) {
+        // Exclude leads that have status 'contacted' OR have any envios record
+        conditions.push(`status != 'contacted'`);
+        conditions.push(`id NOT IN (SELECT DISTINCT prospect_id FROM public.clodoaldo_envios WHERE prospect_id IS NOT NULL)`);
+      }
       if (search) { conditions.push(`(name ILIKE $${idx} OR phone ILIKE $${idx} OR city ILIKE $${idx})`); params.push(`%${search}%`); idx++; }
       if (conditions.length > 0) query += " WHERE " + conditions.join(" AND ");
       query += ` ORDER BY created_at DESC LIMIT $${idx++}`;

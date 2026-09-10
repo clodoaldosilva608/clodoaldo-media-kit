@@ -72,6 +72,12 @@ export default function AdminParceirosPage() {
   // === Batch control ===
   const [batchSize, setBatchSize] = useState<number>(10);
   const [allSentIds, setAllSentIds] = useState<Set<string>>(new Set()); // tracks all sent across ALL batches
+  // === "Hide contacted" filter ===
+  const [hideContacted, setHideContacted] = useState<boolean>(false);
+  // Build a Set of already-contacted lead IDs (from prospects where status==='contacted')
+  const contactedIds = new Set(
+    prospects.filter(p => p.status === "contacted").map(p => p.id || p.place_id || "").filter(Boolean)
+  );
 
   function toggleSelectLead(id: string) {
     setSelectedIds(prev => {
@@ -83,7 +89,13 @@ export default function AdminParceirosPage() {
 
   function selectAllResults() {
     const allIds = results
-      .filter(r => (r.whatsapp || r.phone || "").replace(/\D/g,""))
+      .filter(r => {
+        const id = r.id || r.place_id || "";
+        const hasPhone = !!(r.whatsapp || r.phone || "").replace(/\D/g,"");
+        // Respect "hideContacted" filter: exclude leads that are already contacted
+        const isContacted = contactedIds.has(id);
+        return hasPhone && (!hideContacted || !isContacted);
+      })
       .map(r => r.id || r.place_id || "")
       .filter(Boolean);
     setSelectedIds(new Set(allIds));
@@ -183,7 +195,7 @@ export default function AdminParceirosPage() {
   // Open WhatsApp for one lead + log to envios
   async function openOneBulkSend(item: any) {
     if (!item.waLink) return;
-    const leadId = item.lead.id;
+    const leadId = item.lead.id || item.lead.place_id || "";
     // Open wa.me link
     window.open(item.waLink, "_blank", "noopener,noreferrer");
     // Mark as sent locally (current batch + cross-batch)
@@ -191,7 +203,7 @@ export default function AdminParceirosPage() {
     setAllSentIds(prev => new Set(prev).add(leadId));
     // Log to envios
     try {
-      await fetch("/api/admin/envios", {
+      const resp = await fetch("/api/admin/envios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -203,8 +215,12 @@ export default function AdminParceirosPage() {
           destination_jid: item.lead.whatsapp || item.lead.phone || null,
         }),
       });
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        console.warn("[bulk-send] envios log failed:", resp.status, errText);
+      }
     } catch (e) {
-      // Non-critical
+      console.warn("[bulk-send] envios log error:", e);
     }
   }
 
@@ -216,15 +232,16 @@ export default function AdminParceirosPage() {
       // Open in new tab — browsers may block multiple popups without user gesture,
       // so we open them with a small stagger
       window.open(item.waLink, "_blank", "noopener,noreferrer");
-      setBulkSentIds(prev => new Set(prev).add(item.lead.id));
-      setAllSentIds(prev => new Set(prev).add(item.lead.id));
+      const leadId = item.lead.id || item.lead.place_id || "";
+      setBulkSentIds(prev => new Set(prev).add(leadId));
+      setAllSentIds(prev => new Set(prev).add(leadId));
       // Log to envios
       try {
-        await fetch("/api/admin/envios", {
+        const resp = await fetch("/api/admin/envios", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prospect_id: item.lead.id,
+            prospect_id: leadId,
             message_text: item.message,
             message_variant: item.variant,
             status: "sent",
@@ -232,7 +249,13 @@ export default function AdminParceirosPage() {
             destination_jid: item.lead.whatsapp || item.lead.phone || null,
           }),
         });
-      } catch {}
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => "");
+          console.warn("[bulk-send] envios log failed:", resp.status, errText);
+        }
+      } catch (e) {
+        console.warn("[bulk-send] envios log error:", e);
+      }
       // Small delay between opens to avoid browser popup blocker
       await new Promise(r => setTimeout(r, 250));
     }
@@ -484,54 +507,92 @@ Clodoaldo Silva`;
             <div className="grid gap-4 lg:grid-cols-[1fr_350px]">
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                 {/* === Bulk action bar === */}
-                <div className="sticky top-0 z-10 -mx-1 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/20 bg-zinc-950/95 backdrop-blur px-3 py-2 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length ? clearSelection : selectAllResults}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition"
-                  >
-                    {selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length && selectedIds.size > 0
-                      ? <CheckSquare className="h-3.5 w-3.5" />
-                      : <Square className="h-3.5 w-3.5" />}
-                    {selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length && selectedIds.size > 0
-                      ? "Desmarcar todos"
-                      : "Selecionar todos os leads"}
-                  </button>
-                  {selectedIds.size > 0 && (
-                    <>
-                      <Badge variant="success">{selectedIds.size} selecionado{selectedIds.size>1?"s":""}</Badge>
-                      <button
-                        type="button"
-                        onClick={clearSelection}
-                        className="text-xs text-zinc-400 hover:text-zinc-200 underline"
-                      >
-                        limpar
-                      </button>
-                      <div className="flex-1" />
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-zinc-400 hidden sm:inline">Lote:</span>
-                        <select
-                          value={String(batchSize)}
-                          onChange={e => setBatchSize(Number(e.target.value))}
-                          className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                {/* Eligible = leads with phone, not in contactedIds (when hideContacted is ON) */}
+                {(() => {
+                  const eligibleLeads = results.filter(r => {
+                    const id = r.id || r.place_id || "";
+                    const hasPhone = !!(r.whatsapp || r.phone || "").replace(/\D/g,"");
+                    const isContacted = contactedIds.has(id);
+                    return hasPhone && (!hideContacted || !isContacted);
+                  });
+                  const eligibleIds = new Set(eligibleLeads.map(r => r.id || r.place_id || ""));
+                  const allEligibleSelected = eligibleLeads.length > 0 && eligibleLeads.every(r => selectedIds.has(r.id || r.place_id || ""));
+                  const contactedCount = results.filter(r => contactedIds.has(r.id || r.place_id || "")).length;
+                  return (
+                  <div className="sticky top-0 z-10 -mx-1 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/20 bg-zinc-950/95 backdrop-blur px-3 py-2 shadow-lg">
+                    <button
+                      type="button"
+                      onClick={allEligibleSelected ? clearSelection : selectAllResults}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition"
+                    >
+                      {allEligibleSelected
+                        ? <CheckSquare className="h-3.5 w-3.5" />
+                        : <Square className="h-3.5 w-3.5" />}
+                      {allEligibleSelected
+                        ? "Desmarcar todos"
+                        : hideContacted
+                          ? `Selecionar ${eligibleLeads.length} não contatados`
+                          : "Selecionar todos os leads"}
+                    </button>
+                    {selectedIds.size > 0 && (
+                      <>
+                        <Badge variant="success">{selectedIds.size} selecionado{selectedIds.size>1?"s":""}</Badge>
+                        <button
+                          type="button"
+                          onClick={clearSelection}
+                          className="text-xs text-zinc-400 hover:text-zinc-200 underline"
                         >
-                          <option value="10">10 / vez</option>
-                          <option value="20">20 / vez</option>
-                          <option value="30">30 / vez</option>
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={startBulkSend}
-                        disabled={selectedIds.size === 0}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
+                          limpar
+                        </button>
+                      </>
+                    )}
+                    <div className="flex-1" />
+                    {/* === "Hide contacted" toggle === */}
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-zinc-400 hover:text-zinc-200 transition">
+                      <input
+                        type="checkbox"
+                        checked={hideContacted}
+                        onChange={e => {
+                          setHideContacted(e.target.checked);
+                          // Clear selection if some selected leads become hidden
+                          if (e.target.checked) {
+                            setSelectedIds(prev => {
+                              const next = new Set<string>();
+                              prev.forEach(id => {
+                                if (!contactedIds.has(id)) next.add(id);
+                              });
+                              return next;
+                            });
+                          }
+                        }}
+                        className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-1 focus:ring-emerald-500/40"
+                      />
+                      <span>Ocultar já contatados{contactedCount > 0 ? ` (${contactedCount})` : ""}</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-zinc-400 hidden sm:inline">Lote:</span>
+                      <select
+                        value={String(batchSize)}
+                        onChange={e => setBatchSize(Number(e.target.value))}
+                        className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                       >
-                        <Send className="h-3.5 w-3.5" />
-                        Disparar mensagens ({Math.min(selectedIds.size, batchSize)} por vez)
-                      </button>
-                    </>
-                  )}
-                </div>
+                        <option value="10">10 / vez</option>
+                        <option value="20">20 / vez</option>
+                        <option value="30">30 / vez</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={startBulkSend}
+                      disabled={selectedIds.size === 0}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      Disparar mensagens ({Math.min(selectedIds.size, batchSize)} por vez)
+                    </button>
+                  </div>
+                  );
+                })()}
                 {results.map(lead => {
                   const exp = expandedLead===lead.place_id;
                   const wa = genWA(lead); const em = genEmail(lead); const pr = genPrompt(lead);
@@ -539,8 +600,11 @@ Clodoaldo Silva`;
                   const leadId = lead.id || lead.place_id || "";
                   const isSelected = selectedIds.has(leadId);
                   const canBulk = !!num;
+                  const isContacted = contactedIds.has(leadId);
+                  // Hide lead entirely if hideContacted is ON and lead is contacted
+                  if (hideContacted && isContacted) return null;
                   return (
-                    <div key={lead.place_id} className={`rounded-xl border p-4 transition ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"} ${isSelected?"ring-2 ring-emerald-500/50":""}`}>
+                    <div key={lead.place_id} className={`rounded-xl border p-4 transition ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"} ${isSelected?"ring-2 ring-emerald-500/50":""} ${isContacted?"opacity-60":""}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2 min-w-0 flex-1">
                           {/* === Checkbox for bulk selection === */}
@@ -557,7 +621,15 @@ Clodoaldo Silva`;
                               : <Square className="h-4 w-4 text-zinc-500" />}
                           </button>
                           <div className="min-w-0 flex-1 cursor-pointer" onClick={()=>setExpandedLead(exp?null:lead.place_id||null)}>
-                            <div className="flex items-center gap-2 flex-wrap"><h4 className="text-sm font-bold text-white">{lead.name}</h4>{lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}</div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-bold text-white">{lead.name}</h4>
+                              {lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}
+                              {isContacted && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">
+                                  <CheckCircle2 className="h-2.5 w-2.5" /> Já contatado
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-0.5 text-[11px] text-zinc-500 capitalize">{lead.category}</p>
                           <div className="mt-1 flex items-start gap-1 text-xs text-zinc-400"><MapPin className="h-3 w-3 shrink-0 mt-0.5" /><span className="truncate">{lead.formatted_address}</span></div>
                           </div>

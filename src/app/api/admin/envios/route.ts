@@ -90,13 +90,48 @@ export async function POST(req: NextRequest) {
       const values: any[] = [];
       const placeholders: string[] = [];
       let idx = 1;
+
+      // === Validate prospect_id is a real UUID ===
+      // The client may send lead.id (UUID) OR lead.place_id (Google's "ChIJ..." string).
+      // The prospect_id column is uuid type, so non-UUID values would cause a syntax error.
+      // Strategy: try to look up the prospect by place_id matching, OR set prospect_id to NULL.
+      let prospectUuid: string | null = null;
+      if (body.prospect_id) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(String(body.prospect_id))) {
+          prospectUuid = body.prospect_id;
+        } else {
+          // Not a UUID — try to look up by place_id
+          try {
+            const lookup = await client.query(
+              "SELECT id FROM public.clodoaldo_prospects WHERE place_id = $1 LIMIT 1",
+              [body.prospect_id]
+            );
+            if (lookup.rows.length > 0) {
+              prospectUuid = lookup.rows[0].id;
+            }
+          } catch {
+            // Lookup failed — proceed with NULL prospect_id
+          }
+        }
+      }
+
+      // Build the INSERT with validated prospect_id (or NULL)
+      const insertBody: any = { ...body };
+      if (prospectUuid) {
+        insertBody.prospect_id = prospectUuid;
+      } else {
+        // Drop prospect_id from the insert — log the envio without prospect link
+        delete insertBody.prospect_id;
+      }
+
       for (const col of cols) {
-        if (body[col] !== undefined) {
-          values.push(body[col]);
+        if (insertBody[col] !== undefined) {
+          values.push(insertBody[col]);
           placeholders.push(`$${idx++}`);
         }
       }
-      const colNames = cols.filter((c) => body[c] !== undefined);
+      const colNames = cols.filter((c) => insertBody[c] !== undefined);
 
       // If no sent_at provided, default to now()
       let sql: string;
@@ -108,7 +143,7 @@ export async function POST(req: NextRequest) {
       const result = await client.query(sql, values);
 
       // Also update prospect status to "contacted" if the send was successful
-      if (body.prospect_id && body.status === "sent") {
+      if (prospectUuid && body.status === "sent") {
         try {
           await client.query(
             `UPDATE public.clodoaldo_prospects
@@ -117,7 +152,7 @@ export async function POST(req: NextRequest) {
                  contacted_count = COALESCE(contacted_count, 0) + 1,
                  updated_at = now()
              WHERE id = $1::uuid`,
-            [body.prospect_id]
+            [prospectUuid]
           );
         } catch {
           // Non-critical — log entry still created
