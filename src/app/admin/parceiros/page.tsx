@@ -69,6 +69,9 @@ export default function AdminParceirosPage() {
   const [bulkSentIds, setBulkSentIds] = useState<Set<string>>(new Set());
   const [bulkCampaign, setBulkCampaign] = useState<string>("");
   const bulkLinkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  // === Batch control ===
+  const [batchSize, setBatchSize] = useState<number>(10);
+  const [allSentIds, setAllSentIds] = useState<Set<string>>(new Set()); // tracks all sent across ALL batches
 
   function toggleSelectLead(id: string) {
     setSelectedIds(prev => {
@@ -97,32 +100,65 @@ export default function AdminParceirosPage() {
     setBulkResults(null);
     setBulkError(null);
     setBulkSentIds(new Set());
-    await generateBulkMessages();
+    setAllSentIds(new Set()); // reset cross-batch tracking
+    await generateBulkMessages("initial");
   }
 
-  async function generateBulkMessages() {
+  // mode: "initial" | "regenerate" | "continue"
+  // - initial:    first batch of the session (resets allSentIds)
+  // - regenerate: same leads as current batch (keeps allSentIds)
+  // - continue:   next batch, excluding allSentIds (keeps allSentIds)
+  async function generateBulkMessages(mode: "initial"|"regenerate"|"continue" = "initial") {
     setBulkGenerating(true);
     setBulkError(null);
     setBulkResults(null);
     setBulkSentIds(new Set());
     try {
-      // Pull selected leads from current results list (only those with whatsapp/phone)
-      const selectedLeads = results.filter(r => {
-        const id = r.id || r.place_id || "";
-        return selectedIds.has(id) && (r.whatsapp || r.phone || "").replace(/\D/g,"");
-      });
-      if (selectedLeads.length === 0) {
-        setBulkError("Nenhum lead selecionado tem WhatsApp/telefone.");
+      let batchLeads: Lead[];
+
+      if (mode === "continue") {
+        // Continue: take next batchSize leads, excluding already-sent
+        batchLeads = results.filter(r => {
+          const id = r.id || r.place_id || "";
+          return selectedIds.has(id)
+            && (r.whatsapp || r.phone || "").replace(/\D/g,"")
+            && !allSentIds.has(id);
+        }).slice(0, batchSize);
+      } else if (mode === "regenerate" && bulkResults && bulkResults.length > 0) {
+        // Regenerate: use the SAME leads as the current batch
+        const currentIds = new Set(bulkResults.map((r: any) => r.lead.id));
+        batchLeads = results.filter(r => {
+          const id = r.id || r.place_id || "";
+          return currentIds.has(id);
+        });
+      } else {
+        // Initial: first batchSize selected leads with whatsapp/phone
+        batchLeads = results.filter(r => {
+          const id = r.id || r.place_id || "";
+          return selectedIds.has(id) && (r.whatsapp || r.phone || "").replace(/\D/g,"");
+        }).slice(0, batchSize);
+      }
+
+      if (batchLeads.length === 0) {
+        setBulkError(
+          mode === "continue"
+            ? "Todos os leads selecionados já receberam disparo. ✅"
+            : "Nenhum lead selecionado tem WhatsApp/telefone."
+        );
         setBulkGenerating(false);
         return;
       }
-      const campaign = `bulk-${new Date().toISOString().slice(0,16).replace("T"," ").replace(":","h")}`;
-      setBulkCampaign(campaign);
+      // Keep the same campaign tag across batches in this session
+      let campaign = bulkCampaign;
+      if (!campaign) {
+        campaign = `bulk-${new Date().toISOString().slice(0,16).replace("T"," ").replace(":","h")}`;
+        setBulkCampaign(campaign);
+      }
       const resp = await fetch("/api/admin/bulk-send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leads: selectedLeads,
+          leads: batchLeads,
           style: bulkStyle,
           templateId: bulkTemplate,
           customCta: bulkCustomCta || undefined,
@@ -139,14 +175,20 @@ export default function AdminParceirosPage() {
     }
   }
 
+  // Continue to next batch (after current batch is fully sent)
+  async function continueToNextBatch() {
+    await generateBulkMessages("continue");
+  }
+
   // Open WhatsApp for one lead + log to envios
   async function openOneBulkSend(item: any) {
     if (!item.waLink) return;
     const leadId = item.lead.id;
     // Open wa.me link
     window.open(item.waLink, "_blank", "noopener,noreferrer");
-    // Mark as sent locally
+    // Mark as sent locally (current batch + cross-batch)
     setBulkSentIds(prev => new Set(prev).add(leadId));
+    setAllSentIds(prev => new Set(prev).add(leadId));
     // Log to envios
     try {
       await fetch("/api/admin/envios", {
@@ -175,6 +217,7 @@ export default function AdminParceirosPage() {
       // so we open them with a small stagger
       window.open(item.waLink, "_blank", "noopener,noreferrer");
       setBulkSentIds(prev => new Set(prev).add(item.lead.id));
+      setAllSentIds(prev => new Set(prev).add(item.lead.id));
       // Log to envios
       try {
         await fetch("/api/admin/envios", {
@@ -465,6 +508,18 @@ Clodoaldo Silva`;
                         limpar
                       </button>
                       <div className="flex-1" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-zinc-400 hidden sm:inline">Lote:</span>
+                        <select
+                          value={String(batchSize)}
+                          onChange={e => setBatchSize(Number(e.target.value))}
+                          className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                        >
+                          <option value="10">10 / vez</option>
+                          <option value="20">20 / vez</option>
+                          <option value="30">30 / vez</option>
+                        </select>
+                      </div>
                       <button
                         type="button"
                         onClick={startBulkSend}
@@ -472,7 +527,7 @@ Clodoaldo Silva`;
                         className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
                       >
                         <Send className="h-3.5 w-3.5" />
-                        Disparar mensagens ({Math.min(selectedIds.size, 10)} por vez)
+                        Disparar mensagens ({Math.min(selectedIds.size, batchSize)} por vez)
                       </button>
                     </>
                   )}
@@ -820,10 +875,13 @@ Clodoaldo Silva`;
           bulkResults={bulkResults}
           bulkError={bulkError}
           bulkSentIds={bulkSentIds}
-          onGenerate={generateBulkMessages}
+          batchSize={batchSize}
+          allSentIds={allSentIds}
+          onGenerate={() => generateBulkMessages("regenerate")}
           onOpenOne={openOneBulkSend}
           onOpenAll={openAllBulkSend}
-          onClose={() => { setShowBulkModal(false); setBulkResults(null); }}
+          onContinueToNextBatch={continueToNextBatch}
+          onClose={() => { setShowBulkModal(false); setBulkResults(null); setBulkCampaign(""); }}
           onSentComplete={loadProspects}
         />
       )}
@@ -1232,9 +1290,12 @@ function BulkSendModal({
   bulkResults,
   bulkError,
   bulkSentIds,
+  batchSize,
+  allSentIds,
   onGenerate,
   onOpenOne,
   onOpenAll,
+  onContinueToNextBatch,
   onClose,
   onSentComplete,
 }: {
@@ -1249,9 +1310,12 @@ function BulkSendModal({
   bulkResults: any[] | null;
   bulkError: string | null;
   bulkSentIds: Set<string>;
+  batchSize: number;
+  allSentIds: Set<string>;
   onGenerate: () => Promise<void>;
   onOpenOne: (item: any) => Promise<void>;
   onOpenAll: () => Promise<void>;
+  onContinueToNextBatch: () => Promise<void>;
   onClose: () => void;
   onSentComplete: () => Promise<void>;
 }) {
@@ -1281,6 +1345,12 @@ function BulkSendModal({
   ];
 
   const allSent = bulkResults && bulkResults.length > 0 && bulkSentIds.size === bulkResults.length;
+  // Overall progress across all batches
+  const totalSent = allSentIds.size;
+  const remaining = Math.max(0, selectedCount - totalSent);
+  const nextBatchSize = Math.min(remaining, batchSize);
+  const allDone = totalSent >= selectedCount && selectedCount > 0;
+  const progressPct = selectedCount > 0 ? Math.round((totalSent / selectedCount) * 100) : 0;
 
   return (
     <div
@@ -1301,8 +1371,22 @@ function BulkSendModal({
               </h3>
             </div>
             <p className="mt-1 text-xs text-zinc-400">
-              {selectedCount} leads selecionados • {Math.min(selectedCount, 10)} por vez • Campanha: {new Date().toLocaleDateString("pt-BR")}
+              {selectedCount} leads selecionados • {batchSize} por vez • Campanha: {new Date().toLocaleDateString("pt-BR")}
             </p>
+            {/* Overall progress bar */}
+            {selectedCount > 0 && (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <span className="text-[11px] font-bold text-emerald-300 whitespace-nowrap">
+                  {totalSent}/{selectedCount} enviados
+                </span>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -1409,7 +1493,7 @@ function BulkSendModal({
               {bulkGenerating ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Gerando mensagens…</>
               ) : (
-                <><Sparkles className="h-4 w-4" /> Gerar {Math.min(selectedCount, 10)} mensagens</>
+                <><Sparkles className="h-4 w-4" /> Gerar {Math.min(selectedCount, batchSize)} mensagens</>
               )}
             </Button>
             {bulkResults && bulkResults.length > 0 && (
@@ -1419,6 +1503,31 @@ function BulkSendModal({
               </Button>
             )}
           </div>
+
+          {/* === OVERALL PROGRESS (when results exist) === */}
+          {bulkResults && bulkResults.length > 0 && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-bold text-blue-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Progresso total da campanha
+                </span>
+                <span className="text-zinc-400">
+                  {totalSent} de {selectedCount} enviados • {remaining} restantes
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="text-zinc-500">Lote atual: {bulkResults.length} mensagens • {bulkSentIds.size}/{bulkResults.length} enviadas neste lote</span>
+                <span className="font-bold text-emerald-300">{progressPct}%</span>
+              </div>
+            </div>
+          )}
 
           {/* === ERROR === */}
           {bulkError && (
@@ -1435,11 +1544,11 @@ function BulkSendModal({
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                   <span className="text-sm font-bold text-emerald-300">
-                    {bulkResults.length} mensagens geradas
+                    Lote atual: {bulkResults.length} mensagens geradas
                   </span>
                 </div>
                 <div className="text-[11px] text-zinc-400">
-                  {bulkSentIds.size}/{bulkResults.length} enviadas
+                  {bulkSentIds.size}/{bulkResults.length} enviadas neste lote
                 </div>
               </div>
 
@@ -1454,12 +1563,40 @@ function BulkSendModal({
                   Abrir todos no WhatsApp ({bulkResults.length} abas)
                 </button>
               )}
-              {allSent && (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-300 flex items-center justify-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Todos os disparos foram registrados! Status dos leads atualizado para "Contatado".
+
+              {/* === BATCH SENT — show "Continue" or "All done" === */}
+              {allSent && !allDone && remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={onContinueToNextBatch}
+                  disabled={bulkGenerating}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition disabled:opacity-50"
+                >
+                  {bulkGenerating ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Gerando próximo lote…</>
+                  ) : (
+                    <><ChevronRight className="h-4 w-4" /> Continuar disparo para próximos {nextBatchSize} leads</>
+                  )}
+                </button>
+              )}
+
+              {/* All done */}
+              {allDone && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-sm font-bold text-emerald-300">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Campanha concluída! 🎉
+                  </div>
+                  <p className="text-xs text-emerald-200/80">
+                    Todos os {selectedCount} leads selecionados receberam o disparo e foram marcados como "Contatado".
+                  </p>
+                  <p className="text-[11px] text-zinc-400 pt-1">
+                    Os registros estão na aba <strong className="text-zinc-300">Envios</strong>.
+                  </p>
                 </div>
               )}
+
+              {/* Old "batch sent" message replaced by the above */}
 
               {/* Per-lead list */}
               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
@@ -1523,8 +1660,13 @@ function BulkSendModal({
             <div className="py-8 text-center">
               <Sparkles className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
               <p className="text-sm text-zinc-500">
-                Clique em "Gerar mensagens" para criar {Math.min(selectedCount, 10)} mensagens personalizadas.
+                Clique em "Gerar mensagens" para criar {Math.min(selectedCount, batchSize)} mensagens personalizadas (primeiro lote).
               </p>
+              {selectedCount > batchSize && (
+                <p className="text-[11px] text-zinc-600 mt-1">
+                  Após enviar este lote, você poderá continuar para os próximos {batchSize} leads.
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -1543,3 +1543,42 @@ Stage Summary:
 - CTA default: "Caso tenha interesse, é só me chamar aqui no WhatsApp. 🙌"
 - Cada disparo registrado em clodoaldo_envios com campaign, variant, message_text
 - Cada disparo atualiza prospect: status="contacted", contacted_count+1, last_contact_at
+
+---
+Task ID: bulk-send-batch-selector
+Agent: main (Super Z)
+Task: Adicionar seletor de lote (10, 20, 30 por vez) + botão "Continuar disparo para os próximos 10".
+
+Work Log:
+- Adicionado estado `batchSize` (default 10) e `allSentIds` (Set que rastreia todos os leads enviados através de TODOS os lotes da sessão)
+- Refatorado `generateBulkMessages` para aceitar `mode: "initial" | "regenerate" | "continue"`:
+  - "initial": primeiro lote, reseta allSentIds
+  - "regenerate": mesmos leads do lote atual (keeps allSentIds)
+  - "continue": próximos batchSize leads, excluindo allSentIds
+- `startBulkSend` agora reseta `allSentIds` ao abrir modal
+- `openOneBulkSend` e `openAllBulkSend` agora atualizam ambos `bulkSentIds` (lote atual) e `allSentIds` (cross-batch)
+- Adicionado `continueToNextBatch()` que chama `generateBulkMessages("continue")`
+- Adicionado seletor de lote (10/20/30) na bulk action bar, ao lado do botão "Disparar mensagens". Botão mostra "({Math.min(selectedIds.size, batchSize)} por vez)" dinamicamente
+- BulkSendModal: adicionadas props `batchSize`, `allSentIds`, `onContinueToNextBatch`
+- Modal header agora mostra barra de progresso geral (totalSent/selectedCount) com gradient emerald→teal
+- Adicionado bloco "Progresso total da campanha" após o botão Gerar, com:
+  - Contador "X de Y enviados • Z restantes"
+  - Barra de progresso gradient blue→emerald
+  - Info do lote atual + percentual
+- Substituído o bloco "allSent" antigo por 3 estados:
+  1. `allSent && !allDone && remaining > 0` → botão gradient blue→violet "Continuar disparo para próximos N leads"
+  2. `allDone` → mensagem "Campanha concluída! 🎉" com info dos registros na aba Envios
+  3. Caso contrário → botão "Abrir todos no WhatsApp" (lote atual não totalmente enviado)
+- Empty state atualizado para mostrar info sobre lotes subsequentes quando selectedCount > batchSize
+- onClose agora também reseta `bulkCampaign` para que cada sessão tenha seu próprio campaign tag
+- TypeScript: 0 erros novos
+- ESLint: 0 erros novos (apenas 2 preexistentes)
+- Build: ✓ Compiled successfully em 8.1s
+
+Stage Summary:
+- Seletor de lote funcional: 10, 20 ou 30 leads por vez
+- Botão "Continuar disparo para próximos N leads" aparece automaticamente quando o lote atual é totalmente enviado e ainda há leads pendentes
+- Barra de progresso dupla: header mostra progresso geral, body mostra progresso detalhado por lote
+- Mensagem "Campanha concluída! 🎉" aparece quando todos os leads selecionados foram enviados
+- Campaign tag persiste entre lotes da mesma sessão (para agrupar na aba Envios)
+- 3 arquivos: page.tsx (+141 linhas vs versão anterior), bulk-send/route.ts (sem mudanças), envios/route.ts (sem mudanças)
