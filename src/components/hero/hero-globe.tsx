@@ -45,9 +45,9 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
 
   return (
     <div className="relative w-full h-full">
-      {/* Star background */}
+      {/* Star background — subtle, like United Carriers */}
       <div
-        className="absolute inset-0 opacity-40 pointer-events-none"
+        className="absolute inset-0 opacity-30 pointer-events-none"
         style={{
           background:
             "radial-gradient(2px 2px at 15% 25%, white, transparent), " +
@@ -64,19 +64,40 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
         }}
       />
 
-      {/* Halo radial — two layers of blur for atmospheric depth */}
+      {/* Rainbow glow halo — replica United Carriers style (orange→pink→blue gradient on edge) */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(circle at 50% 50%, rgba(255,107,26,0.06) 0%, transparent 45%)",
-          filter: "blur(30px)",
+          background: "conic-gradient(from 315deg at 50% 50%, rgba(255,107,26,0.15) 0deg, rgba(255,107,26,0.08) 60deg, rgba(236,72,153,0.1) 120deg, rgba(59,130,246,0.1) 180deg, rgba(59,130,246,0.06) 240deg, rgba(236,72,153,0.08) 300deg, rgba(255,107,26,0.15) 360deg)",
+          maskImage: "radial-gradient(circle at 50% 50%, transparent 38%, black 42%, black 48%, transparent 52%)",
+          WebkitMaskImage: "radial-gradient(circle at 50% 50%, transparent 38%, black 42%, black 48%, transparent 52%)",
         }}
       />
+
+      {/* Atmospheric glow — warm orange inner halo */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(circle at 45% 55%, rgba(40,80,180,0.05) 0%, transparent 40%)",
-          filter: "blur(40px)",
+          background: "radial-gradient(circle at 50% 50%, rgba(255,107,26,0.08) 0%, transparent 42%)",
+          filter: "blur(25px)",
+        }}
+      />
+
+      {/* Atmospheric glow — blue outer halo */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at 48% 52%, rgba(59,130,246,0.06) 0%, transparent 45%)",
+          filter: "blur(35px)",
+        }}
+      />
+
+      {/* Diffuse outer aura */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at 50% 50%, rgba(255,107,26,0.04) 30%, transparent 50%)",
+          filter: "blur(50px)",
         }}
       />
 
@@ -109,10 +130,10 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
             }}
           >
             <div
-              className="whitespace-nowrap rounded bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm"
+              className="whitespace-nowrap rounded bg-black/80 border border-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white backdrop-blur-sm"
               aria-label={label.name}
             >
-              {label.name}
+              {label.name.toUpperCase()}
             </div>
           </div>
         )

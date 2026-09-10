@@ -209,10 +209,10 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     { lat: 37.77, lng: -122.42, name: "Inovação" },
   ];
 
-  const pinGeo = new THREE.SphereGeometry(0.012, 8, 8);
+  const pinGeo = new THREE.SphereGeometry(0.018, 12, 12);
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, depthTest: false, depthWrite: false });
-  const haloGeo = new THREE.SphereGeometry(0.035, 8, 8);
-  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+  const haloGeo = new THREE.SphereGeometry(0.05, 12, 12);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
   const pinWorldPositions: THREE.Vector3[] = [];
   pinCities.forEach((c) => {
@@ -360,7 +360,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     arcs.forEach((arc) => {
       const cycle = (t + arc.delay) % (arc.duration * 2);
       arc.line.material.opacity = cycle < arc.duration
-        ? Math.sin((cycle / arc.duration) * Math.PI) * 0.7
+        ? Math.sin((cycle / arc.duration) * Math.PI) * 0.9
         : 0;
     });
 
