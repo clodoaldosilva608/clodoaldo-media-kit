@@ -30,14 +30,16 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
 
   return (
     <div className="relative w-full h-full">
-      {/* Globe shadows — replica United Carriers: orange, blue, blue-plus, orange-plus */}
-      <div className="globe-shadow-orange" />
-      <div className="globe-shadow-blue" />
-      <div className="globe-shadow-blue-plus" />
-      <div className="globe-shadow-orange-plus" />
+      {/* Shadow group — rotaciona 180deg como United Carriers */}
+      <div className="globe-shadow-group">
+        <div className="globe-shadow-orange" />
+        <div className="globe-shadow-blue" />
+        <div className="globe-shadow-blue-plus" />
+        <div className="globe-shadow-orange-plus" />
+      </div>
 
       {/* Globe canvas */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 z-2">
         {GlobeCanvas ? (
           <GlobeCanvas
             className="w-full h-full"
@@ -46,10 +48,13 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
           />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <div className="text-xs text-white/30 animate-pulse">...</div>
+            <div className="text-xs text-white/20 animate-pulse">...</div>
           </div>
         )}
       </div>
+
+      {/* Globe blur — desfoque sutil sobre o globo */}
+      <div className="globe-blur" />
 
       {/* HTML labels — accessible, positioned over canvas */}
       {labels.map((label) => (
@@ -65,8 +70,9 @@ export function HeroGlobe({ scrollProgress = 0 }: HeroGlobeProps) {
             }}
           >
             <div
-              className="whitespace-nowrap rounded bg-black/80 border border-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white backdrop-blur-sm"
+              className="globe-label-text whitespace-nowrap bg-[#111] px-[5.9px] py-[4.4px] text-[7.4px] font-normal text-white"
               aria-label={label.name}
+              style={{ fontSize: "clamp(8px, 0.6vw, 12px)" }}
             >
               {label.name.toUpperCase()}
             </div>

@@ -151,11 +151,10 @@ export function Hero() {
           }}
         />
 
-        {/* Globe — United Carriers style: top-right, large, partially cut by edge */}
+        {/* Globe — United Carriers positioning: right: -25rem, height: 100vh */}
         <div
           ref={globeWrapRef}
-          className="absolute right-[-15%] top-[25%] -translate-y-1/2 w-[1400px] h-[1400px] max-w-[110vw] max-h-[110vh] will-change-transform z-0
-                     max-md:right-[-25%] max-md:top-[30%] max-md:w-[1100px] max-md:h-[1100px]"
+          className="globe-container will-change-transform"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />

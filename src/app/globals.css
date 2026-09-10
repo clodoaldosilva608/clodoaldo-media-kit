@@ -349,18 +349,7 @@ html.light .mobile-menu-panel {
   }
 }
 
-/* === Globe shadow halos — replica United Carriers === */
-@keyframes globe-shadow-pulse {
-  0%, 100% {
-    opacity: 0.6;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.05);
-  }
-}
-
+/* === Globe shadow halos — replica EXATA United Carriers (box-shadow, não gradient) === */
 .globe-shadow-orange,
 .globe-shadow-blue,
 .globe-shadow-blue-plus,
@@ -369,30 +358,89 @@ html.light .mobile-menu-panel {
   inset: 0;
   pointer-events: none;
   border-radius: 50%;
+  z-index: 1;
 }
 
+/* Orange — glow laranja na borda inferior (luz do sol) */
 .globe-shadow-orange {
-  background: radial-gradient(circle at 50% 50%, rgba(255,107,26,0.15) 0%, transparent 50%);
-  filter: blur(60px);
-  animation: globe-shadow-pulse 4s ease-in-out infinite;
+  background-color: #000;
+  box-shadow:
+    0 0.081rem 0.162rem 0 #ffbc75,
+    0 0.647rem 1.3rem 0 #ff834a,
+    inset 0 -5.5rem 3.8rem -4.2rem #ff6b1a,
+    inset 0 -5.6rem 8rem 0.57rem #321500;
 }
 
+/* Blue — glow azul profundo na borda inferior (sombra) */
 .globe-shadow-blue {
-  background: radial-gradient(circle at 50% 50%, rgba(59,130,246,0.12) 0%, transparent 55%);
-  filter: blur(80px);
-  animation: globe-shadow-pulse 5s ease-in-out infinite 0.5s;
+  box-shadow:
+    rgb(1, 47, 255) 0 7.1rem 7.2rem -2.4rem inset,
+    rgb(2, 23, 119) 0 18.8rem 14.2rem -4.1rem inset;
 }
 
+/* Blue-plus — glow azul ciano na borda esquerda (plus-lighter blend) */
 .globe-shadow-blue-plus {
-  background: radial-gradient(circle at 45% 55%, rgba(59,130,246,0.08) 0%, transparent 45%);
-  filter: blur(100px);
-  animation: globe-shadow-pulse 6s ease-in-out infinite 1s;
+  mix-blend-mode: plus-lighter;
+  background-color: #000;
+  box-shadow:
+    rgb(117, 188, 255) -0.081rem -0.081rem 0.24rem -2.5rem,
+    rgb(71, 129, 255) -0.323rem -0.323rem 1.3rem -3.1rem,
+    rgb(0, 70, 221) -0.647rem -0.97rem 3.2rem 0,
+    rgb(141, 237, 255) -1.3rem -1.9rem 5.6rem 1.3rem,
+    rgb(36, 110, 255) -2.3rem -3.4rem 9.7rem 2.6rem,
+    rgb(26, 85, 255) -3.6rem -5.3rem 15rem 4.2rem,
+    rgb(10, 50, 255) -5.5rem -8rem 23rem 6.5rem;
 }
 
+/* Orange-plus — glow laranja claro no topo (plus-lighter blend) */
 .globe-shadow-orange-plus {
-  background: radial-gradient(circle at 55% 45%, rgba(255,107,26,0.06) 0%, transparent 40%);
-  filter: blur(120px);
-  animation: globe-shadow-pulse 4.5s ease-in-out infinite 1.5s;
+  mix-blend-mode: plus-lighter;
+  background-color: #000;
+  box-shadow: rgb(255, 209, 176) 0 -2.8rem 2.3rem -2.1rem inset;
+}
+
+/* Globe blur — filtro de desfoque sutil sobre o globo */
+.globe-blur {
+  position: absolute;
+  top: -5%;
+  width: 175%;
+  height: 100%;
+  filter: blur(2px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Globe container — posicionamento como United Carriers */
+.globe-container {
+  position: absolute;
+  right: -25rem;
+  top: 0;
+  height: 100vh;
+  aspect-ratio: 1 / 1;
+  pointer-events: none;
+  user-select: none;
+  border-radius: 50%;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto;
+  grid-template-columns: minmax(1px, 1fr);
+}
+
+/* Shadow group — rotaciona 180deg como United Carriers */
+.globe-shadow-group {
+  position: absolute;
+  inset: 3.5%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform: rotate(180deg);
+}
+
+@media (max-width: 767px) {
+  .globe-container {
+    right: -15rem;
+    height: 80vh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
