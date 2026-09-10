@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Sparkles, Megaphone, Edit3, Code2 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { HeroGlobe } from "@/components/hero/hero-globe";
+import { IntroSequence } from "@/components/experience/intro-sequence";
+import { WorldMapBackground } from "@/components/experience/world-map-background";
 
 const LINES = ["Transformando", "conhecimento", "em patrimônio."];
 
@@ -22,6 +24,14 @@ export function Hero() {
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [introDone, setIntroDone] = useState(false);
+
+  // Check if intro should be skipped
+  useEffect(() => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const seen = sessionStorage.getItem("cs-intro-seen");
+    if (reduced || seen) setIntroDone(true);
+  }, []);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -105,37 +115,30 @@ export function Hero() {
   }, []);
 
   return (
-    <section
-      ref={sectionRef}
-      id="inicio"
-      className="relative"
-      style={{ height: "150vh", backgroundColor: "#000000", color: "#fff" }}
-    >
-      <div className="hero-sticky sticky top-0 h-screen overflow-hidden flex items-center">
-        {/* Background — pure black like United Carriers */}
-        <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
+    <>
+      {!introDone && <IntroSequence onComplete={() => setIntroDone(true)} />}
+      <section
+        ref={sectionRef}
+        id="inicio"
+        className="relative"
+        style={{ height: "150vh", backgroundColor: "#000000", color: "#fff" }}
+      >
+        <div className="hero-sticky sticky top-0 h-screen overflow-hidden flex items-center">
+          {/* Background — pure black */}
+          <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
 
-        {/* Flat world map dot pattern background — subtle, behind globe */}
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-            opacity: 0.5,
-            maskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 70%)",
-            WebkitMaskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 70%)",
-          }}
-        />
+          {/* World map dotted background — behind globe, behind text */}
+          <WorldMapBackground visible={introDone} />
 
-        {/* Subtle grid lines — like United Carriers tech feel */}
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-            backgroundSize: "80px 80px",
-          }}
-        />
+          {/* Subtle grid lines */}
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
+              backgroundSize: "80px 80px",
+            }}
+          />
 
         {/* Atmospheric overlay */}
         <div
@@ -242,5 +245,6 @@ export function Hero() {
         </div>
       </div>
     </section>
+    </>
   );
 }
