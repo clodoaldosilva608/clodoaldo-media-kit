@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Label, Select, Textarea } from "@/components/admin/ui";
 import {
@@ -8,7 +8,7 @@ import {
   AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
   Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
-  FileCheck,
+  FileCheck, Send, CheckSquare, Square, Sparkles, ChevronRight,
 } from "lucide-react";
 import {
   getRelevantObjections,
@@ -56,6 +56,144 @@ export default function AdminParceirosPage() {
   const [draggingId, setDraggingId] = useState<string|null>(null);
   const [dragOverCol, setDragOverCol] = useState<string|null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
+  // === Bulk selection state ===
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkStyle, setBulkStyle] = useState<"ai"|"template">("ai");
+  const [bulkTemplate, setBulkTemplate] = useState<string>("t1");
+  const [bulkCustomCta, setBulkCustomCta] = useState<string>("");
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkResults, setBulkResults] = useState<any[] | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkSentIds, setBulkSentIds] = useState<Set<string>>(new Set());
+  const [bulkCampaign, setBulkCampaign] = useState<string>("");
+  const bulkLinkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+
+  function toggleSelectLead(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllResults() {
+    const allIds = results
+      .filter(r => (r.whatsapp || r.phone || "").replace(/\D/g,""))
+      .map(r => r.id || r.place_id || "")
+      .filter(Boolean);
+    setSelectedIds(new Set(allIds));
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  // Trigger bulk send: generate messages then open modal
+  async function startBulkSend() {
+    if (selectedIds.size === 0) return;
+    setShowBulkModal(true);
+    setBulkResults(null);
+    setBulkError(null);
+    setBulkSentIds(new Set());
+    await generateBulkMessages();
+  }
+
+  async function generateBulkMessages() {
+    setBulkGenerating(true);
+    setBulkError(null);
+    setBulkResults(null);
+    setBulkSentIds(new Set());
+    try {
+      // Pull selected leads from current results list (only those with whatsapp/phone)
+      const selectedLeads = results.filter(r => {
+        const id = r.id || r.place_id || "";
+        return selectedIds.has(id) && (r.whatsapp || r.phone || "").replace(/\D/g,"");
+      });
+      if (selectedLeads.length === 0) {
+        setBulkError("Nenhum lead selecionado tem WhatsApp/telefone.");
+        setBulkGenerating(false);
+        return;
+      }
+      const campaign = `bulk-${new Date().toISOString().slice(0,16).replace("T"," ").replace(":","h")}`;
+      setBulkCampaign(campaign);
+      const resp = await fetch("/api/admin/bulk-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leads: selectedLeads,
+          style: bulkStyle,
+          templateId: bulkTemplate,
+          customCta: bulkCustomCta || undefined,
+          campaign,
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Falha ao gerar mensagens");
+      setBulkResults(json.results || []);
+    } catch (e: any) {
+      setBulkError(e.message);
+    } finally {
+      setBulkGenerating(false);
+    }
+  }
+
+  // Open WhatsApp for one lead + log to envios
+  async function openOneBulkSend(item: any) {
+    if (!item.waLink) return;
+    const leadId = item.lead.id;
+    // Open wa.me link
+    window.open(item.waLink, "_blank", "noopener,noreferrer");
+    // Mark as sent locally
+    setBulkSentIds(prev => new Set(prev).add(leadId));
+    // Log to envios
+    try {
+      await fetch("/api/admin/envios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: leadId,
+          message_text: item.message,
+          message_variant: item.variant,
+          status: "sent",
+          campaign: item.campaign || bulkCampaign,
+          destination_jid: item.lead.whatsapp || item.lead.phone || null,
+        }),
+      });
+    } catch (e) {
+      // Non-critical
+    }
+  }
+
+  // Open WhatsApp for ALL leads in the batch sequentially + log each
+  async function openAllBulkSend() {
+    if (!bulkResults || bulkResults.length === 0) return;
+    for (const item of bulkResults) {
+      if (!item.waLink) continue;
+      // Open in new tab — browsers may block multiple popups without user gesture,
+      // so we open them with a small stagger
+      window.open(item.waLink, "_blank", "noopener,noreferrer");
+      setBulkSentIds(prev => new Set(prev).add(item.lead.id));
+      // Log to envios
+      try {
+        await fetch("/api/admin/envios", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prospect_id: item.lead.id,
+            message_text: item.message,
+            message_variant: item.variant,
+            status: "sent",
+            campaign: item.campaign || bulkCampaign,
+            destination_jid: item.lead.whatsapp || item.lead.phone || null,
+          }),
+        });
+      } catch {}
+      // Small delay between opens to avoid browser popup blocker
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }
 
   const loadProspects = useCallback(async () => {
     setLoadingProspects(true);
@@ -302,17 +440,72 @@ Clodoaldo Silva`;
           {results.length>0 && (
             <div className="grid gap-4 lg:grid-cols-[1fr_350px]">
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                {/* === Bulk action bar === */}
+                <div className="sticky top-0 z-10 -mx-1 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/20 bg-zinc-950/95 backdrop-blur px-3 py-2 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length ? clearSelection : selectAllResults}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition"
+                  >
+                    {selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length && selectedIds.size > 0
+                      ? <CheckSquare className="h-3.5 w-3.5" />
+                      : <Square className="h-3.5 w-3.5" />}
+                    {selectedIds.size === results.filter(r => (r.whatsapp||r.phone||"").replace(/\D/g,"")).length && selectedIds.size > 0
+                      ? "Desmarcar todos"
+                      : "Selecionar todos os leads"}
+                  </button>
+                  {selectedIds.size > 0 && (
+                    <>
+                      <Badge variant="success">{selectedIds.size} selecionado{selectedIds.size>1?"s":""}</Badge>
+                      <button
+                        type="button"
+                        onClick={clearSelection}
+                        className="text-xs text-zinc-400 hover:text-zinc-200 underline"
+                      >
+                        limpar
+                      </button>
+                      <div className="flex-1" />
+                      <button
+                        type="button"
+                        onClick={startBulkSend}
+                        disabled={selectedIds.size === 0}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-bold text-white shadow hover:scale-[1.02] transition disabled:opacity-50 disabled:hover:scale-100"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        Disparar mensagens ({Math.min(selectedIds.size, 10)} por vez)
+                      </button>
+                    </>
+                  )}
+                </div>
                 {results.map(lead => {
                   const exp = expandedLead===lead.place_id;
                   const wa = genWA(lead); const em = genEmail(lead); const pr = genPrompt(lead);
                   const num = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+                  const leadId = lead.id || lead.place_id || "";
+                  const isSelected = selectedIds.has(leadId);
+                  const canBulk = !!num;
                   return (
-                    <div key={lead.place_id} className={`rounded-xl border p-4 ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"}`}>
+                    <div key={lead.place_id} className={`rounded-xl border p-4 transition ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"} ${isSelected?"ring-2 ring-emerald-500/50":""}`}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1 cursor-pointer" onClick={()=>setExpandedLead(exp?null:lead.place_id||null)}>
-                          <div className="flex items-center gap-2 flex-wrap"><h4 className="text-sm font-bold text-white">{lead.name}</h4>{lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}</div>
-                          <p className="mt-0.5 text-[11px] text-zinc-500 capitalize">{lead.category}</p>
+                        <div className="flex items-start gap-2 min-w-0 flex-1">
+                          {/* === Checkbox for bulk selection === */}
+                          <button
+                            type="button"
+                            onClick={() => canBulk && toggleSelectLead(leadId)}
+                            disabled={!canBulk}
+                            className={`mt-0.5 shrink-0 rounded p-1 transition ${canBulk?"cursor-pointer hover:bg-white/10":"cursor-not-allowed opacity-30"}`}
+                            title={canBulk ? (isSelected?"Desmarcar":"Selecionar para disparo") : "Sem WhatsApp/telefone"}
+                            aria-label={isSelected ? "Desmarcar lead" : "Selecionar lead"}
+                          >
+                            {isSelected
+                              ? <CheckSquare className="h-4 w-4 text-emerald-400" />
+                              : <Square className="h-4 w-4 text-zinc-500" />}
+                          </button>
+                          <div className="min-w-0 flex-1 cursor-pointer" onClick={()=>setExpandedLead(exp?null:lead.place_id||null)}>
+                            <div className="flex items-center gap-2 flex-wrap"><h4 className="text-sm font-bold text-white">{lead.name}</h4>{lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}</div>
+                            <p className="mt-0.5 text-[11px] text-zinc-500 capitalize">{lead.category}</p>
                           <div className="mt-1 flex items-start gap-1 text-xs text-zinc-400"><MapPin className="h-3 w-3 shrink-0 mt-0.5" /><span className="truncate">{lead.formatted_address}</span></div>
+                          </div>
                         </div>
                         {savedIds.has(lead.place_id!)&&<Badge variant="success"><CheckCircle2 className="h-3 w-3" /> Salvo</Badge>}
                       </div>
@@ -610,6 +803,28 @@ Clodoaldo Silva`;
           openPreviewLink={openPreviewLink}
           copyToClipboard={copyToClipboard}
           copiedText={copiedText}
+        />
+      )}
+
+      {/* === BULK SEND MODAL === */}
+      {showBulkModal && (
+        <BulkSendModal
+          selectedCount={selectedIds.size}
+          bulkStyle={bulkStyle}
+          setBulkStyle={setBulkStyle}
+          bulkTemplate={bulkTemplate}
+          setBulkTemplate={setBulkTemplate}
+          bulkCustomCta={bulkCustomCta}
+          setBulkCustomCta={setBulkCustomCta}
+          bulkGenerating={bulkGenerating}
+          bulkResults={bulkResults}
+          bulkError={bulkError}
+          bulkSentIds={bulkSentIds}
+          onGenerate={generateBulkMessages}
+          onOpenOne={openOneBulkSend}
+          onOpenAll={openAllBulkSend}
+          onClose={() => { setShowBulkModal(false); setBulkResults(null); }}
+          onSentComplete={loadProspects}
         />
       )}
 
@@ -999,6 +1214,326 @@ function LeadDetailModal({
               </div>
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// BULK SEND MODAL
+// =====================================================
+function BulkSendModal({
+  selectedCount,
+  bulkStyle, setBulkStyle,
+  bulkTemplate, setBulkTemplate,
+  bulkCustomCta, setBulkCustomCta,
+  bulkGenerating,
+  bulkResults,
+  bulkError,
+  bulkSentIds,
+  onGenerate,
+  onOpenOne,
+  onOpenAll,
+  onClose,
+  onSentComplete,
+}: {
+  selectedCount: number;
+  bulkStyle: "ai" | "template";
+  setBulkStyle: (s: "ai" | "template") => void;
+  bulkTemplate: string;
+  setBulkTemplate: (s: string) => void;
+  bulkCustomCta: string;
+  setBulkCustomCta: (s: string) => void;
+  bulkGenerating: boolean;
+  bulkResults: any[] | null;
+  bulkError: string | null;
+  bulkSentIds: Set<string>;
+  onGenerate: () => Promise<void>;
+  onOpenOne: (item: any) => Promise<void>;
+  onOpenAll: () => Promise<void>;
+  onClose: () => void;
+  onSentComplete: () => Promise<void>;
+}) {
+  // Body scroll lock + ESC handler
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  // Refresh prospects when all sends are done
+  useEffect(() => {
+    if (bulkResults && bulkResults.length > 0 && bulkSentIds.size === bulkResults.length) {
+      onSentComplete();
+    }
+  }, [bulkSentIds, bulkResults, onSentComplete]);
+
+  const templatesList = [
+    { id: "t1", name: "Direto e curto", desc: "Mensagem enxuta com observação + CTA" },
+    { id: "t2", name: "Elogio + gancho", desc: "Começa elogiando avaliação + se apresenta" },
+    { id: "t3", name: "Oportunidade local", desc: "Foca em pesquisa no Google + oportunidade perdida" },
+    { id: "t4", name: "Curto e amigo", desc: "Mais informal, estilo indicação" },
+  ];
+
+  const allSent = bulkResults && bulkResults.length > 0 && bulkSentIds.size === bulkResults.length;
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-4xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        {/* Header sticky */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Sparkles className="h-5 w-5 text-emerald-400" />
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">
+                Disparo em massa — Primeira mensagem
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              {selectedCount} leads selecionados • {Math.min(selectedCount, 10)} por vez • Campanha: {new Date().toLocaleDateString("pt-BR")}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* === STEP 1: STYLE SELECTOR === */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
+              Passo 1 — Estilo da mensagem
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBulkStyle("ai")}
+                className={`text-left rounded-lg border p-3 transition ${
+                  bulkStyle === "ai"
+                    ? "border-emerald-500/50 bg-emerald-500/10"
+                    : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm font-bold text-white">IA personalizada</span>
+                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Cada lead recebe uma mensagem única gerada pela IA (Gemini), variando estrutura e gancho.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkStyle("template")}
+                className={`text-left rounded-lg border p-3 transition ${
+                  bulkStyle === "template"
+                    ? "border-emerald-500/50 bg-emerald-500/10"
+                    : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <FileCheck className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-bold text-white">Template fixo</span>
+                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Mesmo template para todos os leads, com personalização de nome/nicho/cidade.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* === STEP 2: TEMPLATE PICKER (only if template mode) === */}
+          {bulkStyle === "template" && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+              <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Passo 2 — Escolha o template
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {templatesList.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setBulkTemplate(t.id)}
+                    className={`text-left rounded-lg border p-3 transition ${
+                      bulkTemplate === t.id
+                        ? "border-emerald-500/50 bg-emerald-500/10"
+                        : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <div className="text-sm font-bold text-white">{t.name}</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">{t.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* === STEP 3: OPTIONAL CUSTOM CTA === */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
+              {bulkStyle === "template" ? "Passo 3" : "Passo 2"} — CTA final (opcional)
+            </h4>
+            <p className="mb-2 text-[11px] text-zinc-500">
+              Padrão: <em>"Caso tenha interesse, é só me chamar aqui no WhatsApp. 🙌"</em>
+            </p>
+            <Input
+              placeholder="Deixe vazio para usar o CTA padrão…"
+              value={bulkCustomCta}
+              onChange={(e) => setBulkCustomCta(e.target.value)}
+            />
+          </div>
+
+          {/* === STEP 4: GENERATE BUTTON === */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              onClick={onGenerate}
+              disabled={bulkGenerating || selectedCount === 0}
+              className="flex-1 min-w-[200px]"
+            >
+              {bulkGenerating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Gerando mensagens…</>
+              ) : (
+                <><Sparkles className="h-4 w-4" /> Gerar {Math.min(selectedCount, 10)} mensagens</>
+              )}
+            </Button>
+            {bulkResults && bulkResults.length > 0 && (
+              <Button variant="outline" onClick={onGenerate} disabled={bulkGenerating}>
+                <RefreshCw className={`h-3.5 w-3.5 ${bulkGenerating ? "animate-spin" : ""}`} />
+                <span className="ml-1">Regenerar</span>
+              </Button>
+            )}
+          </div>
+
+          {/* === ERROR === */}
+          {bulkError && (
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{bulkError}</span>
+            </div>
+          )}
+
+          {/* === RESULTS === */}
+          {bulkResults && bulkResults.length > 0 && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm font-bold text-emerald-300">
+                    {bulkResults.length} mensagens geradas
+                  </span>
+                </div>
+                <div className="text-[11px] text-zinc-400">
+                  {bulkSentIds.size}/{bulkResults.length} enviadas
+                </div>
+              </div>
+
+              {/* Open all button */}
+              {!allSent && (
+                <button
+                  type="button"
+                  onClick={onOpenAll}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition"
+                >
+                  <Send className="h-4 w-4" />
+                  Abrir todos no WhatsApp ({bulkResults.length} abas)
+                </button>
+              )}
+              {allSent && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-sm font-semibold text-emerald-300 flex items-center justify-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Todos os disparos foram registrados! Status dos leads atualizado para "Contatado".
+                </div>
+              )}
+
+              {/* Per-lead list */}
+              <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                {bulkResults.map((item, idx) => {
+                  const sent = bulkSentIds.has(item.lead.id);
+                  return (
+                    <div
+                      key={item.lead.id}
+                      className={`rounded-lg border p-3 transition ${
+                        sent
+                          ? "border-emerald-500/30 bg-emerald-500/[0.04]"
+                          : "border-white/5 bg-white/[0.02]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-bold text-zinc-500">#{idx + 1}</span>
+                            <span className="text-sm font-bold text-white truncate">{item.lead.name}</span>
+                            {sent && (
+                              <Badge variant="success">
+                                <CheckCircle2 className="h-3 w-3" /> Enviado
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5">
+                            {item.lead.niche || "—"} • {item.lead.city || "—"} • variant: {item.variant}
+                          </div>
+                        </div>
+                        {item.waLink && !sent && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenOne(item)}
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            Abrir WhatsApp
+                          </button>
+                        )}
+                      </div>
+                      <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans leading-relaxed bg-black/20 rounded-md p-2">
+                        {item.message}
+                      </pre>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Helper note about popup blocker */}
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-[11px] text-amber-200 flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Atenção:</strong> Se o navegador bloquear múltiplas abas, clique em "Abrir WhatsApp" em cada lead individualmente. Cada clique registra o envio no log e marca o lead como "Contatado".
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state when no results yet */}
+          {!bulkResults && !bulkError && !bulkGenerating && (
+            <div className="py-8 text-center">
+              <Sparkles className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
+              <p className="text-sm text-zinc-500">
+                Clique em "Gerar mensagens" para criar {Math.min(selectedCount, 10)} mensagens personalizadas.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer with close button */}
+        <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-white/5 bg-zinc-950/95 backdrop-blur p-4">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
         </div>
       </div>
     </div>

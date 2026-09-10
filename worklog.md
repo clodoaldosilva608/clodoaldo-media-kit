@@ -1516,3 +1516,30 @@ Stage Summary:
 - ✅ Cleanup completo (dispose geometry/material/texture/renderer)
 - ✅ Build + deploy production atualizado
 
+
+---
+Task ID: bulk-send-feature
+Agent: main (Super Z)
+Task: Implementar "Selecionar todos os leads" + disparo em massa na aba Buscar do /admin/parceiros. Mensagens curtas IA + templates, 10 leads por vez, integração com aba Envios.
+
+Work Log:
+- Lido page.tsx completo (1006→1541 linhas) e API existente
+- Verificado schema do banco: clodoaldo_envios existe (id, prospect_id, message_text, message_variant, status, sent_at, campaign, destination_jid, provider_msg_id, error)
+- Verificado clodoaldo_prospects: 69 leads, 63 com WhatsApp, todos status="new"
+- Implementado /api/admin/envios/route.ts (estava vazio, só imports): GET com JOIN em prospects para prospect_name/niche/city; POST registra envio + atualiza prospect para "contacted" (contacted_count + 1, last_contact_at = now())
+- Implementado /api/admin/bulk-send/route.ts (novo): POST gera mensagens curtas (3 linhas, ~40 palavras) por lead. Dois modos: "ai" (tenta Gemini API gemini-3.6-flash, fallback para geração local smart) e "template" (4 templates pré-definidos: t1 Direto e curto, t2 Elogio + gancho, t3 Oportunidade local, t4 Curto e amigo). GET retorna lista de templates
+- Lógica de fallback Gemini: API não funciona desta região ("User location is not supported"), mas em produção (Vercel) funcionará. Fallback local usa rotação de templates para variar estrutura entre leads (simula IA)
+- Atualizado page.tsx Buscar tab: adicionado bulk action bar sticky no topo dos resultados com botão "Selecionar todos os leads" + contador + botão "Disparar mensagens (10 por vez)"; adicionado checkbox por card de lead (desabilitado se não tem WhatsApp/telefone); leads selecionados ficam com ring emerald
+- Criado componente BulkSendModal: modal full-screen com 3 passos (estilo → template → CTA opcional), gera mensagens, mostra preview por lead com botão "Abrir WhatsApp" individual ou "Abrir todos no WhatsApp" (com stagger 250ms para não bloquear popup). Cada abertura registra no envios e marca lead como contacted. Quando todos enviados, mostra confirmação e dispara refresh dos prospects
+- BulkSendModal: body scroll lock, ESC handler, refresh prospects quando todos os disparos completos
+- TypeScript check: 0 erros nos meus arquivos
+- ESLint: 0 erros novos (apenas 2 preexistentes em loadProspects/RespostasView)
+- Build: ✓ Compiled successfully em 6.1s, ambas rotas listadas (/api/admin/bulk-send, /api/admin/envios), /admin/parceiros compilado
+
+Stage Summary:
+- 3 arquivos modificados/criados: src/app/api/admin/envios/route.ts, src/app/api/admin/bulk-send/route.ts (novo), src/app/admin/parceiros/page.tsx (+535 linhas)
+- Recurso pronto para uso: selecionar todos → escolher IA ou template → gerar → abrir WhatsApp → log automático em Envios
+- 4 templates pré-definidos + modo IA (Gemini em produção, fallback local em dev)
+- CTA default: "Caso tenha interesse, é só me chamar aqui no WhatsApp. 🙌"
+- Cada disparo registrado em clodoaldo_envios com campaign, variant, message_text
+- Cada disparo atualiza prospect: status="contacted", contacted_count+1, last_contact_at

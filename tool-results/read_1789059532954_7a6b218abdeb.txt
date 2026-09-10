@@ -1,0 +1,1007 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback } from "react";
+     4→     4→import { AdminShell } from "@/components/admin/admin-shell";
+     5→     5→import { Widget, Badge, EmptyState, Button, Input, Label, Select, Textarea } from "@/components/admin/ui";
+     6→     6→import {
+     7→     7→  Search, MapPin, Phone, Globe, Star, Plus, Save, Trash2, X, Loader2,
+     8→     8→  AlertCircle, Download, RefreshCw, Building2, Users, CheckCircle2,
+     9→     9→  MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
+    10→    10→  Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
+    11→    11→  FileCheck,
+    12→    12→} from "lucide-react";
+    13→    13→import {
+    14→    14→  getRelevantObjections,
+    15→    15→  getUrgencyHooks,
+    16→    16→  formatObjectionForDisplay,
+    17→    17→} from "@/lib/objections";
+    18→    18→import { generatePreviewHTML } from "@/lib/preview-generator";
+    19→    19→
+    20→    20→interface Lead {
+    21→    21→  place_id?: string; id?: string; name: string; phone?: string | null;
+    22→    22→  whatsapp?: string | null; email?: string | null; formatted_address?: string;
+    23→    23→  city?: string; lat?: number; lng?: number; category?: string; niche?: string;
+    24→    24→  website?: string | null; instagram?: string | null; facebook?: string | null;
+    25→    25→  rating?: number | null; user_ratings_total?: number; source?: string;
+    26→    26→  hasWebsite?: boolean; hasEmail?: boolean; hasWhatsApp?: boolean;
+    27→    27→  hasSocialMedia?: boolean; webDevOpportunity?: boolean; openingHours?: string | null;
+    28→    28→  status?: string; priority?: string; notes?: string | null; created_at?: string;
+    29→    29→}
+    30→    30→
+    31→    31→const NICHES = ["restaurante","barbearia","academia","salao de beleza","clinica estetica","escritorio de advocacia","consultorio odontologico","loja de roupas","papelaria","farmacia","pet shop","estetica automotiva","pizzaria","hamburgueria","cafeteria","loja de conveniencia","imobiliaria","contabilidade","agencia de marketing","estudio de pilates"];
+    32→    32→
+    33→    33→const KANBAN = [
+    34→    34→  { key: "new", label: "Novo", color: "blue" },
+    35→    35→  { key: "contacted", label: "Contatado", color: "amber" },
+    36→    36→  { key: "qualified", label: "Qualificado", color: "violet" },
+    37→    37→  { key: "won", label: "Ganho", color: "emerald" },
+    38→    38→  { key: "lost", label: "Perdido", color: "rose" },
+    39→    39→];
+    40→    40→
+    41→    41→export default function AdminParceirosPage() {
+    42→    42→  const [view, setView] = useState<"search"|"kanban"|"salvos"|"envios"|"respostas"|"report">("search");
+    43→    43→  const [niche, setNiche] = useState("restaurante");
+    44→    44→  const [location, setLocation] = useState("Recife, PE");
+    45→    45→  const [radius, setRadius] = useState(5000);
+    46→    46→  const [searching, setSearching] = useState(false);
+    47→    47→  const [results, setResults] = useState<Lead[]>([]);
+    48→    48→  const [searchError, setSearchError] = useState<string|null>(null);
+    49→    49→  const [searchMeta, setSearchMeta] = useState<any>(null);
+    50→    50→  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+    51→    51→  const [expandedLead, setExpandedLead] = useState<string|null>(null);
+    52→    52→  const [copiedText, setCopiedText] = useState<string|null>(null);
+    53→    53→  const [autoSaving, setAutoSaving] = useState(false);
+    54→    54→  const [prospects, setProspects] = useState<Lead[]>([]);
+    55→    55→  const [loadingProspects, setLoadingProspects] = useState(true);
+    56→    56→  const [draggingId, setDraggingId] = useState<string|null>(null);
+    57→    57→  const [dragOverCol, setDragOverCol] = useState<string|null>(null);
+    58→    58→  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    59→    59→
+    60→    60→  const loadProspects = useCallback(async () => {
+    61→    61→    setLoadingProspects(true);
+    62→    62→    try {
+    63→    63→      const resp = await fetch("/api/admin/prospects?limit=500", { cache: "no-store" });
+    64→    64→      const json = await resp.json();
+    65→    65→      setProspects(json.data || []);
+    66→    66→      const ids = new Set<string>();
+    67→    67→      (json.data||[]).forEach((p:Lead) => { if(p.place_id) ids.add(p.place_id); });
+    68→    68→      setSavedIds(ids);
+    69→    69→    } catch { setProspects([]); }
+    70→    70→    setLoadingProspects(false);
+    71→    71→  }, []);
+    72→    72→
+    73→    73→  useEffect(() => { loadProspects(); }, [loadProspects]);
+    74→    74→
+    75→    75→  async function handleSearch() {
+    76→    76→    setSearching(true); setSearchError(null); setResults([]); setSearchMeta(null);
+    77→    77→    try {
+    78→    78→      const resp = await fetch("/api/admin/prospect/search", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({niche,location,radius,limit:20}) });
+    79→    79→      const json = await resp.json();
+    80→    80→      if (!resp.ok) { setSearchError(json.error||"Erro"); return; }
+    81→    81→      setResults(json.results||[]); setSearchMeta(json.search_meta);
+    82→    82→      setAutoSaving(true);
+    83→    83→      for (const lead of (json.results||[])) {
+    84→    84→        if (lead.place_id && !savedIds.has(lead.place_id)) {
+    85→    85→          try { await fetch("/api/admin/prospects", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...lead, status:"new", priority: lead.webDevOpportunity?"high":"medium"}) }); } catch {}
+    86→    86→        }
+    87→    87→      }
+    88→    88→      setAutoSaving(false); await loadProspects();
+    89→    89→    } catch(e:any) { setSearchError(e.message); }
+    90→    90→    finally { setSearching(false); }
+    91→    91→  }
+    92→    92→
+    93→    93→  async function updateStatus(id:string, status:string) {
+    94→    94→    setProspects(prev => prev.map(p => p.id===id?{...p,status}:p));
+    95→    95→    try { await fetch("/api/admin/prospects", { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id,status}) }); } catch { loadProspects(); }
+    96→    96→  }
+    97→    97→
+    98→    98→  async function deleteProspect(id:string) {
+    99→    99→    if(!confirm("Remover?")) return;
+   100→   100→    setProspects(prev => prev.filter(p => p.id!==id));
+   101→   101→    try { await fetch("/api/admin/prospects", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id}) }); } catch {}
+   102→   102→  }
+   103→   103→
+   104→   104→  function copyToClipboard(text:string, id:string) { navigator.clipboard.writeText(text); setCopiedText(id); setTimeout(()=>setCopiedText(null),2000); }
+   105→   105→
+   106→   106→  function genWA(lead:Lead):string {
+   107→   107→    const hasSite = lead.hasWebsite;
+   108→   108→    const niche = lead.niche || lead.category || "estabelecimento";
+   109→   109→    const rating = lead.rating || null;
+   110→   110→    const isFoodNiche = /(restaurante|pizzaria|hamburgueria|cafeteria|loja de conveniencia|bar|lanchonete|padaria|confeitaria)/i.test(niche);
+   111→   111→
+   112→   112→    // Avaliação só elogia se rating existir
+   113→   113→    const ratingLine = rating
+   114→   114→      ? `Vi sua avaliação de ${rating} estrelas no Google Maps — parabéns pelo trabalho bem feito! 🙌`
+   115→   115→      : `Vi seu cadastro no Google Maps e gostei do que encontrei.`;
+   116→   116→
+   117→   117→    // Diagnóstico inicial
+   118→   118→    const diagLine = hasSite
+   119→   119→      ? `Notei que seu site atual está perdendo clientes por ser lento/desatualizado.`
+   120→   120→      : `Notei que vocês ainda NÃO têm um site profissional — e isso está custando clientes todos os meses.`;
+   121→   121→
+   122→   122→    return `Olá! Tudo bem? 👋
+   123→   123→
+   124→   124→Meu nome é Clodoaldo Silva, sou especialista em marketing digital local aqui da região.
+   125→   125→
+   126→   126→${ratingLine}
+   127→   127→
+   128→   128→Cheguei até você pesquisando "${niche} perto de mim" no Google. ${diagLine} Deixa eu te mostrar o que está acontecendo:
+   129→   129→
+   130→   130→🔍 Pesquisando "${niche} em ${lead.city || "sua cidade"}", seus concorrentes aparecem em primeiro — e estão ganhando os clientes que poderiam estar vindo até você. São 150-400 buscas/mês só na sua região.
+   131→   131→
+   132→   132→📱 87% das pessoas pesquisam online ANTES de decidir onde comprar. Sem presença digital forte, você está invisível para esse público.
+   133→   133→
+   134→   134→📉 A cada mês sem isso = 30-50 clientes novos indo direto pro concorrente.
+   135→   135→
+   136→   136→Mais que um site, eu ofereço um **ecossistema completo** para o seu negócio crescer:
+   137→   137→
+   138→   138→✅ ${hasSite ? "Redesign do site atual" : "Criação de site profissional"} — rápido, responsivo, que converte visita em cliente
+   139→   139→✅ SEO local — aparecer em 1º nas buscas "${niche} em ${lead.city || "sua cidade"}"
+   140→   140→✅ Google Meu Negócio otimizado — destaque no Maps
+   141→   141→✅ Integração com WhatsApp — cliente pede com 1 clique
+   142→   142→${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular, sem app, sem download
+   143→   143→✅ Edição/atualização de cardápio — fotos profissionais + descrições que vendem
+   144→   144→✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar` : `✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar
+   145→   145→✅ Gestão de redes sociais opcional — poste sem trabalho extra`}
+   146→   146→✅ Pacote de recorrência mensal — site + artes + SEO + suporte, sem contratação de funcionário
+   147→   147→✅ E diversos outros produtos digitais sob medida (e-books, landing pages de campanhas, auditoria de perfil, criativos para tráfego pago...)
+   148→   148→
+   149→   149→💰 **Custo-benefício que faz sentido:** um único site seu custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que você paga pra sempre), o site é seu, trabalha 24/7 por anos.
+   150→   150→
+   151→   151→✅ **Sem fidelidade:** você pode cancelar a recorrência quando quiser.
+   152→   152→✅ **Sem trabalho pra você:** eu cuido de tudo — design, conteúdo, publicação. Você só aprova o resultado final.
+   153→   153→
+   154→   154→Sei que provavelmente está ocupado(a) — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama aqui no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu te mostro exatamente o que dá pra fazer pro ${lead.name}.
+   155→   155→
+   156→   156→👉 Posso te enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" aqui no WhatsApp.
+   157→   157→
+   158→   158→📱 (81) 92005-1068
+   159→   159→🌐 clodoaldo.vercel.app
+   160→   160→
+   161→   161→Abraço,
+   162→   162→Clodoaldo Silva`;
+   163→   163→  }
+   164→   164→
+   165→   165→  function genEmail(lead:Lead):string {
+   166→   166→    const hasSite = lead.hasWebsite;
+   167→   167→    const niche = lead.niche || lead.category || "estabelecimento";
+   168→   168→    const rating = lead.rating || null;
+   169→   169→    const isFoodNiche = /(restaurante|pizzaria|hamburgueria|cafeteria|loja de conveniencia|bar|lanchonete|padaria|confeitaria)/i.test(niche);
+   170→   170→
+   171→   171→    const ratingLine = rating
+   172→   172→      ? `Vi sua avaliação de ${rating} estrelas no Google Maps — parabéns pelo trabalho bem feito!`
+   173→   173→      : `Vi seu cadastro no Google Maps e gostei do que encontrei.`;
+   174→   174→
+   175→   175→    const diagLine = hasSite
+   176→   176→      ? `Notei que seu site atual está perdendo clientes por ser lento/desatualizado.`
+   177→   177→      : `Notei que vocês ainda NÃO têm um site profissional — e isso está custando clientes todos os meses.`;
+   178→   178→
+   179→   179→    return `Assunto: ${lead.name} — como atrair 30-50 clientes novos por mês (sem depender de indicação)
+   180→   180→
+   181→   181→Olá, equipe ${lead.name}!
+   182→   182→
+   183→   183→Meu nome é Clodoaldo Silva, sou especialista em marketing digital local aqui da região.
+   184→   184→
+   185→   185→${ratingLine}
+   186→   186→
+   187→   187→Cheguei até vocês pesquisando "${niche} perto de mim" no Google. ${diagLine} Deixa eu explicar o que está acontecendo:
+   188→   188→
+   189→   189→1. 🔍 Pesquisando "${niche} em ${lead.city || "sua cidade"}", seus concorrentes aparecem em primeiro — e estão ganhando os clientes que poderiam estar vindo até vocês. São 150-400 buscas/mês só na região.
+   190→   190→
+   191→   191→2. 📱 87% das pessoas pesquisam online ANTES de decidir onde comprar. Sem presença digital forte, vocês estão invisíveis para esse público.
+   192→   192→
+   193→   193→3. 📉 A cada mês sem isso = 30-50 clientes novos indo direto pro concorrente. Em 6 meses, são 200+ clientes que poderiam ser de vocês.
+   194→   194→
+   195→   195→Mais que um site, eu ofereço um **ecossistema completo** para o ${lead.name} crescer:
+   196→   196→
+   197→   197→✅ ${hasSite ? "Redesign do site atual" : "Criação de site profissional"} — rápido, responsivo, que converte visita em cliente
+   198→   198→✅ SEO local — aparecer em 1º nas buscas "${niche} em ${lead.city || "sua cidade"}"
+   199→   199→✅ Google Meu Negócio otimizado — destaque no Maps
+   200→   200→✅ Integração com WhatsApp — cliente pede com 1 clique
+   201→   201→${isFoodNiche ? `✅ Cardápio digital com QR Code — cliente acessa do celular, sem app, sem download
+   202→   202→✅ Edição/atualização de cardápio — fotos profissionais + descrições que vendem
+   203→   203→✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar` : `✅ Artes para redes sociais (Instagram/Facebook) — 12 a 30 artes/mês prontas para postar
+   204→   204→✅ Gestão de redes sociais opcional — você posta sem trabalho extra`}
+   205→   205→✅ Pacote de recorrência mensal — site + artes + SEO + suporte, sem contratar funcionário
+   206→   206→✅ E diversos outros produtos digitais sob medida (e-books, landing pages de campanhas, auditoria de perfil, criativos para tráfego pago...)
+   207→   207→
+   208→   208→💰 **Custo-benefício que faz sentido:** um único site profissional custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que se paga pra sempre), o site é de vocês, trabalha 24/7 por anos.
+   209→   209→
+   210→   210→✅ Sem fidelidade — vocês podem cancelar a recorrência quando quiserem.
+   211→   211→✅ Sem trabalho pra vocês — eu cuido de tudo (design, conteúdo, publicação). Vocês só aprovam o resultado final.
+   212→   212→
+   213→   213→Sei que provavelmente estão ocupados — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu mostro exatamente o que dá pra fazer pro ${lead.name}.
+   214→   214→
+   215→   215→👉 Posso enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" no WhatsApp.
+   216→   216→
+   217→   217→📱 (81) 92005-1068
+   218→   218→🌐 https://clodoaldo.vercel.app
+   219→   219→
+   220→   220→Abraço,
+   221→   221→Clodoaldo Silva`;
+   222→   222→  }
+   223→   223→
+   224→   224→  function genPrompt(lead:Lead):string {
+   225→   225→    const wa = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+   226→   226→    const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||lead.city||location))}`;
+   227→   227→    return `CRIE UMA LANDING PAGE RESPONSIVA para:\n\nNome: ${lead.name}\nTipo: ${lead.niche||lead.category||"estabelecimento"}\nEndereco: ${lead.formatted_address||"N/A"}\nCidade: ${lead.city||location}\nTelefone: ${lead.phone||"N/A"}\nWhatsApp: ${wa||"N/A"}\nAvaliacao: ${lead.rating?lead.rating+" estrelas":"N/A"}\n\nESTRUTURA:\n1. Hero (nome, subtitulo, avaliacao, botoes WhatsApp + Como Chegar)\n2. Sobre Nos\n3. Servicos (sem precos)\n4. Galeria (6 imagens)\n5. Mapa Google Maps + botao "Como Chegar" → ${maps}\n6. CTA final (WhatsApp + Telefone + Como Chegar)\n7. Footer ("Site criado por Clodoaldo Silva")\n\nREQUISITOS: 100% responsivo, SEO, sem precos, Google Maps embed: https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16&output=embed`;
+   228→   228→  }
+   229→   229→
+   230→   230→  function genPreview(lead:Lead):string {
+   231→   231→    return generatePreviewHTML({
+   232→   232→      name: lead.name,
+   233→   233→      niche: lead.niche,
+   234→   234→      category: lead.category,
+   235→   235→      formatted_address: lead.formatted_address,
+   236→   236→      city: lead.city,
+   237→   237→      phone: lead.phone,
+   238→   238→      whatsapp: lead.whatsapp,
+   239→   239→      website: lead.website,
+   240→   240→      instagram: lead.instagram,
+   241→   241→      facebook: lead.facebook,
+   242→   242→      rating: lead.rating ?? null,
+   243→   243→      user_ratings_total: lead.user_ratings_total ?? null,
+   244→   244→      lat: lead.lat,
+   245→   245→      lng: lead.lng,
+   246→   246→    });
+   247→   247→  }
+   248→   248→
+   249→   249→  function openPreview(lead:Lead) {
+   250→   250→    const blob = new Blob([genPreview(lead)], {type:"text/html"});
+   251→   251→    window.open(URL.createObjectURL(blob), "_blank");
+   252→   252→  }
+   253→   253→
+   254→   254→  function getPreviewLink(lead:Lead):string {
+   255→   255→    const id = lead.id || lead.place_id || "";
+   256→   256→    return `https://clodoaldo.vercel.app/api/preview?lead=${id}`;
+   257→   257→  }
+   258→   258→
+   259→   259→  function copyPreviewLink(lead:Lead) {
+   260→   260→    const link = getPreviewLink(lead);
+   261→   261→    navigator.clipboard.writeText(link);
+   262→   262→    setCopiedText(`link-${lead.id || lead.place_id}`);
+   263→   263→    setTimeout(() => setCopiedText(null), 3000);
+   264→   264→  }
+   265→   265→
+   266→   266→  function openPreviewLink(lead:Lead) {
+   267→   267→    window.open(getPreviewLink(lead), "_blank");
+   268→   268→  }
+   269→   269→
+   270→   270→  const total = prospects.length;
+   271→   271→  const opps = prospects.filter(p=>p.webDevOpportunity).length;
+   272→   272→  const mapSrc = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${searchMeta?.lat||-8.0476},${searchMeta?.lng||-34.8770}&zoom=13`;
+   273→   273→
+   274→   274→  return (
+   275→   275→    <AdminShell title="Parceiros — Prospeccao via Google Maps">
+   276→   276→      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+   277→   277→        <SB label="Total" value={total} icon={Users} c="emerald" />
+   278→   278→        {KANBAN.map(k => <SB key={k.key} label={k.label} value={prospects.filter(p=>p.status===k.key).length} icon={Building2} c={k.color as any} />)}
+   279→   279→        <SB label="Oportunidades" value={opps} icon={Zap} c="amber" />
+   280→   280→      </div>
+   281→   281→
+   282→   282→      <div className="mb-4 flex flex-wrap gap-0.5 rounded-full border border-white/5 bg-white/[0.03] p-0.5 inline-flex">
+   283→   283→        {[["search","Buscar",Search],["kanban","Pipeline ("+total+")",Layout],["salvos","Leads Salvos ("+total+")",CheckCircle2]].map(([k,l,I]:any) => (
+   284→   284→          <button key={k} onClick={()=>setView(k)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view===k?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><I className="h-4 w-4" /> {l}</button>
+   285→   285→        ))}
+   286→   286→        <button onClick={()=>setView("envios")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="envios"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><MessageCircle className="h-4 w-4" /> Envios</button>
+   287→   287→        <button onClick={()=>setView("respostas")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="respostas"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><Mail className="h-4 w-4" /> Respostas</button>
+   288→   288→        <button onClick={()=>setView("report")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="report"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><RefreshCw className="h-4 w-4" /> Relatorio</button>
+   289→   289→      </div>
+   290→   290→
+   291→   291→      {view==="search" && (
+   292→   292→        <Widget title="Prospeccao de clientes via Google Maps" icon={<MapPin className="h-4 w-4 text-emerald-400" />}>
+   293→   293→          <div className="mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+   294→   294→            <div><Label>Nicho</Label><Select value={niche} onChange={e=>setNiche(e.target.value)}>{NICHES.map(n=><option key={n} value={n}>{n}</option>)}</Select></div>
+   295→   295→            <div><Label>Cidade</Label><Input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Ex: Recife, PE" /></div>
+   296→   296→            <div><Label>Raio</Label><Select value={String(radius)} onChange={e=>setRadius(Number(e.target.value))}><option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></Select></div>
+   297→   297→            <div className="flex items-end"><Button variant="primary" onClick={handleSearch} disabled={searching} className="w-full">{searching?<Loader2 className="h-4 w-4 animate-spin" />:<Search className="h-4 w-4" />}{searching?"Buscando…":"Buscar"}</Button></div>
+   298→   298→          </div>
+   299→   299→          {autoSaving && <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300"><Loader2 className="h-3 w-3 animate-spin" /> Salvando leads automaticamente…</div>}
+   300→   300→          {searchError && <div className="mb-4 flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300"><AlertCircle className="h-5 w-5 shrink-0 mt-0.5" /><span>{searchError}</span></div>}
+   301→   301→          {searchMeta && <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-3 text-xs text-emerald-200"><strong>{searchMeta.total} estabelecimentos</strong> • fonte: {searchMeta.source} • {autoSaving?"salvando…":"✅ salvos no pipeline"}</div>}
+   302→   302→          {results.length>0 && (
+   303→   303→            <div className="grid gap-4 lg:grid-cols-[1fr_350px]">
+   304→   304→              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+   305→   305→                {results.map(lead => {
+   306→   306→                  const exp = expandedLead===lead.place_id;
+   307→   307→                  const wa = genWA(lead); const em = genEmail(lead); const pr = genPrompt(lead);
+   308→   308→                  const num = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+   309→   309→                  return (
+   310→   310→                    <div key={lead.place_id} className={`rounded-xl border p-4 ${lead.webDevOpportunity?"border-amber-500/30 bg-amber-500/[0.03]":"border-white/5 bg-white/[0.02]"}`}>
+   311→   311→                      <div className="flex items-start justify-between gap-3">
+   312→   312→                        <div className="min-w-0 flex-1 cursor-pointer" onClick={()=>setExpandedLead(exp?null:lead.place_id||null)}>
+   313→   313→                          <div className="flex items-center gap-2 flex-wrap"><h4 className="text-sm font-bold text-white">{lead.name}</h4>{lead.rating&&<span className="flex items-center gap-0.5 text-xs"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /><span className="font-semibold text-amber-300">{lead.rating}</span></span>}</div>
+   314→   314→                          <p className="mt-0.5 text-[11px] text-zinc-500 capitalize">{lead.category}</p>
+   315→   315→                          <div className="mt-1 flex items-start gap-1 text-xs text-zinc-400"><MapPin className="h-3 w-3 shrink-0 mt-0.5" /><span className="truncate">{lead.formatted_address}</span></div>
+   316→   316→                        </div>
+   317→   317→                        {savedIds.has(lead.place_id!)&&<Badge variant="success"><CheckCircle2 className="h-3 w-3" /> Salvo</Badge>}
+   318→   318→                      </div>
+   319→   319→                      <div className="mt-3 flex flex-wrap gap-1.5">
+   320→   320→                        {lead.hasWebsite?<Badge variant="info"><Globe className="h-3 w-3" /> Tem site</Badge>:<Badge variant="warning"><AlertTriangle className="h-3 w-3" /> Sem site</Badge>}
+   321→   321→                        {lead.hasWhatsApp&&<Badge variant="success"><MessageCircle className="h-3 w-3" /> WhatsApp</Badge>}
+   322→   322→                        {lead.webDevOpportunity&&<Badge variant="danger"><Zap className="h-3 w-3" /> Oportunidade</Badge>}
+   323→   323→                      </div>
+   324→   324→                      <div className="mt-3 flex flex-wrap gap-2">
+   325→   325→                        {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
+   326→   326→                        {lead.website&&<a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/25"><ExternalLink className="h-3.5 w-3.5" /> Site</a>}
+   327→   327→                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||""))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"><MapPin className="h-3.5 w-3.5" /> Maps</a>
+   328→   328→                        <button onClick={()=>setExpandedLead(exp?null:lead.place_id||null)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><Copy className="h-3.5 w-3.5" /> Copy + CTA</button>
+   329→   329→                      </div>
+   330→   330→                      {exp&&(
+   331→   331→                        <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+   332→   332→                          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</span><button onClick={()=>copyToClipboard(wa,`wa-${lead.place_id}`)} className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30">{copiedText===`wa-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{wa}</pre></div>
+   333→   333→                          <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-blue-300"><Mail className="h-3.5 w-3.5" /> Email</span><button onClick={()=>copyToClipboard(em,`em-${lead.place_id}`)} className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30">{copiedText===`em-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-32 overflow-y-auto">{em}</pre></div>
+   334→   334→                          <button onClick={()=>openPreview(lead)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.02] transition"><Eye className="h-4 w-4" /> Ver Preview do Site</button>
+   335→   335→                          <a href={`/admin/aprovacoes?new=1&client_name=${encodeURIComponent(lead.name)}&client_whatsapp=${encodeURIComponent(lead.whatsapp || lead.phone || "")}&client_email=${encodeURIComponent(lead.email || "")}&project_title=${encodeURIComponent("Projeto para " + lead.name)}&prospect_id=${encodeURIComponent(lead.id || lead.place_id || "")}&preview_url=${encodeURIComponent(getPreviewLink(lead))}`} className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-500/15 border border-violet-500/30 py-3 text-sm font-bold text-violet-300 hover:bg-violet-500/25 transition">
+   336→   336→                            <FileCheck className="h-4 w-4" /> Criar projeto de aprovação
+   337→   337→                          </a>
+   338→   338→                          <div className="flex gap-2">
+   339→   339→                            <button onClick={()=>copyPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition" title="Copiar link compartilhável">
+   340→   340→                              {copiedText===`link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+   341→   341→                              {copiedText===`link-${lead.id || lead.place_id}` ? "Link copiado!" : "Copiar link"}
+   342→   342→                            </button>
+   343→   343→                            <button onClick={()=>openPreviewLink(lead)} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 transition" title="Abrir link compartilhável">
+   344→   344→                              <Share2 className="h-3.5 w-3.5" /> Abrir link
+   345→   345→                            </button>
+   346→   346→                          </div>
+   347→   347→                          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3"><div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1.5 text-xs font-bold text-amber-300"><Code2 className="h-3.5 w-3.5" /> Prompt do Site</span><button onClick={()=>copyToClipboard(pr,`pr-${lead.place_id}`)} className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30">{copiedText===`pr-${lead.place_id}`?"✓":"Copiar"}</button></div><pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-48 overflow-y-auto">{pr}</pre></div>
+   348→   348→
+   349→   349→                          {/* === QUEBRA DE OBJEÇÕES === */}
+   350→   350→                          {(() => {
+   351→   351→                            const objections = getRelevantObjections({
+   352→   352→                              niche: lead.niche || lead.category,
+   353→   353→                              hasWebsite: lead.hasWebsite,
+   354→   354→                            });
+   355→   355→                            if (objections.length === 0) return null;
+   356→   356→                            return (
+   357→   357→                              <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-3">
+   358→   358→                                <div className="mb-3 flex items-center gap-1.5">
+   359→   359→                                  <Shield className="h-3.5 w-3.5 text-rose-300" />
+   360→   360→                                  <span className="text-xs font-bold text-rose-200">
+   361→   361→                                    Quebra de Objeções ({objections.length})
+   362→   362→                                  </span>
+   363→   363→                                </div>
+   364→   364→                                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+   365→   365→                                  {objections.map((obj) => {
+   366→   366→                                    const f = formatObjectionForDisplay(obj);
+   367→   367→                                    const copyId = `obj-${lead.place_id}-${obj.id}`;
+   368→   368→                                    return (
+   369→   369→                                      <div key={obj.id} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+   370→   370→                                        <div className="mb-1.5 text-[10px] font-bold text-rose-300/80 uppercase tracking-wide">
+   371→   371→                                          {f.objectionLabel}
+   372→   372→                                        </div>
+   373→   373→                                        <div className="mb-2 text-[11px] text-zinc-300 italic">
+   374→   374→                                          "{obj.objection}"
+   375→   375→                                        </div>
+   376→   376→                                        <div className="mb-1.5 text-[10px] font-bold text-emerald-300/80 uppercase tracking-wide">
+   377→   377→                                          {f.breakLabel}
+   378→   378→                                        </div>
+   379→   379→                                        <div className="flex gap-2">
+   380→   380→                                          <pre className="flex-1 whitespace-pre-wrap text-[10px] text-zinc-200 font-sans max-h-40 overflow-y-auto leading-relaxed">
+   381→   381→                                            {obj.break}
+   382→   382→                                          </pre>
+   383→   383→                                          <button
+   384→   384→                                            onClick={() => copyToClipboard(obj.break, copyId)}
+   385→   385→                                            className="shrink-0 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 h-fit"
+   386→   386→                                            title="Copiar resposta pronta"
+   387→   387→                                          >
+   388→   388→                                            {copiedText === copyId ? "✓" : <Copy className="h-3 w-3" />}
+   389→   389→                                          </button>
+   390→   390→                                        </div>
+   391→   391→                                      </div>
+   392→   392→                                    );
+   393→   393→                                  })}
+   394→   394→                                </div>
+   395→   395→                                <div className="mt-2 pt-2 border-t border-rose-500/20 text-[10px] text-zinc-500">
+   396→   396→                                  💡 As 2 objeções de prioridade 1 já estão embutidas na mensagem WhatsApp acima como ganchos preventivos.
+   397→   397→                                </div>
+   398→   398→                              </div>
+   399→   399→                            );
+   400→   400→                          })()}
+   401→   401→                        </div>
+   402→   402→                      )}
+   403→   403→                    </div>
+   404→   404→                  );
+   405→   405→                })}
+   406→   406→              </div>
+   407→   407→              <div className="space-y-4">
+   408→   408→                <div className="rounded-xl border border-white/5 overflow-hidden"><div className="bg-white/[0.02] px-3 py-2 border-b border-white/5"><div className="flex items-center gap-2 text-xs font-semibold text-zinc-300"><MapPin className="h-3.5 w-3.5 text-emerald-400" /> Mapa</div></div><iframe src={mapSrc} width="100%" height="250" style={{border:0}} loading="lazy" title="Mapa" /></div>
+   409→   409→                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4"><div className="flex items-center gap-2 mb-3"><Zap className="h-4 w-4 text-amber-400" /><h4 className="text-sm font-bold text-white">Oportunidades</h4></div><div className="space-y-1.5 text-xs"><div className="flex justify-between"><span className="text-zinc-400">Sem site</span><span className="font-bold text-amber-300">{results.filter(r=>!r.hasWebsite).length}</span></div><div className="flex justify-between"><span className="text-zinc-400">Com WhatsApp</span><span className="font-bold text-emerald-300">{results.filter(r=>r.hasWhatsApp).length}</span></div></div></div>
+   410→   410→              </div>
+   411→   411→            </div>
+   412→   412→          )}
+   413→   413→          {!searching&&results.length===0&&!searchError&&!searchMeta&&<EmptyState title="Busque estabelecimentos no Google Maps" description="Os leads serao salvos automaticamente no pipeline." icon={<MapPin className="h-8 w-8" />} />}
+   414→   414→        </Widget>
+   415→   415→      )}
+   416→   416→
+   417→   417→      {view==="kanban" && (
+   418→   418→        <div className="overflow-x-auto pb-4">
+   419→   419→          <div className="flex gap-4 min-w-[1000px]">
+   420→   420→            {KANBAN.map(col => {
+   421→   421→              const items = prospects.filter(p=>p.status===col.key);
+   422→   422→              const colors:Record<string,string> = {blue:"border-blue-500/30 bg-blue-500/[0.03]",amber:"border-amber-500/30 bg-amber-500/[0.03]",violet:"border-violet-500/30 bg-violet-500/[0.03]",emerald:"border-emerald-500/30 bg-emerald-500/[0.03]",rose:"border-rose-500/30 bg-rose-500/[0.03]"};
+   423→   423→              const hc:Record<string,string> = {blue:"text-blue-300",amber:"text-amber-300",violet:"text-violet-300",emerald:"text-emerald-300",rose:"text-rose-300"};
+   424→   424→              return (
+   425→   425→                <div key={col.key} className={`flex-1 min-w-[200px] rounded-xl border ${colors[col.color]} p-3 ${dragOverCol===col.key?"ring-2 ring-emerald-500/40":""}`} onDragOver={e=>{e.preventDefault();setDragOverCol(col.key);}} onDrop={e=>{e.preventDefault();if(draggingId)updateStatus(draggingId,col.key);setDraggingId(null);setDragOverCol(null);}}>
+   426→   426→                  <div className="mb-3 flex items-center justify-between"><h3 className={`text-sm font-bold ${hc[col.color]}`}>{col.label}</h3><span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold text-zinc-400">{items.length}</span></div>
+   427→   427→                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+   428→   428→                    {loadingProspects?<div className="py-4 text-center text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>:items.length===0?<div className="py-4 text-center text-xs text-zinc-600">Vazio</div>:
+   429→   429→                    items.map(p => {
+   430→   430→                      const num=(p.whatsapp||p.phone||"").replace(/\D/g,"");
+   431→   431→                      const wa=genWA(p);
+   432→   432→                      return (
+   433→   433→                        <div key={p.id} draggable onDragStart={e=>setDraggingId(p.id!)} onDragEnd={()=>{setDraggingId(null);setDragOverCol(null);}} className="cursor-grab rounded-lg border border-white/5 bg-white/[0.04] p-3 hover:bg-white/[0.08] transition active:cursor-grabbing">
+   434→   434→                          <div className="mb-1 flex items-start justify-between gap-2"><h4 className="text-xs font-bold text-white truncate flex-1">{p.name}</h4><button onClick={()=>deleteProspect(p.id!)} className="shrink-0 text-zinc-600 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button></div>
+   435→   435→                          <p className="text-[10px] text-zinc-500 truncate mb-1">{p.formatted_address||p.city||""}</p>
+   436→   436→                          <div className="flex flex-wrap gap-1 mb-2">
+   437→   437→                            {p.hasWebsite?<Badge variant="info"><Globe className="h-2.5 w-2.5" /></Badge>:<Badge variant="warning"><AlertTriangle className="h-2.5 w-2.5" /></Badge>}
+   438→   438→                            {p.hasWhatsApp&&<Badge variant="success"><MessageCircle className="h-2.5 w-2.5" /></Badge>}
+   439→   439→                            {p.webDevOpportunity&&<Badge variant="danger"><Zap className="h-2.5 w-2.5" /></Badge>}
+   440→   440→                            {p.rating&&<span className="text-[10px] text-amber-300">⭐{p.rating}</span>}
+   441→   441→                          </div>
+   442→   442→                          <div className="flex gap-1">
+   443→   443→                            {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="flex-1 rounded bg-emerald-500/15 px-2 py-1 text-center text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25">WhatsApp</a>}
+   444→   444→                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
+   445→   445→                            <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview do site"><Eye className="h-3 w-3" /></button>
+   446→   446→                            <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link do preview"><Link2 className="h-3 w-3" /></button>
+   447→   447→                            <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link compartilhável"><Share2 className="h-3 w-3" /></button>
+   448→   448→                          </div>
+   449→   449→                        </div>
+   450→   450→                      );
+   451→   451→                    })}
+   452→   452→                  </div>
+   453→   453→                </div>
+   454→   454→              );
+   455→   455→            })}
+   456→   456→          </div>
+   457→   457→        </div>
+   458→   458→      )}
+   459→   459→
+   460→   460→      {view==="salvos" && (
+   461→   461→        <Widget title="Leads Salvos" icon={<CheckCircle2 className="h-4 w-4 text-emerald-400" />} action={<Button variant="outline" size="sm" onClick={loadProspects} disabled={loadingProspects}><RefreshCw className={`h-3 w-3 ${loadingProspects?"animate-spin":""}`} /><span className="ml-1">Atualizar</span></Button>}>
+   462→   462→          {loadingProspects ? (
+   463→   463→            <div className="py-12 text-center text-zinc-500"><RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin" />Carregando leads salvos...</div>
+   464→   464→          ) : prospects.length === 0 ? (
+   465→   465→            <EmptyState icon={<CheckCircle2 className="h-8 w-8 text-zinc-600" />} title="Nenhum lead salvo" description="Busque estabelecimentos e eles serão salvos automaticamente aqui." />
+   466→   466→          ) : (
+   467→   467→            <>
+   468→   468→              <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-3 py-2 text-xs text-blue-200">
+   469→   469→                💡 Dica: clique em qualquer lead (card) para ver todos os detalhes — mensagens prontas (WhatsApp/Email), prompt do site, preview e quebra de objeções.
+   470→   470→              </div>
+   471→   471→              <div className="space-y-2">
+   472→   472→                {prospects.map((p) => {
+   473→   473→                  const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+   474→   474→                  const wa = genWA(p);
+   475→   475→                  return (
+   476→   476→                    <div
+   477→   477→                      key={p.id || p.place_id}
+   478→   478→                      role="button"
+   479→   479→                      tabIndex={0}
+   480→   480→                      onClick={() => setSelectedLead(p)}
+   481→   481→                      onKeyDown={(e) => {
+   482→   482→                        if (e.key === "Enter" || e.key === " ") {
+   483→   483→                          e.preventDefault();
+   484→   484→                          setSelectedLead(p);
+   485→   485→                        }
+   486→   486→                      }}
+   487→   487→                      className="block w-full text-left rounded-xl border border-white/5 bg-white/[0.02] hover:bg-emerald-500/[0.06] hover:border-emerald-500/30 active:bg-emerald-500/[0.1] p-3 sm:p-4 transition group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/50"
+   488→   488→                    >
+   489→   489→                      <div className="flex items-start justify-between gap-3">
+   490→   490→                        <div className="min-w-0 flex-1">
+   491→   491→                          <div className="flex items-center gap-2 flex-wrap">
+   492→   492→                            <span className="font-bold text-white text-sm sm:text-base group-hover:text-emerald-300 transition truncate">{p.name}</span>
+   493→   493→                            {p.rating && (
+   494→   494→                              <span className="flex items-center gap-0.5 text-xs shrink-0">
+   495→   495→                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+   496→   496→                                <span className="font-semibold text-amber-300">{p.rating}</span>
+   497→   497→                                {p.user_ratings_total && <span className="text-zinc-500">({p.user_ratings_total})</span>}
+   498→   498→                              </span>
+   499→   499→                            )}
+   500→   500→                            {p.webDevOpportunity && (
+   501→   501→                              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded shrink-0">
+   502→   502→                                <Zap className="h-2.5 w-2.5" /> Oportunidade
+   503→   503→                              </span>
+   504→   504→                            )}
+   505→   505→                          </div>
+   506→   506→                          {p.formatted_address && (
+   507→   507→                            <div className="mt-1 flex items-center gap-1 text-xs text-zinc-400">
+   508→   508→                              <MapPin className="h-3 w-3 shrink-0" />
+   509→   509→                              <span className="truncate">{p.formatted_address}</span>
+   510→   510→                            </div>
+   511→   511→                          )}
+   512→   512→                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+   513→   513→                            <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 capitalize">{p.niche || p.category || "—"}</span>
+   514→   514→                            {p.city && <span className="text-[10px] text-zinc-500">📍 {p.city}</span>}
+   515→   515→                            {p.hasWebsite ? (
+   516→   516→                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-300 bg-blue-500/15 px-1.5 py-0.5 rounded"><Globe className="h-2.5 w-2.5" /> Tem site</span>
+   517→   517→                            ) : (
+   518→   518→                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded"><AlertTriangle className="h-2.5 w-2.5" /> Sem site</span>
+   519→   519→                            )}
+   520→   520→                            {p.hasWhatsApp && (
+   521→   521→                              <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded"><MessageCircle className="h-2.5 w-2.5" /> WhatsApp</span>
+   522→   522→                            )}
+   523→   523→                            <span className="rounded-md bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{p.status || "new"}</span>
+   524→   524→                          </div>
+   525→   525→                        </div>
+   526→   526→                        {/* Indicador visual de "clique para ver detalhes" */}
+   527→   527→                        <div className="shrink-0 flex flex-col items-end gap-2">
+   528→   528→                          <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 group-hover:bg-emerald-500/25 transition whitespace-nowrap">
+   529→   529→                            <Eye className="h-3 w-3" /> Detalhes
+   530→   530→                          </div>
+   531→   531→                          {/* Ações rápidas — stopPropagation evita abrir o modal */}
+   532→   532→                          <div
+   533→   533→                            className="flex gap-1"
+   534→   534→                            role="group"
+   535→   535→                            aria-label="Ações rápidas"
+   536→   536→                          >
+   537→   537→                            {num && (
+   538→   538→                              <a
+   539→   539→                                href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`}
+   540→   540→                                target="_blank"
+   541→   541→                                rel="noreferrer"
+   542→   542→                                onClick={(e) => e.stopPropagation()}
+   543→   543→                                className="rounded bg-emerald-500/15 p-2 text-emerald-300 hover:bg-emerald-500/30 transition"
+   544→   544→                                title="Abrir WhatsApp"
+   545→   545→                                aria-label="Abrir WhatsApp"
+   546→   546→                              >
+   547→   547→                                <MessageCircle className="h-3.5 w-3.5" />
+   548→   548→                              </a>
+   549→   549→                            )}
+   550→   550→                            <a
+   551→   551→                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name + " " + (p.formatted_address || ""))}`}
+   552→   552→                              target="_blank"
+   553→   553→                              rel="noreferrer"
+   554→   554→                              onClick={(e) => e.stopPropagation()}
+   555→   555→                              className="rounded bg-amber-500/15 p-2 text-amber-300 hover:bg-amber-500/30 transition"
+   556→   556→                              title="Ver no Google Maps"
+   557→   557→                              aria-label="Ver no Google Maps"
+   558→   558→                            >
+   559→   559→                              <MapPin className="h-3.5 w-3.5" />
+   560→   560→                            </a>
+   561→   561→                            <button
+   562→   562→                              type="button"
+   563→   563→                              onClick={(e) => { e.stopPropagation(); openPreview(p); }}
+   564→   564→                              className="rounded bg-amber-500/15 p-2 text-amber-300 hover:bg-amber-500/30 transition"
+   565→   565→                              title="Preview do site"
+   566→   566→                              aria-label="Preview do site"
+   567→   567→                            >
+   568→   568→                              <Eye className="h-3.5 w-3.5" />
+   569→   569→                            </button>
+   570→   570→                            <button
+   571→   571→                              type="button"
+   572→   572→                              onClick={(e) => { e.stopPropagation(); copyPreviewLink(p); }}
+   573→   573→                              className="rounded bg-blue-500/15 p-2 text-blue-300 hover:bg-blue-500/30 transition"
+   574→   574→                              title="Copiar link compartilhável"
+   575→   575→                              aria-label="Copiar link compartilhável"
+   576→   576→                            >
+   577→   577→                              {copiedText === `link-${p.id || p.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+   578→   578→                            </button>
+   579→   579→                            <button
+   580→   580→                              type="button"
+   581→   581→                              onClick={(e) => { e.stopPropagation(); openPreviewLink(p); }}
+   582→   582→                              className="rounded bg-emerald-500/15 p-2 text-emerald-300 hover:bg-emerald-500/30 transition"
+   583→   583→                              title="Abrir link compartilhável"
+   584→   584→                              aria-label="Abrir link compartilhável"
+   585→   585→                            >
+   586→   586→                              <Share2 className="h-3.5 w-3.5" />
+   587→   587→                            </button>
+   588→   588→                          </div>
+   589→   589→                        </div>
+   590→   590→                      </div>
+   591→   591→                    </div>
+   592→   592→                  );
+   593→   593→                })}
+   594→   594→              </div>
+   595→   595→            </>
+   596→   596→          )}
+   597→   597→        </Widget>
+   598→   598→      )}
+   599→   599→
+   600→   600→      {/* Modal de detalhes do lead — mostra todas as informações + copy+CTA */}
+   601→   601→      {selectedLead && (
+   602→   602→        <LeadDetailModal
+   603→   603→          lead={selectedLead}
+   604→   604→          onClose={() => setSelectedLead(null)}
+   605→   605→          genWA={genWA}
+   606→   606→          genEmail={genEmail}
+   607→   607→          genPrompt={genPrompt}
+   608→   608→          openPreview={openPreview}
+   609→   609→          copyPreviewLink={copyPreviewLink}
+   610→   610→          openPreviewLink={openPreviewLink}
+   611→   611→          copyToClipboard={copyToClipboard}
+   612→   612→          copiedText={copiedText}
+   613→   613→        />
+   614→   614→      )}
+   615→   615→
+   616→   616→      {view==="envios" && <EnviosView />}
+   617→   617→      {view==="respostas" && <RespostasView />}
+   618→   618→      {view==="report" && <ReportView />}
+   619→   619→    </AdminShell>
+   620→   620→  );
+   621→   621→}
+   622→   622→
+   623→   623→function EnviosView() {
+   624→   624→  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true);
+   625→   625→  useEffect(()=>{fetch("/api/admin/envios?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   626→   626→  if(loading) return <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+   627→   627→  return (
+   628→   628→    <Widget title="Log de Envios" icon={<MessageCircle className="h-4 w-4 text-emerald-400" />}>
+   629→   629→      {data.length===0?<EmptyState title="Nenhum envio" icon={<MessageCircle className="h-8 w-8" />} />:
+   630→   630→      <div className="-mx-2 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-white/5 text-[11px] uppercase tracking-wider text-zinc-500"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Lead</th><th className="px-3 py-2">Variante</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Erro</th></tr></thead><tbody className="divide-y divide-white/5">{data.map((e:any)=><tr key={e.id} className="hover:bg-white/[0.02]"><td className="px-3 py-2.5 text-xs text-zinc-400">{new Date(e.sent_at).toLocaleString("pt-BR")}</td><td className="px-3 py-2.5 text-zinc-200">{e.prospect_name||"—"}</td><td className="px-3 py-2.5"><Badge variant="muted">{e.message_variant||"—"}</Badge></td><td className="px-3 py-2.5"><Badge variant={e.status==="sent"?"success":e.status==="failed"?"danger":"warning"}>{e.status}</Badge></td><td className="px-3 py-2.5 text-xs text-rose-300 max-w-[200px] truncate">{e.error||"—"}</td></tr>)}</tbody></table></div>}
+   631→   631→    </Widget>
+   632→   632→  );
+   633→   633→}
+   634→   634→
+   635→   635→function RespostasView() {
+   636→   636→  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true); const [showAdd,setShowAdd]=useState(false); const [reply,setReply]=useState({prospect_id:"",message_text:""});
+   637→   637→  const load=useCallback(()=>{setLoading(true);fetch("/api/admin/respostas?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   638→   638→  useEffect(()=>{load();},[load]);
+   639→   639→  const cc:Record<string,any> = {permission_to_send:"info",interessado:"success",meeting_ready:"success",opt_out:"danger",pricing_question:"warning",ambiguous:"muted",unclassified:"muted"};
+   640→   640→  async function submit(){if(!reply.prospect_id||!reply.message_text)return;await fetch("/api/admin/respostas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(reply)});setReply({prospect_id:"",message_text:""});setShowAdd(false);load();}
+   641→   641→  return (
+   642→   642→    <Widget title="Respostas Recebidas" icon={<Mail className="h-4 w-4 text-emerald-400" />} action={<Button size="sm" variant="primary" onClick={()=>setShowAdd(!showAdd)}><Plus className="h-3.5 w-3.5" /> Registrar</Button>}>
+   643→   643→      {showAdd&&<div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 space-y-2"><Input placeholder="ID do prospect" value={reply.prospect_id} onChange={e=>setReply({...reply,prospect_id:e.target.value})} /><Textarea placeholder="Mensagem recebida…" value={reply.message_text} onChange={e=>setReply({...reply,message_text:e.target.value})} rows={3} /><Button size="sm" variant="primary" onClick={submit}>Classificar e Salvar</Button></div>}
+   644→   644→      {loading?<div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>:
+   645→   645→      data.length===0?<EmptyState title="Nenhuma resposta" icon={<Mail className="h-8 w-8" />} />:
+   646→   646→      <div className="space-y-2">{data.map((r:any)=><div key={r.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-start justify-between gap-2 mb-2"><div><span className="text-sm font-bold text-white">{r.prospect_name||"—"}</span><span className="ml-2 text-[11px] text-zinc-500">{new Date(r.received_at).toLocaleString("pt-BR")}</span></div><Badge variant={cc[r.classification]||"muted"}>{r.classification}</Badge></div><p className="text-xs text-zinc-300 mb-2 italic">"{r.message_text}"</p><div className="flex gap-4 text-[11px] text-zinc-500"><span>📋 {r.action_taken||"—"}</span><span>→ {r.next_step||"—"}</span></div></div>)}</div>}
+   647→   647→    </Widget>
+   648→   648→  );
+   649→   649→}
+   650→   650→
+   651→   651→function ReportView() {
+   652→   652→  const [r,setR]=useState<any>(null); const [loading,setLoading]=useState(true);
+   653→   653→  useEffect(()=>{fetch("/api/admin/prospect/report").then(r=>r.json()).then(d=>{setR(d);setLoading(false);}).catch(()=>setLoading(false));},[]);
+   654→   654→  if(loading) return <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+   655→   655→  if(!r) return <EmptyState title="Erro ao carregar" icon={<AlertCircle className="h-8 w-8" />} />;
+   656→   656→  const t=r.today||{}; const s=t.sends||{}; const rep=t.replies||{};
+   657→   657→  return (
+   658→   658→    <div className="space-y-4">
+   659→   659→      <Widget title={`Relatorio — ${r.date}`} icon={<RefreshCw className="h-4 w-4 text-emerald-400" />}>
+   660→   660→        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+   661→   661→          <SB label="Enviados hoje" value={s.confirmed||0} icon={MessageCircle} c="emerald" />
+   662→   662→          <SB label="Falhas" value={s.failed||0} icon={AlertCircle} c="rose" />
+   663→   663→          <SB label="Respostas" value={rep.total||0} icon={Mail} c="blue" />
+   664→   664→          <SB label="Oportunidades" value={r.opportunities||0} icon={Zap} c="amber" />
+   665→   665→        </div>
+   666→   666→      </Widget>
+   667→   667→      <Widget title="Pipeline por Status" icon={<Layout className="h-4 w-4 text-violet-400" />}>
+   668→   668→        <div className="space-y-2">{(r.status_breakdown||[]).map((s:any)=><div key={s.status} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-3 py-2"><span className="text-sm text-zinc-300 capitalize">{s.status}</span><span className="font-bold text-white">{s.count}</span></div>)}</div>
+   669→   669→      </Widget>
+   670→   670→    </div>
+   671→   671→  );
+   672→   672→}
+   673→   673→
+   674→   674→function SB({label,value,icon:Icon,c="emerald"}:{label:string;value:number;icon:React.ComponentType<{className?:string}>;c?:"emerald"|"blue"|"amber"|"rose"|"violet"}) {
+   675→   675→  const colors:Record<string,string> = {emerald:"text-emerald-300 bg-emerald-500/10",blue:"text-blue-300 bg-blue-500/10",amber:"text-amber-300 bg-amber-500/10",rose:"text-rose-300 bg-rose-500/10",violet:"text-violet-300 bg-violet-500/10"};
+   676→   676→  return <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-center gap-2"><div className={`flex h-7 w-7 items-center justify-center rounded-lg ${colors[c]}`}><Icon className="h-3.5 w-3.5" /></div><div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</div></div><div className="mt-1.5 text-xl font-bold text-white">{value}</div></div>;
+   677→   677→}
+   678→   678→
+   679→   679→// =====================================================
+   680→   680→// MODAL DETALHES DO LEAD — mostra todas as informações
+   681→   681→// + mensagens WhatsApp/Email + Prompt + Preview + Objeções
+   682→   682→// =====================================================
+   683→   683→function LeadDetailModal({
+   684→   684→  lead, onClose, genWA, genEmail, genPrompt,
+   685→   685→  openPreview, copyPreviewLink, openPreviewLink,
+   686→   686→  copyToClipboard, copiedText,
+   687→   687→}: {
+   688→   688→  lead: Lead;
+   689→   689→  onClose: () => void;
+   690→   690→  genWA: (l: Lead) => string;
+   691→   691→  genEmail: (l: Lead) => string;
+   692→   692→  genPrompt: (l: Lead) => string;
+   693→   693→  openPreview: (l: Lead) => void;
+   694→   694→  copyPreviewLink: (l: Lead) => void;
+   695→   695→  openPreviewLink: (l: Lead) => void;
+   696→   696→  copyToClipboard: (text: string, id: string) => void;
+   697→   697→  copiedText: string | null;
+   698→   698→}) {
+   699→   699→  const wa = genWA(lead);
+   700→   700→  const em = genEmail(lead);
+   701→   701→  const pr = genPrompt(lead);
+   702→   702→  const num = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
+   703→   703→  const leadId = lead.id || lead.place_id || "";
+   704→   704→
+   705→   705→  // Body scroll lock
+   706→   706→  useEffect(() => {
+   707→   707→    document.body.style.overflow = "hidden";
+   708→   708→    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+   709→   709→    window.addEventListener("keydown", onEsc);
+   710→   710→    return () => {
+   711→   711→      document.body.style.overflow = "";
+   712→   712→      window.removeEventListener("keydown", onEsc);
+   713→   713→    };
+   714→   714→  }, [onClose]);
+   715→   715→
+   716→   716→  const objections = getRelevantObjections({
+   717→   717→    niche: lead.niche || lead.category,
+   718→   718→    hasWebsite: lead.hasWebsite,
+   719→   719→  });
+   720→   720→
+   721→   721→  return (
+   722→   722→    <div
+   723→   723→      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+   724→   724→      onClick={onClose}
+   725→   725→    >
+   726→   726→      <div
+   727→   727→        onClick={(e) => e.stopPropagation()}
+   728→   728→        className="relative w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+   729→   729→      >
+   730→   730→        {/* Header sticky */}
+   731→   731→        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+   732→   732→          <div className="min-w-0 flex-1">
+   733→   733→            <div className="flex items-center gap-2 flex-wrap">
+   734→   734→              <h3 className="text-base sm:text-lg font-bold text-white truncate">{lead.name}</h3>
+   735→   735→              {lead.rating && (
+   736→   736→                <span className="flex items-center gap-0.5 text-xs">
+   737→   737→                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+   738→   738→                  <span className="font-semibold text-amber-300">{lead.rating}</span>
+   739→   739→                  {lead.user_ratings_total && <span className="text-zinc-500">({lead.user_ratings_total})</span>}
+   740→   740→                </span>
+   741→   741→              )}
+   742→   742→            </div>
+   743→   743→            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+   744→   744→              <Badge variant="muted">{lead.niche || lead.category || "estabelecimento"}</Badge>
+   745→   745→              {lead.hasWebsite ? <Badge variant="info"><Globe className="h-3 w-3" /> Tem site</Badge> : <Badge variant="warning"><AlertTriangle className="h-3 w-3" /> Sem site</Badge>}
+   746→   746→              {lead.hasWhatsApp && <Badge variant="success"><MessageCircle className="h-3 w-3" /> WhatsApp</Badge>}
+   747→   747→              {lead.webDevOpportunity && <Badge variant="danger"><Zap className="h-3 w-3" /> Oportunidade</Badge>}
+   748→   748→              <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">{lead.status || "new"}</span>
+   749→   749→            </div>
+   750→   750→          </div>
+   751→   751→          <button
+   752→   752→            onClick={onClose}
+   753→   753→            aria-label="Fechar"
+   754→   754→            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+   755→   755→          >
+   756→   756→            <X className="h-4 w-4" />
+   757→   757→          </button>
+   758→   758→        </div>
+   759→   759→
+   760→   760→        <div className="p-4 sm:p-5 space-y-4">
+   761→   761→          {/* === INFORMAÇÕES PRINCIPAIS === */}
+   762→   762→          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:p-4">
+   763→   763→            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-400">Informações</h4>
+   764→   764→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+   765→   765→              {lead.formatted_address && (
+   766→   766→                <div className="flex items-start gap-2">
+   767→   767→                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   768→   768→                  <div className="min-w-0">
+   769→   769→                    <div className="text-[10px] uppercase text-zinc-500">Endereço</div>
+   770→   770→                    <div className="text-zinc-200 text-xs sm:text-sm break-words">{lead.formatted_address}</div>
+   771→   771→                  </div>
+   772→   772→                </div>
+   773→   773→              )}
+   774→   774→              {lead.city && (
+   775→   775→                <div className="flex items-start gap-2">
+   776→   776→                  <Building2 className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   777→   777→                  <div>
+   778→   778→                    <div className="text-[10px] uppercase text-zinc-500">Cidade</div>
+   779→   779→                    <div className="text-zinc-200 text-xs sm:text-sm">{lead.city}</div>
+   780→   780→                  </div>
+   781→   781→                </div>
+   782→   782→              )}
+   783→   783→              {lead.phone && (
+   784→   784→                <div className="flex items-start gap-2">
+   785→   785→                  <Phone className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   786→   786→                  <div>
+   787→   787→                    <div className="text-[10px] uppercase text-zinc-500">Telefone</div>
+   788→   788→                    <div className="text-zinc-200 text-xs sm:text-sm">{lead.phone}</div>
+   789→   789→                  </div>
+   790→   790→                </div>
+   791→   791→              )}
+   792→   792→              {lead.whatsapp && (
+   793→   793→                <div className="flex items-start gap-2">
+   794→   794→                  <MessageCircle className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+   795→   795→                  <div>
+   796→   796→                    <div className="text-[10px] uppercase text-zinc-500">WhatsApp</div>
+   797→   797→                    <div className="text-emerald-300 text-xs sm:text-sm">{lead.whatsapp}</div>
+   798→   798→                  </div>
+   799→   799→                </div>
+   800→   800→              )}
+   801→   801→              {lead.email && (
+   802→   802→                <div className="flex items-start gap-2">
+   803→   803→                  <Mail className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   804→   804→                  <div className="min-w-0">
+   805→   805→                    <div className="text-[10px] uppercase text-zinc-500">Email</div>
+   806→   806→                    <div className="text-zinc-200 text-xs sm:text-sm break-all">{lead.email}</div>
+   807→   807→                  </div>
+   808→   808→                </div>
+   809→   809→              )}
+   810→   810→              {lead.website && (
+   811→   811→                <div className="flex items-start gap-2">
+   812→   812→                  <Globe className="h-4 w-4 shrink-0 mt-0.5 text-blue-400" />
+   813→   813→                  <div className="min-w-0">
+   814→   814→                    <div className="text-[10px] uppercase text-zinc-500">Website</div>
+   815→   815→                    <a href={lead.website} target="_blank" rel="noreferrer" className="text-blue-300 text-xs sm:text-sm break-all hover:underline">{lead.website}</a>
+   816→   816→                  </div>
+   817→   817→                </div>
+   818→   818→              )}
+   819→   819→              {lead.instagram && (
+   820→   820→                <div className="flex items-start gap-2">
+   821→   821→                  <Smartphone className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   822→   822→                  <div className="min-w-0">
+   823→   823→                    <div className="text-[10px] uppercase text-zinc-500">Instagram</div>
+   824→   824→                    <a href={lead.instagram} target="_blank" rel="noreferrer" className="text-pink-300 text-xs sm:text-sm break-all hover:underline">{lead.instagram}</a>
+   825→   825→                  </div>
+   826→   826→                </div>
+   827→   827→              )}
+   828→   828→              {lead.openingHours && (
+   829→   829→                <div className="flex items-start gap-2">
+   830→   830→                  <Clock className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   831→   831→                  <div className="min-w-0">
+   832→   832→                    <div className="text-[10px] uppercase text-zinc-500">Horário</div>
+   833→   833→                    <div className="text-zinc-200 text-xs sm:text-sm whitespace-pre-line">{lead.openingHours}</div>
+   834→   834→                  </div>
+   835→   835→                </div>
+   836→   836→              )}
+   837→   837→              {lead.created_at && (
+   838→   838→                <div className="flex items-start gap-2">
+   839→   839→                  <Clock className="h-4 w-4 shrink-0 mt-0.5 text-zinc-500" />
+   840→   840→                  <div>
+   841→   841→                    <div className="text-[10px] uppercase text-zinc-500">Salvo em</div>
+   842→   842→                    <div className="text-zinc-200 text-xs sm:text-sm">{new Date(lead.created_at).toLocaleString("pt-BR")}</div>
+   843→   843→                  </div>
+   844→   844→                </div>
+   845→   845→              )}
+   846→   846→            </div>
+   847→   847→            {/* Localização + Maps button */}
+   848→   848→            <div className="mt-3 flex flex-wrap gap-2 pt-3 border-t border-white/5">
+   849→   849→              <a
+   850→   850→                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name + " " + (lead.formatted_address || ""))}`}
+   851→   851→                target="_blank"
+   852→   852→                rel="noreferrer"
+   853→   853→                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"
+   854→   854→              >
+   855→   855→                <MapPin className="h-3.5 w-3.5" /> Abrir no Google Maps
+   856→   856→              </a>
+   857→   857→              {lead.lat && lead.lng && (
+   858→   858→                <a
+   859→   859→                  href={`https://www.google.com/maps?q=${lead.lat},${lead.lng}&z=16`}
+   860→   860→                  target="_blank"
+   861→   861→                  rel="noreferrer"
+   862→   862→                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+   863→   863→                >
+   864→   864→                  <MapPin className="h-3.5 w-3.5" /> Ver coordenadas
+   865→   865→                </a>
+   866→   866→              )}
+   867→   867→            </div>
+   868→   868→          </div>
+   869→   869→
+   870→   870→          {/* === WHATSAPP MESSAGE + CTA === */}
+   871→   871→          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
+   872→   872→            <div className="mb-2 flex items-center justify-between gap-2">
+   873→   873→              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+   874→   874→                <MessageCircle className="h-3.5 w-3.5" /> Mensagem WhatsApp
+   875→   875→              </span>
+   876→   876→              <div className="flex gap-1.5">
+   877→   877→                {num && (
+   878→   878→                  <a
+   879→   879→                    href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`}
+   880→   880→                    target="_blank"
+   881→   881→                    rel="noreferrer"
+   882→   882→                    className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 inline-flex items-center gap-1"
+   883→   883→                  >
+   884→   884→                    <MessageCircle className="h-3 w-3" /> Abrir
+   885→   885→                  </a>
+   886→   886→                )}
+   887→   887→                <button
+   888→   888→                  onClick={() => copyToClipboard(wa, `wa-${leadId}`)}
+   889→   889→                  className="rounded-md bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30"
+   890→   890→                >
+   891→   891→                  {copiedText === `wa-${leadId}` ? "✓ Copiado" : "Copiar"}
+   892→   892→                </button>
+   893→   893→              </div>
+   894→   894→            </div>
+   895→   895→            <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-48 overflow-y-auto leading-relaxed">{wa}</pre>
+   896→   896→          </div>
+   897→   897→
+   898→   898→          {/* === EMAIL MESSAGE === */}
+   899→   899→          <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3">
+   900→   900→            <div className="mb-2 flex items-center justify-between gap-2">
+   901→   901→              <span className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+   902→   902→                <Mail className="h-3.5 w-3.5" /> Mensagem Email
+   903→   903→              </span>
+   904→   904→              <button
+   905→   905→                onClick={() => copyToClipboard(em, `em-${leadId}`)}
+   906→   906→                className="rounded-md bg-blue-500/20 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/30"
+   907→   907→              >
+   908→   908→                {copiedText === `em-${leadId}` ? "✓ Copiado" : "Copiar"}
+   909→   909→              </button>
+   910→   910→            </div>
+   911→   911→            <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans max-h-48 overflow-y-auto leading-relaxed">{em}</pre>
+   912→   912→          </div>
+   913→   913→
+   914→   914→          {/* === PREVIEW DO SITE === */}
+   915→   915→          <button
+   916→   916→            onClick={() => openPreview(lead)}
+   917→   917→            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition"
+   918→   918→          >
+   919→   919→            <Eye className="h-4 w-4" /> Ver Preview do Site
+   920→   920→          </button>
+   921→   921→
+   922→   922→          {/* === LINK COMPARTILHÁVEL === */}
+   923→   923→          <div className="grid grid-cols-2 gap-2">
+   924→   924→            <button
+   925→   925→              onClick={() => copyPreviewLink(lead)}
+   926→   926→              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25 transition"
+   927→   927→              title="Copiar link compartilhável"
+   928→   928→            >
+   929→   929→              {copiedText === `link-${lead.id || lead.place_id}` ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+   930→   930→              {copiedText === `link-${lead.id || lead.place_id}` ? "Link copiado!" : "Copiar link"}
+   931→   931→            </button>
+   932→   932→            <button
+   933→   933→              onClick={() => openPreviewLink(lead)}
+   934→   934→              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 transition"
+   935→   935→              title="Abrir link compartilhável"
+   936→   936→            >
+   937→   937→              <Share2 className="h-3.5 w-3.5" /> Abrir link
+   938→   938→            </button>
+   939→   939→          </div>
+   940→   940→
+   941→   941→          {/* === PROMPT DO SITE === */}
+   942→   942→          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3">
+   943→   943→            <div className="mb-2 flex items-center justify-between gap-2">
+   944→   944→              <span className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+   945→   945→                <Code2 className="h-3.5 w-3.5" /> Prompt do Site
+   946→   946→              </span>
+   947→   947→              <button
+   948→   948→                onClick={() => copyToClipboard(pr, `pr-${leadId}`)}
+   949→   949→                className="rounded-md bg-amber-500/20 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/30"
+   950→   950→              >
+   951→   951→                {copiedText === `pr-${leadId}` ? "✓ Copiado" : "Copiar"}
+   952→   952→              </button>
+   953→   953→            </div>
+   954→   954→            <pre className="whitespace-pre-wrap text-[10px] text-zinc-400 font-mono max-h-56 overflow-y-auto leading-relaxed">{pr}</pre>
+   955→   955→          </div>
+   956→   956→
+   957→   957→          {/* === QUEBRA DE OBJEÇÕES === */}
+   958→   958→          {objections.length > 0 && (
+   959→   959→            <div className="rounded-lg border border-rose-500/30 bg-rose-500/[0.04] p-3">
+   960→   960→              <div className="mb-3 flex items-center gap-1.5">
+   961→   961→                <Shield className="h-3.5 w-3.5 text-rose-300" />
+   962→   962→                <span className="text-xs font-bold text-rose-200">
+   963→   963→                  Quebra de Objeções ({objections.length})
+   964→   964→                </span>
+   965→   965→              </div>
+   966→   966→              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+   967→   967→                {objections.map((obj) => {
+   968→   968→                  const f = formatObjectionForDisplay(obj);
+   969→   969→                  const copyId = `obj-${leadId}-${obj.id}`;
+   970→   970→                  return (
+   971→   971→                    <div key={obj.id} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+   972→   972→                      <div className="mb-1.5 text-[10px] font-bold text-rose-300/80 uppercase tracking-wide">
+   973→   973→                        {f.objectionLabel}
+   974→   974→                      </div>
+   975→   975→                      <div className="mb-2 text-[11px] text-zinc-300 italic">
+   976→   976→                        &ldquo;{obj.objection}&rdquo;
+   977→   977→                      </div>
+   978→   978→                      <div className="mb-1.5 text-[10px] font-bold text-emerald-300/80 uppercase tracking-wide">
+   979→   979→                        {f.breakLabel}
+   980→   980→                      </div>
+   981→   981→                      <div className="flex gap-2">
+   982→   982→                        <pre className="flex-1 whitespace-pre-wrap text-[10px] text-zinc-200 font-sans max-h-40 overflow-y-auto leading-relaxed">
+   983→   983→                          {obj.break}
+   984→   984→                        </pre>
+   985→   985→                        <button
+   986→   986→                          onClick={() => copyToClipboard(obj.break, copyId)}
+   987→   987→                          className="shrink-0 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/30 h-fit"
+   988→   988→                          title="Copiar resposta pronta"
+   989→   989→                        >
+   990→   990→                          {copiedText === copyId ? "✓" : <Copy className="h-3 w-3" />}
+   991→   991→                        </button>
+   992→   992→                      </div>
+   993→   993→                    </div>
+   994→   994→                  );
+   995→   995→                })}
+   996→   996→              </div>
+   997→   997→              <div className="mt-2 pt-2 border-t border-rose-500/20 text-[10px] text-zinc-500">
+   998→   998→                💡 As 2 objeções de prioridade 1 já estão embutidas na mensagem WhatsApp acima como ganchos preventivos.
+   999→   999→              </div>
+  1000→  1000→            </div>
+  1001→  1001→          )}
+  1002→  1002→        </div>
+  1003→  1003→      </div>
+  1004→  1004→    </div>
+  1005→  1005→  );
+  1006→  1006→}
+  1007→  1007→
