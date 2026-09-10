@@ -107,14 +107,10 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   globeGroup.rotation.y = 5.0;
   scene.add(globeGroup);
 
-  // === OPAQUE DARK SPHERE (blocks back dots) ===
-  const sphereGeo = new THREE.SphereGeometry(0.95, 48, 32);
-  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x040408 });
-  globeGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
-
-  // === LAND DOTS with killBack shader ===
+  // === LAND DOTS — pontos brancos formando continentes ===
+  // Sem esfera opaca interna — só os pontos formam o globo
   const dotTexture = createDotTexture(THREE);
-  const dotRadius = 0.965;
+  const dotRadius = 1.0;
   const positions: number[] = [];
   for (const [lat, lng] of landPoints) {
     const phi = (90 - lat) * (Math.PI / 180);
@@ -129,8 +125,8 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   const dotMat = new THREE.PointsMaterial({
     size: isMobile ? 0.014 : 0.011,
     sizeAttenuation: true, map: dotTexture,
-    color: 0xFFFFFF, transparent: true, opacity: 1.0,
-    depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
+    color: 0xFFFFFF, transparent: true, opacity: 0.9,
+    depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
   });
 
   // Simplified: NO onBeforeCompile — use depthTest to hide back points naturally
@@ -162,7 +158,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   const pinWorldPositions: any[] = [];
   pinCities.forEach((c) => {
-    const v = latLngToVec3(THREE, c.lat, c.lng, 0.97);
+    const v = latLngToVec3(THREE, c.lat, c.lng, 1.0);
     pinWorldPositions.push(v.clone());
     const pin = new THREE.Mesh(pinGeo, pinMat); pin.position.copy(v); globeGroup.add(pin);
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
@@ -180,8 +176,8 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   const arcs: Array<{ line: any; duration: number; delay: number }> = [];
   for (const [p1, p2] of arcPairs) {
-    const start = latLngToVec3(THREE, p1.lat, p1.lng, 0.97);
-    const end = latLngToVec3(THREE, p2.lat, p2.lng, 0.97);
+    const start = latLngToVec3(THREE, p1.lat, p1.lng, 1.0);
+    const end = latLngToVec3(THREE, p2.lat, p2.lng, 1.0);
     const arcPoints = buildArcCurve(THREE, start, end, 50);
     const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const mat = new THREE.LineBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
@@ -325,7 +321,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     dotGeo.dispose(); dotMat.dispose(); dotTexture.dispose();
-    sphereGeo.dispose(); sphereMat.dispose();
+    // sphereGeo/sphereMat removed — no opaque sphere
     arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as any).dispose(); });
     pinGeo.dispose(); pinMat.dispose(); haloGeo.dispose(); haloMat.dispose();
     renderer.dispose();
