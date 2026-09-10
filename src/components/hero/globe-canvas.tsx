@@ -94,7 +94,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, isMobile ? 2.8 : 2.5);
+  camera.position.set(0, 0, isMobile ? 2.4 : 2.1);
   camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isMobile, powerPreference: isMobile ? "low-power" : "high-performance", preserveDrawingBuffer: true });
@@ -107,18 +107,19 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   globeGroup.rotation.y = 2.0;
   scene.add(globeGroup);
 
-  // === OPAQUE DARK SPHERE — blocks back-facing points (killBack) ===
-  // Slightly smaller than dots so it doesn't show as a "second globe"
-  const sphereGeo = new THREE.SphereGeometry(0.98, 64, 48);
-  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  // === OPAQUE BLACK SPHERE — solid, blocks back-facing dots completely ===
+  const sphereGeo = new THREE.SphereGeometry(0.99, 64, 48);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: true });
   const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
   globeGroup.add(sphereMesh);
 
-  // === LAND DOTS — pontos brancos formando continentes ===
+  // === LAND DOTS — sparse white dots forming continents (like United Carriers) ===
   const dotTexture = createDotTexture(THREE);
   const dotRadius = 1.0;
   const positions: number[] = [];
-  for (const [lat, lng] of landPoints) {
+  // Sample every 2nd point for sparser, more distinct dots (like United Carriers)
+  const sampledPoints = landPoints.filter((_, i) => i % 2 === 0);
+  for (const [lat, lng] of sampledPoints) {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
     positions.push(
@@ -128,10 +129,9 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     );
   }
 
-  // depthTest: true makes the opaque sphere block back-facing dots
-  // This is what creates the "globe" look — only front-facing dots visible
+  // depthTest: true + depthWrite on sphere = only front-facing dots visible
   const dotMat = new THREE.PointsMaterial({
-    size: isMobile ? 0.016 : 0.013,
+    size: isMobile ? 0.015 : 0.012,
     sizeAttenuation: true, map: dotTexture,
     color: 0xFFFFFF, transparent: true, opacity: 1.0,
     depthWrite: false, depthTest: true,
@@ -141,24 +141,33 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   globeGroup.add(new THREE.Points(dotGeo, dotMat));
 
-  // === PINS — 10 pontos de interesse globais ===
+  // === PINS — country labels like United Carriers ===
   const pinCities = [
-    { lat: -8.05, lng: -34.9, name: "Apps" },
-    { lat: 40.71, lng: -74.0, name: "Conteúdo" },
-    { lat: 51.5, lng: -0.13, name: "Estratégia" },
-    { lat: 35.68, lng: 139.69, name: "Produtos" },
-    { lat: 1.35, lng: 103.82, name: "Parcerias" },
-    { lat: -33.87, lng: 151.21, name: "Dados" },
-    { lat: 25.2, lng: 55.27, name: "Métricas" },
-    { lat: 48.85, lng: 2.35, name: "Design" },
-    { lat: -23.55, lng: -46.63, name: "Brasil" },
-    { lat: 37.77, lng: -122.42, name: "Inovação" },
+    { lat: 55.0, lng: -3.0, name: "UK" },
+    { lat: 40.0, lng: -3.7, name: "Spain" },
+    { lat: 41.9, lng: 12.5, name: "Italy" },
+    { lat: 39.0, lng: 35.0, name: "Turkey" },
+    { lat: 31.0, lng: 35.0, name: "Israel" },
+    { lat: 30.0, lng: 31.0, name: "Egypt" },
+    { lat: 25.0, lng: 45.0, name: "Saudi Arabia" },
+    { lat: -1.0, lng: 36.0, name: "Kenya" },
+    { lat: -30.0, lng: 25.0, name: "South Africa" },
+    { lat: 40.0, lng: -100.0, name: "USA" },
+    { lat: 55.0, lng: -105.0, name: "Canada" },
+    { lat: 23.0, lng: -102.0, name: "Mexico" },
+    { lat: -14.0, lng: -52.0, name: "Brazil" },
+    { lat: -34.0, lng: -64.0, name: "Argentina" },
+    { lat: 36.0, lng: 138.0, name: "Japan" },
+    { lat: 22.0, lng: 114.0, name: "Hong Kong" },
+    { lat: 1.0, lng: 103.0, name: "Singapore" },
+    { lat: -33.0, lng: 151.0, name: "Australia" },
   ];
 
-  const pinGeo = new THREE.SphereGeometry(0.018, 12, 12);
-  const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, depthTest: false, depthWrite: false });
-  const haloGeo = new THREE.SphereGeometry(0.05, 12, 12);
-  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+  // Small orange pins — like United Carriers (not big glowing nodes)
+  const pinGeo = new THREE.SphereGeometry(0.012, 8, 8);
+  const pinMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, depthTest: true, depthWrite: false });
+  const haloGeo = new THREE.SphereGeometry(0.025, 8, 8);
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true });
 
   const pinWorldPositions: any[] = [];
   pinCities.forEach((c) => {
@@ -168,14 +177,16 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
   });
 
-  // === ARCS — 6 arcos animados ===
+  // === ARCS — 8 sweeping arcs connecting countries (like United Carriers flight paths) ===
   const arcPairs = [
-    [pinCities[0], pinCities[2]], // Apps → Estratégia
-    [pinCities[1], pinCities[4]], // Conteúdo → Parcerias
-    [pinCities[3], pinCities[5]], // Produtos → Dados
-    [pinCities[6], pinCities[8]], // Métricas → Brasil
-    [pinCities[7], pinCities[9]], // Design → Inovação
-    [pinCities[2], pinCities[1]], // Estratégia → Conteúdo
+    [pinCities[0], pinCities[9]],   // UK → USA
+    [pinCities[1], pinCities[2]],   // Spain → Italy
+    [pinCities[4], pinCities[5]],   // Israel → Egypt
+    [pinCities[7], pinCities[8]],   // Kenya → South Africa
+    [pinCities[9], pinCities[12]],  // USA → Brazil
+    [pinCities[14], pinCities[15]], // Japan → Hong Kong
+    [pinCities[0], pinCities[2]],   // UK → Italy
+    [pinCities[12], pinCities[13]], // Brazil → Argentina
   ];
 
   const arcs: Array<{ line: any; duration: number; delay: number }> = [];
@@ -361,7 +372,7 @@ function buildArcCurve(THREE: any, start: any, end: any, segments: number): any[
   const points: any[] = [];
   const angle = start.angleTo(end);
   const mid = start.clone().add(end).multiplyScalar(0.5);
-  const elevation = 1 + 0.08 + Math.sin(angle / 2) * 0.2;
+  const elevation = 1 + 0.15 + Math.sin(angle / 2) * 0.35;
   mid.normalize().multiplyScalar(elevation);
   const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
   for (let i = 0; i <= segments; i++) points.push(curve.getPoint(i / segments));
