@@ -46,7 +46,6 @@ export default function GlobeCanvas({
     let disposed = false;
 
     import("three").then(async (THREE) => {
-      (window as any).THREE = THREE;
       if (disposed || !canvasRef.current) return;
 
       let landPoints: Array<[number, number]> = [];
@@ -85,7 +84,7 @@ interface Opts {
   isVisibleRef: React.MutableRefObject<boolean>;
   rafRef: React.MutableRefObject<number>;
   landPoints: Array<[number, number]>;
-  onLabelsUpdateRef: React.MutableRefObject<typeof undefined>;
+  onLabelsUpdateRef: React.MutableRefObject<((labels: any[]) => void) | undefined>;
 }
 
 function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, container: HTMLDivElement, o: Opts): () => void {
@@ -110,42 +109,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   // === OPAQUE DARK SPHERE (blocks back dots) ===
   const sphereGeo = new THREE.SphereGeometry(0.95, 48, 32);
-  const sphereMat = new THREE.ShaderMaterial({
-    uniforms: { uLightDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() } },
-    vertexShader: `
-      varying vec3 vNormal; varying vec3 vWorldPos;
-      void main() {
-        vNormal = normalize(normalMatrix * normal);
-        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }
-    `,
-    fragmentShader: `
-      uniform vec3 uLightDir;
-      varying vec3 vNormal; varying vec3 vWorldPos;
-      void main() {
-        vec3 N = normalize(vNormal);
-        vec3 L = normalize(uLightDir);
-        float ndl = dot(N, L);
-        vec3 viewDir = normalize(cameraPosition - vWorldPos);
-        float rim = 1.0 - max(0.0, dot(N, viewDir));
-
-        // Near-black body
-        vec3 baseColor = vec3(0.015, 0.015, 0.02);
-        vec3 color = baseColor;
-
-        // Orange rim glow on lit side (top-right)
-        float litSide = smoothstep(-0.1, 0.5, ndl);
-        color += vec3(1.0, 0.45, 0.15) * pow(rim, 2.5) * litSide * 1.0;
-
-        // Blue rim glow on shadow side (bottom-left)
-        float shadowSide = 1.0 - litSide;
-        color += vec3(0.2, 0.5, 0.9) * pow(rim, 2.5) * shadowSide * 0.6;
-
-        gl_FragColor = vec4(color, 1.0);
-      }
-    `,
-  });
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x040408 });
   globeGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
 
   // === LAND DOTS with killBack shader ===
@@ -196,9 +160,9 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   const haloGeo = new THREE.SphereGeometry(0.05, 12, 12);
   const haloMat = new THREE.MeshBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
 
-  const pinWorldPositions: THREE.Vector3[] = [];
+  const pinWorldPositions: any[] = [];
   pinCities.forEach((c) => {
-    const v = latLngToVec3(c.lat, c.lng, 0.97);
+    const v = latLngToVec3(THREE, c.lat, c.lng, 0.97);
     pinWorldPositions.push(v.clone());
     const pin = new THREE.Mesh(pinGeo, pinMat); pin.position.copy(v); globeGroup.add(pin);
     const halo = new THREE.Mesh(haloGeo, haloMat); halo.position.copy(v); globeGroup.add(halo);
@@ -214,11 +178,11 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     [pinCities[2], pinCities[1]], // Estratégia → Conteúdo
   ];
 
-  const arcs: Array<{ line: THREE.Line; duration: number; delay: number }> = [];
+  const arcs: Array<{ line: any; duration: number; delay: number }> = [];
   for (const [p1, p2] of arcPairs) {
-    const start = latLngToVec3(p1.lat, p1.lng, 0.97);
-    const end = latLngToVec3(p2.lat, p2.lng, 0.97);
-    const arcPoints = buildArcCurve(start, end, 50);
+    const start = latLngToVec3(THREE, p1.lat, p1.lng, 0.97);
+    const end = latLngToVec3(THREE, p2.lat, p2.lng, 0.97);
+    const arcPoints = buildArcCurve(THREE, start, end, 50);
     const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const mat = new THREE.LineBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
     const line = new THREE.Line(geo, mat);
@@ -302,7 +266,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
         visible: ndv > 0.1,
       };
     });
-    o.onLabelsUpdateRef.current(labels);
+    if (o.onLabelsUpdateRef.current) o.onLabelsUpdateRef.current(labels);
   }
 
   // === ANIMATION ===
@@ -362,13 +326,13 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     window.removeEventListener("pointerup", onPointerUp);
     dotGeo.dispose(); dotMat.dispose(); dotTexture.dispose();
     sphereGeo.dispose(); sphereMat.dispose();
-    arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as THREE.Material).dispose(); });
+    arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as any).dispose(); });
     pinGeo.dispose(); pinMat.dispose(); haloGeo.dispose(); haloMat.dispose();
     renderer.dispose();
   };
 }
 
-function createDotTexture(THREE: typeof import("three")): THREE.Texture {
+function createDotTexture(THREE: any): any {
   const s = 32;
   const c = document.createElement("canvas"); c.width = s; c.height = s;
   const ctx = c.getContext("2d")!;
@@ -380,21 +344,19 @@ function createDotTexture(THREE: typeof import("three")): THREE.Texture {
   const t = new THREE.Texture(c); t.needsUpdate = true; return t;
 }
 
-function latLngToVec3(lat: number, lng: number, r: number): THREE.Vector3 {
-  const T = (window as any).THREE;
+function latLngToVec3(THREE: any, lat: number, lng: number, r: number): any {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lng + 180) * (Math.PI / 180);
-  return new T.Vector3(-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+  return new THREE.Vector3(-r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
 }
 
-function buildArcCurve(start: any, end: any, segments: number): any[] {
-  const T = (window as any).THREE;
+function buildArcCurve(THREE: any, start: any, end: any, segments: number): any[] {
   const points: any[] = [];
   const angle = start.angleTo(end);
   const mid = start.clone().add(end).multiplyScalar(0.5);
   const elevation = 1 + 0.08 + Math.sin(angle / 2) * 0.2;
   mid.normalize().multiplyScalar(elevation);
-  const curve = new T.QuadraticBezierCurve3(start, mid, end);
+  const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
   for (let i = 0; i <= segments; i++) points.push(curve.getPoint(i / segments));
   return points;
 }
