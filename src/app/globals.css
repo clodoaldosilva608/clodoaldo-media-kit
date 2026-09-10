@@ -38,9 +38,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-  --font-display: "Newsreader", ui-serif, Georgia, serif;
-  --font-sans: "Inter Tight", "Inter", system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -349,7 +349,7 @@ html.light .mobile-menu-panel {
   }
 }
 
-/* === Globe shadow halos (replica United Carriers) === */
+/* === Globe shadow halos — replica United Carriers === */
 @keyframes globe-shadow-pulse {
   0%, 100% {
     opacity: 0.6;
@@ -361,19 +361,37 @@ html.light .mobile-menu-panel {
   }
 }
 
+.globe-shadow-orange,
+.globe-shadow-blue,
+.globe-shadow-blue-plus,
+.globe-shadow-orange-plus {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
 .globe-shadow-orange {
+  background: radial-gradient(circle at 50% 50%, rgba(255,107,26,0.15) 0%, transparent 50%);
+  filter: blur(60px);
   animation: globe-shadow-pulse 4s ease-in-out infinite;
 }
 
 .globe-shadow-blue {
+  background: radial-gradient(circle at 50% 50%, rgba(59,130,246,0.12) 0%, transparent 55%);
+  filter: blur(80px);
   animation: globe-shadow-pulse 5s ease-in-out infinite 0.5s;
 }
 
 .globe-shadow-blue-plus {
+  background: radial-gradient(circle at 45% 55%, rgba(59,130,246,0.08) 0%, transparent 45%);
+  filter: blur(100px);
   animation: globe-shadow-pulse 6s ease-in-out infinite 1s;
 }
 
 .globe-shadow-orange-plus {
+  background: radial-gradient(circle at 55% 45%, rgba(255,107,26,0.06) 0%, transparent 40%);
+  filter: blur(120px);
   animation: globe-shadow-pulse 4.5s ease-in-out infinite 1.5s;
 }
 
