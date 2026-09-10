@@ -6,10 +6,12 @@ import { Footer } from "@/components/media-kit/footer";
 import { Header } from "@/components/media-kit/header";
 import { Hero } from "@/components/media-kit/hero";
 import { LibraryPreview } from "@/components/media-kit/library-preview";
+import { Method } from "@/components/media-kit/method";
 import { Metrics } from "@/components/media-kit/metrics";
 import { Pricing } from "@/components/media-kit/pricing";
 import { Services } from "@/components/media-kit/services";
 import { ShareButton } from "@/components/media-kit/share-button";
+import { WhyMe } from "@/components/media-kit/why-me";
 import { YouTubeSection } from "@/components/media-kit/youtube";
 import { TestimonialCarousel } from "@/components/site/testimonial-carousel";
 import { SocialProofCarousel } from "@/components/site/social-proof-carousel";
@@ -69,7 +71,7 @@ export default function Home() {
                       alt="Clodoaldo Silva — criador e desenvolvedor digital"
                       className="absolute inset-0 h-full w-full object-cover object-center"
                       loading="eager"
-                      // @ts-expect-error fetchPriority is valid in React 19+
+                      // fetchPriority is valid in React 19+
                       fetchPriority="high"
                       decoding="async"
                     />
@@ -92,7 +94,11 @@ export default function Home() {
         </section>
         {/* Quiz CTA — chamada principal para o quiz de recomendação */}
         <QuizCTASection />
+        {/* Como trabalhamos — método em 5 etapas */}
+        <Method />
         <Metrics />
+        {/* Por que trabalhar comigo — diferenciais */}
+        <WhyMe />
         <Audience />
         <Services />
         <LibraryPreview />

@@ -59,6 +59,14 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap"
           rel="stylesheet"
         />
+        {/* Theme init — runs before paint to prevent flash of wrong theme.
+            Default is dark; applying `light` class on <html> switches to light. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var t=localStorage.getItem('cs-theme');if(t==='light'){document.documentElement.classList.add('light');}}catch(e){}})();",
+          }}
+        />
         {/* JSON-LD: Person + Organization (SEO semântico) */}
         <script
           type="application/ld+json"

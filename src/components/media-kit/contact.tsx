@@ -37,7 +37,7 @@ export function Contact() {
     <section id="contato" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="09"
+          index="11"
           eyebrow="Contato"
           title="Vamos construir algo incrível juntos?"
           subtitle="Conte sobre o seu projeto. Respondo todas as propostas em até 48 horas."

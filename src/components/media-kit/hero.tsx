@@ -166,7 +166,11 @@ export function Hero() {
               ))}
             </h1>
 
-            <p className="mt-4 sm:mt-6 max-w-xl text-sm sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
+            <p className="mt-4 sm:mt-6 text-primary font-bold text-base sm:text-lg leading-snug hero-text-reveal" style={{ animationDelay: "500ms" }}>
+              Da primeira ideia ao resultado real.
+            </p>
+
+            <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
               Estratégia, conteúdo e produtos digitais para transformar atenção em resultado.
               Ajudo <strong className="text-foreground">marcas</strong>,{" "}
               <strong className="text-foreground">creators</strong> e{" "}

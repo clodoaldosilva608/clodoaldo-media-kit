@@ -21,7 +21,7 @@ export function Ecosystem() {
     <section id="ecossistema" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="05"
+          index="07"
           eyebrow="Ecossistema de Produtos"
           title="Empreendedor Tech e criador de produtos"
           subtitle={`Clodoaldo Silva não é só criador de conteúdo — é desenvolvedor de ${totalApps} aplicativos em 8 categorias, de autoconhecimento a saúde farmacêutica.`}

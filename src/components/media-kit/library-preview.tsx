@@ -18,7 +18,7 @@ export function LibraryPreview() {
     <section id="biblioteca" className="py-16 sm:py-20 md:py-28 bg-card/20">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="04"
+          index="06"
           eyebrow="Biblioteca Digital"
           title="E-books, packs e recursos para creators e negócios"
           subtitle="Materiais gratuitos para começar e produtos digitais premium para acelerar posicionamento, conteúdo e conversão."

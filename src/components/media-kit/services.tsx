@@ -16,7 +16,7 @@ export function Services() {
     <section id="servicos" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="03"
+          index="05"
           eyebrow="Serviços"
           title="Soluções para campanhas e escala digital"
           subtitle="Da parceria com aparição aos formatos Ghost Services, cada solução foi pensada para transformar atenção em resultado comercial."

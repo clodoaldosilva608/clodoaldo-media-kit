@@ -30,7 +30,7 @@ export function Cases() {
     <section id="cases" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="06"
+          index="08"
           eyebrow="Cases de Sucesso"
           title="Estratégia que sustenta autoridade e resultado"
           subtitle="Exemplos de como estrutura, posicionamento e narrativa elevam percepção de valor e performance comercial."

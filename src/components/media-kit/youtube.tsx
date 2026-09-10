@@ -13,7 +13,7 @@ export function YouTubeSection() {
     <section id="youtube" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="07"
+          index="09"
           eyebrow="Canal no YouTube"
           title="Acompanhe bastidores e estratégias em vídeo"
           subtitle="Conteúdos longos, análises e bastidores da rotina de criação. Inscreva-se para não perder nenhum lançamento."

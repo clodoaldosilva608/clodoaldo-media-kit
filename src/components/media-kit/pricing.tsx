@@ -22,7 +22,7 @@ export function Pricing() {
     <section id="valores" className="py-16 sm:py-20 md:py-28 bg-card/30">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="08"
+          index="10"
           eyebrow="Investimento"
           title="Formatos para diferentes níveis de entrada"
           subtitle="De campanhas premium a produtos estratégicos de entrada, a estrutura foi pensada para ampliar conversão e aumentar valor percebido."

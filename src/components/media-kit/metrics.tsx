@@ -19,7 +19,7 @@ export function Metrics() {
     <section id="metricas" className="py-16 sm:py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="01"
+          index="02"
           eyebrow="Performance"
           title="Números que sustentam autoridade e percepção de valor"
           subtitle="Impacto, escala e consistência — os indicadores que reduzem objeção antes da primeira reunião."

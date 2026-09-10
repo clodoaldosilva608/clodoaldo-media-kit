@@ -1,25 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import { Logo } from "./logo";
 
+/**
+ * Primary navigation — kept short and focused on the buyer journey:
+ * Soluções → Como funciona → Resultados → Sobre → Contato.
+ * Library / Apps / Knowledge Hub / FAQ live in the footer.
+ */
 const NAV = [
-  { href: "/#metricas", label: "Métricas" },
-  { href: "/#servicos", label: "Serviços" },
-  { href: "/biblioteca", label: "Biblioteca" },
-  { href: "/knowledge", label: "Knowledge Hub" },
-  { href: "/apps", label: "Apps" },
-  { href: "/#cases", label: "Cases" },
+  { href: "/#servicos", label: "Soluções" },
+  { href: "/#como-funciona", label: "Como funciona" },
+  { href: "/#cases", label: "Resultados" },
   { href: "/sobre", label: "Sobre" },
-  { href: "/faq", label: "FAQ" },
   { href: "/#contato", label: "Contato" },
 ];
+
+type Theme = "light" | "dark";
+
+function useTheme() {
+  // Start as null until mounted to avoid SSR/CSR mismatch.
+  const [theme, setTheme] = useState<Theme | null>(null);
+
+  // Read initial theme from <html> class (already set by inline script in layout).
+  useEffect(() => {
+    const isLight = document.documentElement.classList.contains("light");
+    setTheme(isLight ? "light" : "dark");
+  }, []);
+
+  const toggle = useCallback(() => {
+    setTheme((current) => {
+      const next: Theme = current === "light" ? "dark" : "light";
+      const root = document.documentElement;
+      if (next === "light") {
+        root.classList.add("light");
+      } else {
+        root.classList.remove("light");
+      }
+      try {
+        localStorage.setItem("cs-theme", next);
+      } catch {
+        /* localStorage might be unavailable (private mode) — silent fail */
+      }
+      return next;
+    });
+  }, []);
+
+  return { theme, toggle };
+}
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -37,16 +72,48 @@ export function Header() {
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-5 md:px-8 h-14 sm:h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-4">
-        <Link
-          href="/"
-          className="flex items-center gap-2 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-          aria-label="Página inicial"
-        >
-          <Logo className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 object-contain" />
-          <span className="hidden sm:block font-display text-xs sm:text-sm tracking-tight">
-            Clodoaldo <span className="text-primary">Silva</span>
-          </span>
-        </Link>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Link
+            href="/"
+            className="flex items-center gap-2 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            aria-label="Página inicial"
+          >
+            <Logo className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 object-contain" />
+            <span className="hidden sm:block font-display text-xs sm:text-sm tracking-tight">
+              Clodoaldo <span className="text-primary">Silva</span>
+            </span>
+          </Link>
+
+          {/* Theme toggle — small, discrete, sits next to the brand */}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={
+              theme === "light" ? "Ativar tema escuro" : "Ativar tema claro"
+            }
+            aria-pressed={theme === "light"}
+            title={theme === "light" ? "Tema claro" : "Tema escuro"}
+            className="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-border text-foreground hover:text-primary hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+          >
+            {/* Render both icons and toggle via CSS to keep the click target stable */}
+            <Sun
+              size={18}
+              className={`transition-all duration-300 ${
+                theme === "light"
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "-rotate-90 scale-0 opacity-0 absolute"
+              }`}
+            />
+            <Moon
+              size={18}
+              className={`transition-all duration-300 ${
+                theme === "dark"
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "rotate-90 scale-0 opacity-0 absolute"
+              }`}
+            />
+          </button>
+        </div>
 
         <nav className="hidden xl:flex items-center gap-6" aria-label="Principal">
           {NAV.map((item) => (

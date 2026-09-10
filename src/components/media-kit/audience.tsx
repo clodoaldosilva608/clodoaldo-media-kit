@@ -16,7 +16,7 @@ export function Audience() {
     <section id="audiencia" className="py-16 sm:py-20 md:py-28 bg-card/30">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <SectionHeader
-          index="02"
+          index="04"
           eyebrow="Audiência"
           title="Quem me acompanha"
           subtitle="Um público qualificado, em fase de decisão de carreira e investimentos, com alto poder de consumo e influência."
