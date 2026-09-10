@@ -115,6 +115,28 @@ export function Hero() {
         {/* Background — pure black like United Carriers */}
         <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
 
+        {/* Flat world map dot pattern background — subtle, behind globe */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+            opacity: 0.5,
+            maskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 70%)",
+            WebkitMaskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Subtle grid lines — like United Carriers tech feel */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
+            backgroundSize: "80px 80px",
+          }}
+        />
+
         {/* Atmospheric overlay */}
         <div
           ref={overlayRef}
@@ -129,8 +151,8 @@ export function Hero() {
         {/* Globe — United Carriers style: top-right, large, partially cut by edge */}
         <div
           ref={globeWrapRef}
-          className="absolute right-[-10%] top-[30%] -translate-y-1/2 w-[1300px] h-[1300px] max-w-[100vw] max-h-[100vh] will-change-transform z-0
-                     max-md:right-[-20%] max-md:top-[35%] max-md:w-[1000px] max-md:h-[1000px]"
+          className="absolute right-[-15%] top-[25%] -translate-y-1/2 w-[1400px] h-[1400px] max-w-[110vw] max-h-[110vh] will-change-transform z-0
+                     max-md:right-[-25%] max-md:top-[30%] max-md:w-[1100px] max-md:h-[1100px]"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />

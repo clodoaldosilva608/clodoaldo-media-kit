@@ -165,7 +165,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   const dotMat = new THREE.PointsMaterial({
     size: isMobile ? 0.014 : 0.011,
     sizeAttenuation: true, map: dotTexture,
-    color: 0xFFB347, transparent: true, opacity: 1.0,
+    color: 0xFFFFFF, transparent: true, opacity: 1.0,
     depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
   });
 
