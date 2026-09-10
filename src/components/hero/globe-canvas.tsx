@@ -93,8 +93,8 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   const isMobile = window.innerWidth < 768;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.set(0, 0, isMobile ? 3.2 : 2.9);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0, isMobile ? 2.8 : 2.5);
   camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isMobile, powerPreference: isMobile ? "low-power" : "high-performance", preserveDrawingBuffer: true });
@@ -102,9 +102,9 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   renderer.setClearColor(0x000000, 0);
 
   const globeGroup = new THREE.Group();
-  globeGroup.rotation.x = 0.15;
-  globeGroup.rotation.z = 0.05;
-  globeGroup.rotation.y = 5.0;
+  globeGroup.rotation.x = 0.26; // ~15 degrees tilt
+  globeGroup.rotation.z = 0;
+  globeGroup.rotation.y = 2.0;
   scene.add(globeGroup);
 
   // === LAND DOTS — pontos brancos formando continentes ===
@@ -123,9 +123,9 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   }
 
   const dotMat = new THREE.PointsMaterial({
-    size: isMobile ? 0.014 : 0.011,
+    size: isMobile ? 0.016 : 0.013,
     sizeAttenuation: true, map: dotTexture,
-    color: 0xFFFFFF, transparent: true, opacity: 0.9,
+    color: 0xFFFFFF, transparent: true, opacity: 1.0,
     depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
   });
 
@@ -227,14 +227,21 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", onPointerUp);
 
-  // === RESIZE ===
+  // === RESIZE — force square canvas like United Carriers (850x850) ===
   const resize = () => {
-    const w = Math.max(1, Math.floor(container.clientWidth || canvas.clientWidth || 800));
-    const h = Math.max(1, Math.floor(container.clientHeight || canvas.clientHeight || w));
+    const parentEl = canvas.parentElement?.parentElement;
+    const parentW = parentEl?.clientWidth || container.clientWidth || 800;
+    const parentH = parentEl?.clientHeight || container.clientHeight || parentW;
+    // Force square — globe should always be square
+    const size = Math.max(parentW, parentH);
+    const w = Math.max(64, Math.min(size, 1200));
+    const h = w; // square
     if (w < 2 || h < 2) return;
-    renderer.setSize(w, h, true);
-    canvas.style.width = "100%"; canvas.style.height = "100%"; canvas.style.display = "block";
-    camera.aspect = w / h;
+    renderer.setSize(w, h, false);
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
+    canvas.style.display = "block";
+    camera.aspect = 1; // always square
     camera.updateProjectionMatrix();
   };
   requestAnimationFrame(() => { resize(); setTimeout(resize, 100); setTimeout(resize, 500); });
@@ -277,7 +284,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
     // Auto-rotation (0.0015 rad/frame normalized by 60fps)
     if (autoRotate && !isDragging) {
-      globeGroup.rotation.y += dt * 0.09; // ~0.0015 * 60
+      globeGroup.rotation.y += dt * 0.05; // slow rotation
     }
 
     // Inertia after drag
@@ -290,7 +297,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
     // Scroll-driven tilt
     if (!isDragging) {
-      globeGroup.rotation.x = 0.15 + sp * -0.5;
+      globeGroup.rotation.x = 0.26 + sp * -0.3;
     }
 
     // Update camera position uniform for shader
