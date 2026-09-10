@@ -13,6 +13,8 @@ const REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "https://clodoaldo
 
 // Escopos OAuth (sem youtube/blogger — eles usam API Key)
 const SCOPES = [
+  "openid",
+  "email",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/drive.file",
