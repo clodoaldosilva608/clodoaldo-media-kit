@@ -107,8 +107,14 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   globeGroup.rotation.y = 2.0;
   scene.add(globeGroup);
 
+  // === OPAQUE DARK SPHERE — blocks back-facing points (killBack) ===
+  // Slightly smaller than dots so it doesn't show as a "second globe"
+  const sphereGeo = new THREE.SphereGeometry(0.98, 64, 48);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+  globeGroup.add(sphereMesh);
+
   // === LAND DOTS — pontos brancos formando continentes ===
-  // Sem esfera opaca interna — só os pontos formam o globo
   const dotTexture = createDotTexture(THREE);
   const dotRadius = 1.0;
   const positions: number[] = [];
@@ -122,16 +128,14 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     );
   }
 
+  // depthTest: true makes the opaque sphere block back-facing dots
+  // This is what creates the "globe" look — only front-facing dots visible
   const dotMat = new THREE.PointsMaterial({
     size: isMobile ? 0.016 : 0.013,
     sizeAttenuation: true, map: dotTexture,
     color: 0xFFFFFF, transparent: true, opacity: 1.0,
-    depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    depthWrite: false, depthTest: true,
   });
-
-  // Simplified: NO onBeforeCompile — use depthTest to hide back points naturally
-  // The opaque sphere mesh behind blocks back-facing points
-  // This is more compatible across Three.js versions
 
   const dotGeo = new THREE.BufferGeometry();
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
@@ -328,7 +332,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
     dotGeo.dispose(); dotMat.dispose(); dotTexture.dispose();
-    // sphereGeo/sphereMat removed — no opaque sphere
+    sphereGeo.dispose(); sphereMat.dispose();
     arcs.forEach((a) => { a.line.geometry.dispose(); (a.line.material as any).dispose(); });
     pinGeo.dispose(); pinMat.dispose(); haloGeo.dispose(); haloMat.dispose();
     renderer.dispose();
