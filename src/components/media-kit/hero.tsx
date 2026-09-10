@@ -148,14 +148,7 @@ export function Hero() {
           }}
         />
 
-        {/* Globe — United Carriers positioning: right: -25rem, height: 100vh */}
-        <div
-          ref={globeWrapRef}
-          className="globe-container will-change-transform"
-          style={{ transition: "opacity 0.2s ease-out" }}
-        >
-          <HeroGlobe scrollProgress={scrollProgress} />
-        </div>
+        {/* Globe removido pelo usuário — será reimplementado futuramente */}
 
         {/* Text content — ON TOP of globe, left-aligned */}
         <div
