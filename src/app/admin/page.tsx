@@ -84,22 +84,25 @@ export default function AdminOverviewPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [enviosChart, setEnviosChart] = useState<{ data: any[]; totals: any } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ordersR, leadsR, briefingsR, queueR, statsR] = await Promise.all([
+    const [ordersR, leadsR, briefingsR, queueR, statsR, enviosChartR] = await Promise.all([
       fetchAdminData<Order>("orders", 200),
       fetchAdminData<Lead>("leads", 200),
       fetchAdminData<Briefing>("briefings", 200),
       fetchAdminData<QueueEntry>("queue", 500),
       fetch("/api/admin/stats?period=today").then(r => r.json()).catch(() => null),
+      fetch("/api/admin/envios/chart?days=14").then(r => r.json()).catch(() => null),
     ]);
     setOrders(ordersR || []);
     setLeads(leadsR || []);
     setBriefings(briefingsR || []);
     setQueue(queueR || []);
     setStats(statsR);
+    setEnviosChart(enviosChartR);
     setLoading(false);
   }, []);
 
@@ -360,6 +363,82 @@ export default function AdminOverviewPage() {
           )}
         </Widget>
       </div>
+
+      {/* === Envios & Respostas chart === */}
+      {enviosChart && enviosChart.data && (
+        <Widget
+          title="Disparos & Respostas — últimos 14 dias"
+          icon={<Send className="h-4 w-4 text-emerald-400" />}
+          className="mt-6"
+          action={
+            <Link href="/admin/parceiros" className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300">
+              Ver envios →
+            </Link>
+          }
+        >
+          {/* Stats badges */}
+          {enviosChart.totals && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-semibold text-emerald-300">
+                <Send className="h-3 w-3" />
+                {enviosChart.totals.envios || 0} disparos
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2.5 py-1 font-semibold text-blue-300">
+                <Mail className="h-3 w-3" />
+                {enviosChart.totals.respostas || 0} respostas
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-300">
+                <Target className="h-3 w-3" />
+                {enviosChart.totals.replyRate || 0}% taxa de resposta
+              </span>
+            </div>
+          )}
+          <div className="h-56 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={enviosChart.data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                <defs>
+                  <linearGradient id="g-envios" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="g-respostas" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="date" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0a0a0f",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: "#fafafa" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="envios"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  fill="url(#g-envios)"
+                  name="Disparos"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="respostas"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  fill="url(#g-respostas)"
+                  name="Respostas"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Widget>
+      )}
 
       {/* Recent activity */}
       <div className="grid gap-4 lg:grid-cols-2">
