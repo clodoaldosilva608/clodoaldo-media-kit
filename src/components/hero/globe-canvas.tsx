@@ -179,7 +179,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
       .replace("#include <project_vertex>", "#include <project_vertex>\nfloat ndv = dot(normalize(uCamPos - vWorldPos), normalize(vWorldPos));\ngl_PointSize *= mix(0.5, 1.0, smoothstep(0.0, 0.25, ndv));");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
-      .replace("#include <output_fragment>", `{
+      .replace("#include <opaque_fragment>", `{
         vec3 viewDir = normalize(uCamPos - vWorldPos);
         vec3 normalDir = normalize(vWorldPos);
         float nd = dot(viewDir, normalDir);
@@ -187,7 +187,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
           if (nd <= 0.0) discard;
         #endif
       }
-      #include <output_fragment>`);
+      #include <opaque_fragment>`);
     (dotMat as any).userData = { shader };
   };
 
