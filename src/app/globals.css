@@ -438,8 +438,10 @@ html.light .mobile-menu-panel {
 
 @media (max-width: 767px) {
   .globe-container {
-    right: -15rem;
-    height: 80vh;
+    right: -22rem;
+    top: 5%;
+    height: 65vh;
+    opacity: 0.5;
   }
 }
 
