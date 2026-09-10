@@ -9,10 +9,10 @@ export const motionConfig = {
   map: {
     pointCount: 800,
     mobilePointCount: 300,
-    pointColor: "rgba(255,255,255,0.15)",
-    highlightedPointColor: "rgba(255,179,71,0.35)",
+    pointColor: "rgba(255,255,255,0.35)",
+    highlightedPointColor: "rgba(255,179,71,0.6)",
     pointSize: 1.5,
-    opacity: 0.2,
+    opacity: 0.4,
     entryDurationMs: 1500,
     entryDelayMs: 200,
   },

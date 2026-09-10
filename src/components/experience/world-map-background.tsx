@@ -143,8 +143,8 @@ export function WorldMapBackground({ visible = true }: { visible?: boolean }) {
       style={{
         opacity,
         transition: "opacity 0.3s ease-out",
-        maskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 75%)",
-        WebkitMaskImage: "radial-gradient(ellipse at 70% 40%, black 0%, transparent 75%)",
+        maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 90%)",
+        WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 90%)",
       }}
       aria-hidden="true"
     />
