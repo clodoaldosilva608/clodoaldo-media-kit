@@ -169,27 +169,9 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
   });
 
-  // killBack via onBeforeCompile
-  (dotMat as any).onBeforeCompile = (shader: any) => {
-    shader.uniforms.uCamPos = { value: camera.position.clone() };
-    shader.defines = { KILL_BACK: 1 };
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
-      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvWorldPos = (modelMatrix * vec4(transformed,1.0)).xyz;")
-      .replace("#include <project_vertex>", "#include <project_vertex>\nfloat ndv = dot(normalize(uCamPos - vWorldPos), normalize(vWorldPos));\ngl_PointSize *= mix(0.5, 1.0, smoothstep(0.0, 0.25, ndv));");
-    shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vWorldPos;\nuniform vec3 uCamPos;")
-      .replace("#include <opaque_fragment>", `{
-        vec3 viewDir = normalize(uCamPos - vWorldPos);
-        vec3 normalDir = normalize(vWorldPos);
-        float nd = dot(viewDir, normalDir);
-        #ifdef KILL_BACK
-          if (nd <= 0.0) discard;
-        #endif
-      }
-      #include <opaque_fragment>`);
-    (dotMat as any).userData = { shader };
-  };
+  // Simplified: NO onBeforeCompile — use depthTest to hide back points naturally
+  // The opaque sphere mesh behind blocks back-facing points
+  // This is more compatible across Three.js versions
 
   const dotGeo = new THREE.BufferGeometry();
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
@@ -352,8 +334,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     }
 
     // Update camera position uniform for shader
-    const shader = (dotMat as any).userData?.shader;
-    if (shader) shader.uniforms.uCamPos.value.copy(camera.position);
+    // No shader uniform update needed (removed onBeforeCompile)
 
     // Animate arcs (progressive draw)
     const t = now / 1000;
