@@ -127,9 +127,6 @@ export function Hero() {
           {/* Background — pure black */}
           <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
 
-          {/* World map dotted background — behind globe, behind text */}
-          <WorldMapBackground visible={introDone} />
-
           {/* Subtle grid lines */}
           <div
             className="absolute inset-0 pointer-events-none z-0"

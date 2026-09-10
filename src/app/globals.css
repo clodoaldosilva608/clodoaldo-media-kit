@@ -413,13 +413,12 @@ html.light .mobile-menu-panel {
 /* Globe container — posicionamento como United Carriers */
 .globe-container {
   position: absolute;
-  right: -25rem;
+  right: -15rem;
   top: 0;
   height: 100vh;
   aspect-ratio: 1 / 1;
   pointer-events: auto;
   user-select: none;
-  border-radius: 50%;
   z-index: 2;
   display: grid;
   grid-template-rows: auto;
