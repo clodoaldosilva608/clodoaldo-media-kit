@@ -83,12 +83,9 @@ export function Hero() {
           scrollIndicatorRef.current.style.opacity = String(Math.max(0, 1 - p * 5));
         }
 
-        // BACKGROUND: dark → deep blue (stays dark, no white)
+        // BACKGROUND: stays pure black (like United Carriers)
         if (bgRef.current) {
-          const r = Math.round(6 + p * 5);
-          const g = Math.round(6 + p * 10);
-          const b = Math.round(10 + p * 25);
-          bgRef.current.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+          bgRef.current.style.backgroundColor = "#000000";
         }
 
         // OVERLAY: atmospheric blue grows from 30% onward
@@ -112,11 +109,11 @@ export function Hero() {
       ref={sectionRef}
       id="inicio"
       className="relative"
-      style={{ height: "150vh", backgroundColor: "#06060a", color: "#fff" }}
+      style={{ height: "150vh", backgroundColor: "#000000", color: "#fff" }}
     >
       <div className="hero-sticky sticky top-0 h-screen overflow-hidden flex items-center">
-        {/* Background */}
-        <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "rgb(6, 6, 10)" }} />
+        {/* Background — pure black like United Carriers */}
+        <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
 
         {/* Atmospheric overlay */}
         <div
@@ -129,11 +126,11 @@ export function Hero() {
           }}
         />
 
-        {/* Globe — idêntico em desktop e mobile (mesma opacidade, posicionamento proporcional) */}
+        {/* Globe — United Carriers style: top-right, large, partially cut by edge */}
         <div
           ref={globeWrapRef}
-          className="absolute right-[-5%] top-1/2 -translate-y-1/2 w-[1100px] h-[1100px] max-w-[95vw] max-h-[95vh] will-change-transform z-0
-                     max-md:right-[-15%] max-md:top-1/2 max-md:w-[900px] max-md:h-[900px]"
+          className="absolute right-[-10%] top-[30%] -translate-y-1/2 w-[1300px] h-[1300px] max-w-[100vw] max-h-[100vh] will-change-transform z-0
+                     max-md:right-[-20%] max-md:top-[35%] max-md:w-[1000px] max-md:h-[1000px]"
           style={{ transition: "opacity 0.2s ease-out" }}
         >
           <HeroGlobe scrollProgress={scrollProgress} />
