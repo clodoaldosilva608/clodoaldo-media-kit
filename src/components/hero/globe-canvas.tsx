@@ -94,7 +94,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 0, isMobile ? 2.4 : 2.1);
+  camera.position.set(0, 0, isMobile ? 2.0 : 1.8);
   camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: !isMobile, powerPreference: isMobile ? "low-power" : "high-performance", preserveDrawingBuffer: true });
@@ -108,7 +108,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   scene.add(globeGroup);
 
   // === OPAQUE BLACK SPHERE — solid, blocks back-facing dots completely ===
-  const sphereGeo = new THREE.SphereGeometry(0.99, 64, 48);
+  const sphereGeo = new THREE.SphereGeometry(0.985, 64, 48);
   const sphereMat = new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: true });
   const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
   globeGroup.add(sphereMesh);
@@ -118,7 +118,8 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
   const dotRadius = 1.0;
   const positions: number[] = [];
   // Sample every 2nd point for sparser, more distinct dots (like United Carriers)
-  const sampledPoints = landPoints.filter((_, i) => i % 2 === 0);
+  // Use ALL points — United Carriers has high density (not sparse)
+  const sampledPoints = landPoints;
   for (const [lat, lng] of sampledPoints) {
     const phi = (90 - lat) * (Math.PI / 180);
     const theta = (lng + 180) * (Math.PI / 180);
@@ -131,7 +132,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
 
   // depthTest: true + depthWrite on sphere = only front-facing dots visible
   const dotMat = new THREE.PointsMaterial({
-    size: isMobile ? 0.015 : 0.012,
+    size: isMobile ? 0.010 : 0.008,
     sizeAttenuation: true, map: dotTexture,
     color: 0xFFFFFF, transparent: true, opacity: 1.0,
     depthWrite: false, depthTest: true,
@@ -195,7 +196,7 @@ function initGlobe(THREE: typeof import("three"), canvas: HTMLCanvasElement, con
     const end = latLngToVec3(THREE, p2.lat, p2.lng, 1.0);
     const arcPoints = buildArcCurve(THREE, start, end, 50);
     const geo = new THREE.BufferGeometry().setFromPoints(arcPoints);
-    const mat = new THREE.LineBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false });
+    const mat = new THREE.LineBasicMaterial({ color: 0xFF6B1A, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true });
     const line = new THREE.Line(geo, mat);
     globeGroup.add(line);
     arcs.push({ line, duration: 2.5 + Math.random(), delay: Math.random() * 3 });
