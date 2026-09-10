@@ -966,13 +966,162 @@ Clodoaldo Silva`;
 }
 
 function EnviosView() {
-  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true);
-  useEffect(()=>{fetch("/api/admin/envios?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+  const [data,setData]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [nicheFilter,setNicheFilter]=useState<string>("all");
+  const [campaignFilter,setCampaignFilter]=useState<string>("all");
+  const [statusFilter,setStatusFilter]=useState<string>("all");
+
+  useEffect(()=>{
+    fetch("/api/admin/envios?limit=500")
+      .then(r=>r.json())
+      .then(d=>{setData(d.data||[]);setLoading(false);})
+      .catch(()=>setLoading(false));
+  },[]);
+
+  // Derive unique niches and campaigns from data
+  const niches = Array.from(new Set(data.map((e:any)=>e.prospect_niche).filter(Boolean))) as string[];
+  const campaigns = Array.from(new Set(data.map((e:any)=>e.campaign).filter(Boolean))) as string[];
+
+  // Apply filters
+  const filtered = data.filter((e:any) => {
+    if (nicheFilter !== "all" && e.prospect_niche !== nicheFilter) return false;
+    if (campaignFilter !== "all" && e.campaign !== campaignFilter) return false;
+    if (statusFilter !== "all" && e.status !== statusFilter) return false;
+    return true;
+  });
+
+  // Stats for the filtered set
+  const stats = {
+    total: filtered.length,
+    sent: filtered.filter((e:any)=>e.status==="sent").length,
+    failed: filtered.filter((e:any)=>e.status==="failed").length,
+    pending: filtered.filter((e:any)=>e.status==="pending").length,
+  };
+
   if(loading) return <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>;
+
   return (
     <Widget title="Log de Envios" icon={<MessageCircle className="h-4 w-4 text-emerald-400" />}>
-      {data.length===0?<EmptyState title="Nenhum envio" icon={<MessageCircle className="h-8 w-8" />} />:
-      <div className="-mx-2 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="border-b border-white/5 text-[11px] uppercase tracking-wider text-zinc-500"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Lead</th><th className="px-3 py-2">Variante</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Erro</th></tr></thead><tbody className="divide-y divide-white/5">{data.map((e:any)=><tr key={e.id} className="hover:bg-white/[0.02]"><td className="px-3 py-2.5 text-xs text-zinc-400">{new Date(e.sent_at).toLocaleString("pt-BR")}</td><td className="px-3 py-2.5 text-zinc-200">{e.prospect_name||"—"}</td><td className="px-3 py-2.5"><Badge variant="muted">{e.message_variant||"—"}</Badge></td><td className="px-3 py-2.5"><Badge variant={e.status==="sent"?"success":e.status==="failed"?"danger":"warning"}>{e.status}</Badge></td><td className="px-3 py-2.5 text-xs text-rose-300 max-w-[200px] truncate">{e.error||"—"}</td></tr>)}</tbody></table></div>}
+      {data.length===0 ? (
+        <EmptyState title="Nenhum envio" icon={<MessageCircle className="h-8 w-8" />} />
+      ) : (
+        <div className="space-y-4">
+          {/* === Stats summary === */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Total</div>
+              <div className="text-lg font-bold text-white">{stats.total}</div>
+            </div>
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Enviados</div>
+              <div className="text-lg font-bold text-emerald-300">{stats.sent}</div>
+            </div>
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/[0.04] p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Falhas</div>
+              <div className="text-lg font-bold text-rose-300">{stats.failed}</div>
+            </div>
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Pendentes</div>
+              <div className="text-lg font-bold text-amber-300">{stats.pending}</div>
+            </div>
+          </div>
+
+          {/* === Filters === */}
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
+              <select
+                value={nicheFilter}
+                onChange={e=>setNicheFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[140px]"
+              >
+                <option value="all">Todos os nichos ({data.length})</option>
+                {niches.map(n => (
+                  <option key={n} value={n}>{n} ({data.filter(e=>e.prospect_niche===n).length})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Campanha</label>
+              <select
+                value={campaignFilter}
+                onChange={e=>setCampaignFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[180px] max-w-[280px]"
+              >
+                <option value="all">Todas as campanhas ({data.length})</option>
+                {campaigns.map(c => (
+                  <option key={c} value={c}>{c} ({data.filter(e=>e.campaign===c).length})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={e=>setStatusFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[110px]"
+              >
+                <option value="all">Todos</option>
+                <option value="sent">Enviados</option>
+                <option value="failed">Falhas</option>
+                <option value="pending">Pendentes</option>
+              </select>
+            </div>
+            {(nicheFilter !== "all" || campaignFilter !== "all" || statusFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => { setNicheFilter("all"); setCampaignFilter("all"); setStatusFilter("all"); }}
+                className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
+          {/* === Table === */}
+          {filtered.length === 0 ? (
+            <EmptyState title="Nenhum envio com esses filtros" description="Tente limpar os filtros ou alterar a seleção." icon={<MessageCircle className="h-8 w-8" />} />
+          ) : (
+            <div className="-mx-2 overflow-x-auto">
+              <table className="w-full min-w-[800px] text-left text-sm">
+                <thead className="border-b border-white/5 text-[11px] uppercase tracking-wider text-zinc-500">
+                  <tr>
+                    <th className="px-3 py-2">Data</th>
+                    <th className="px-3 py-2">Lead</th>
+                    <th className="px-3 py-2">Nicho</th>
+                    <th className="px-3 py-2">Campanha</th>
+                    <th className="px-3 py-2">Variante</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Erro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filtered.map((e:any)=>(
+                    <tr key={e.id} className="hover:bg-white/[0.02]">
+                      <td className="px-3 py-2.5 text-xs text-zinc-400 whitespace-nowrap">{new Date(e.sent_at).toLocaleString("pt-BR")}</td>
+                      <td className="px-3 py-2.5 text-zinc-200">{e.prospect_name||"—"}</td>
+                      <td className="px-3 py-2.5">
+                        {e.prospect_niche ? (
+                          <Badge variant="info">{e.prospect_niche}</Badge>
+                        ) : (
+                          <span className="text-xs text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-zinc-400 max-w-[200px] truncate" title={e.campaign||""}>{e.campaign||"—"}</td>
+                      <td className="px-3 py-2.5"><Badge variant="muted">{e.message_variant||"—"}</Badge></td>
+                      <td className="px-3 py-2.5">
+                        <Badge variant={e.status==="sent"?"success":e.status==="failed"?"danger":"warning"}>{e.status}</Badge>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs text-rose-300 max-w-[200px] truncate">{e.error||"—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </Widget>
   );
 }

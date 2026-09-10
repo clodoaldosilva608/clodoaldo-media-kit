@@ -20,6 +20,8 @@ import {
   Target,
   Zap,
   AlertCircle,
+  Send,
+  MessageCircle,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -81,20 +83,23 @@ export default function AdminOverviewPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [briefings, setBriefings] = useState<Briefing[]>([]);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ordersR, leadsR, briefingsR, queueR] = await Promise.all([
+    const [ordersR, leadsR, briefingsR, queueR, statsR] = await Promise.all([
       fetchAdminData<Order>("orders", 200),
       fetchAdminData<Lead>("leads", 200),
       fetchAdminData<Briefing>("briefings", 200),
       fetchAdminData<QueueEntry>("queue", 500),
+      fetch("/api/admin/stats?period=today").then(r => r.json()).catch(() => null),
     ]);
     setOrders(ordersR || []);
     setLeads(leadsR || []);
     setBriefings(briefingsR || []);
     setQueue(queueR || []);
+    setStats(statsR);
     setLoading(false);
   }, []);
 
@@ -221,6 +226,42 @@ export default function AdminOverviewPage() {
           icon={Mail}
           accent="rose"
           hint="aguardando resposta"
+        />
+      </div>
+
+      {/* Prospecting KPIs — bulk sends / prospects */}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <KpiCard
+          label="Disparos hoje"
+          value={num(stats?.envios_today ?? 0)}
+          icon={Send}
+          accent="emerald"
+          hint="envios registrados hoje"
+        />
+        <KpiCard
+          label="Total disparos"
+          value={num(stats?.envios_total ?? 0)}
+          icon={MessageCircle}
+          accent="blue"
+          hint="histórico completo"
+        />
+        <KpiCard
+          label="Leads prospectados"
+          value={num(stats?.prospects_total ?? 0)}
+          icon={Users}
+          accent="violet"
+          hint="no pipeline"
+        />
+        <KpiCard
+          label="Leads contatados"
+          value={num(stats?.prospects_contacted ?? 0)}
+          icon={Target}
+          accent="amber"
+          hint={
+            stats?.prospects_total
+              ? `${Math.round((stats.prospects_contacted / stats.prospects_total) * 100)}% do pipeline`
+              : "—"
+          }
         />
       </div>
 
@@ -403,6 +444,7 @@ export default function AdminOverviewPage() {
         className="mt-4"
       >
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <QuickAction href="/admin/parceiros" icon={<Send className="h-4 w-4" />} title="Prospecção" desc="Disparo em massa" />
           <QuickAction href="/admin/coupons" icon={<Trophy className="h-4 w-4" />} title="Criar cupom" desc="Promoção sazonal" />
           <QuickAction href="/admin/testimonials" icon={<Target className="h-4 w-4" />} title="Adicionar depoimento" desc="Prova social" />
           <QuickAction href="/admin/countdown" icon={<Clock className="h-4 w-4" />} title="Contagem regressiva" desc="Criar urgência" />

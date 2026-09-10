@@ -1645,3 +1645,57 @@ Stage Summary:
 - Gemini: 100% funcional em produção (ai-gemini variants)
 - Envios logging: corrigido e verificado (3 envios no banco, prospects atualizados)
 - Teste end-to-end: login → busca → seleção → disparo → envios tab, tudo funcionando
+
+---
+Task ID: admin-home-counter-and-envios-filters
+Agent: main (Super Z)
+Task: Adicionar contador de envios do dia na home do admin + filtro por nicho/campanha na aba Envios.
+
+Work Log:
+- **Backend stats API** (stats/route.ts):
+  - Adicionado import do getMeucorrePool
+  - Adicionado bloco de queries no meucorre DB para buscar: envios_today, envios_total, prospects_contacted, prospects_total
+  - Try/catch envolvente — se meucorre DB indisponível, retorna zeros (não quebra a home)
+  - Campos adicionados no retorno: envios_today, envios_total, prospects_total, prospects_contacted
+  - Cache de 30s mantido
+
+- **Home do admin** (admin/page.tsx):
+  - Adicionado estado `stats` + fetch paralelo a /api/admin/stats?period=today
+  - Adicionados ícones Send e MessageCircle ao import do lucide-react
+  - Adicionado nova linha de 4 KpiCards "Prospecting KPIs":
+    1. **Disparos hoje** (emerald, ícone Send) — envios registrados hoje
+    2. **Total disparos** (blue, ícone MessageCircle) — histórico completo
+    3. **Leads prospectados** (violet, ícone Users) — no pipeline
+    4. **Leads contatados** (amber, ícone Target) — com % do pipeline calculada dinamicamente
+  - Adicionado QuickAction "Prospecção — Disparo em massa" no início da grid de ações rápidas
+
+- **Aba Envios reformulada** (parceiros/page.tsx → EnviosView):
+  - Adicionados 3 estados: nicheFilter, campaignFilter, statusFilter (todos "all" por padrão)
+  - Aumentado limit de 200 para 500 envios carregados
+  - Derivado niches e campaigns únicos do data (Array.from(new Set(...)))
+  - Aplicado filtros no data.filter() com 3 condições
+  - Adicionado bloco de 4 cards de stats no topo: Total, Enviados, Falhas, Pendentes (atualizam dinamicamente conforme filtros)
+  - Adicionado bloco de filtros com 3 selects:
+    1. **Nicho**: "Todos os nichos (N)" + options com contagem por nicho
+    2. **Campanha**: "Todas as campanhas (N)" + options com contagem por campanha
+    3. **Status**: Todos / Enviados / Falhas / Pendentes
+  - Botão "Limpar filtros" aparece quando qualquer filtro está ativo
+  - Tabela expandida com 2 novas colunas: NICHO (Badge variant info) e CAMPANHA (text truncate com title)
+  - Empty state específico quando filtros não retornam resultados
+  - Largura mínima da tabela aumentada de 700px para 800px para acomodar novas colunas
+
+- **Teste via agent-browser**:
+  - Home do admin: 4 novos KPIs aparecem com valores corretos (Disparos hoje: 3, Total: 3, Prospectados: 131, Contatados: 2 = 2%)
+  - QuickAction "Prospecção" aparece no início das ações rápidas
+  - Aba Envios: 4 cards de stats no topo (Total/Enviados/Falhas/Pendentes)
+  - Filtro Nicho: mostra "Todos os nichos (3)" + restaurante (2) + barbearia (1)
+  - Filtro Campanha: mostra "Todas as campanhas (3)" + bulk-2026-09-10 21h52 (1) + eval-test-placeid (1) + eval-test (1)
+  - Filtro Status: Todos / Enviados / Falhas / Pendentes
+  - Teste prático: selecionou "restaurante" → tabela filtrou para 2 envios, TOTAL atualizou para 2
+  - Tabela mostra colunas: Data, Lead, Nicho, Campanha, Variante, Status, Erro
+
+Stage Summary:
+- 3 arquivos modificados: stats/route.ts (+50 linhas meucorre queries), admin/page.tsx (+50 linhas KPIs + fetch), parceiros/page.tsx (EnviosView +110 linhas filtros/stats)
+- Home do admin: nova linha de 4 KPIs de prospecção + QuickAction
+- Aba Envios: 4 cards de stats + 3 filtros (nicho/campanha/status) + 2 colunas novas na tabela
+- Tudo testado em produção via agent-browser

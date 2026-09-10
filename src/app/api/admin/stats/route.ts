@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { getMeucorrePool } from "@/lib/meucorre-db";
 import { cached, invalidateCachePrefix } from "@/lib/cache";
 
 /**
@@ -45,6 +46,44 @@ export async function GET(req: NextRequest) {
           .filter((o: any) => o.status === "pending")
           .reduce((s: number, o: any) => s + (o.total_cents || 0), 0);
 
+        // === Bulk-send stats from meucorre DB (clodoaldo_envios + clodoaldo_prospects) ===
+        let enviosToday = 0;
+        let enviosTotal = 0;
+        let prospectsContacted = 0;
+        let prospectsTotal = 0;
+        try {
+          const client = await getMeucorrePool().connect();
+          try {
+            // Today's sends (start of today in Brazil timezone)
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+            const enviosTodayRes = await client.query(
+              "SELECT count(*)::int as c FROM public.clodoaldo_envios WHERE sent_at >= $1",
+              [todayStart.toISOString()]
+            );
+            enviosToday = enviosTodayRes.rows[0]?.c || 0;
+
+            const enviosTotalRes = await client.query(
+              "SELECT count(*)::int as c FROM public.clodoaldo_envios"
+            );
+            enviosTotal = enviosTotalRes.rows[0]?.c || 0;
+
+            const prospectsContactedRes = await client.query(
+              "SELECT count(*)::int as c FROM public.clodoaldo_prospects WHERE status = 'contacted'"
+            );
+            prospectsContacted = prospectsContactedRes.rows[0]?.c || 0;
+
+            const prospectsTotalRes = await client.query(
+              "SELECT count(*)::int as c FROM public.clodoaldo_prospects"
+            );
+            prospectsTotal = prospectsTotalRes.rows[0]?.c || 0;
+          } finally {
+            client.release();
+          }
+        } catch (e) {
+          // meucorre DB may be unavailable — return zeros
+        }
+
         return {
           period,
           orders: orders.data?.length || 0,
@@ -57,6 +96,11 @@ export async function GET(req: NextRequest) {
           queue_waiting: (queue.data || []).filter((q: any) => q.status === "waiting").length,
           subscribers: subscribers.data?.length || 0,
           active_subscribers: (subscribers.data || []).filter((s: any) => s.status === "active").length,
+          // Bulk-send / prospecting stats
+          envios_today: enviosToday,
+          envios_total: enviosTotal,
+          prospects_total: prospectsTotal,
+          prospects_contacted: prospectsContacted,
         };
       },
     );
