@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Label, Textarea } from "@/components/admin/ui";
 import { adminUpsert, fetchAdminData } from "@/lib/admin/data";
-import { Settings, RefreshCw, Save, Database, AlertTriangle, Code, Copy, Check, FileText, Mail, Send, Loader2, CheckCircle2, QrCode, DollarSign } from "lucide-react";
+import { Settings, RefreshCw, Save, Database, AlertTriangle, Code, Copy, Check, FileText, Mail, Send, Loader2, CheckCircle2, QrCode, DollarSign, Plus, Trash2 } from "lucide-react";
 
 interface AppSetting {
   key: string;
@@ -427,38 +427,59 @@ function DBStat({ label, exists, pending }: { label: string; exists?: boolean; p
 }
 
 // =====================================================
-// PIX CONFIG WIDGET — configura chave PIX + gera cobrança
+// PIX CONFIG WIDGET — múltiplas chaves PIX + cobrança
 // =====================================================
 function PixConfigWidget() {
-  const [pixKey, setPixKey] = useState("");
-  const [merchantName, setMerchantName] = useState("Clodoaldo Silva");
-  const [merchantCity, setMerchantCity] = useState("Recife");
+  const [keys, setKeys] = useState<any[]>([]);
+  const [defaultKeyId, setDefaultKeyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [newKey, setNewKey] = useState({ label: "", type: "phone", value: "", merchantName: "Clodoaldo Silva", merchantCity: "Recife" });
   const [testAmount, setTestAmount] = useState("297");
+  const [testKeyId, setTestKeyId] = useState("");
   const [pixResult, setPixResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/pix/config").then(r => r.json()).then(d => {
-      if (d.config) {
-        setPixKey(d.config.pixKey || "");
-        setMerchantName(d.config.merchantName || "Clodoaldo Silva");
-        setMerchantCity(d.config.merchantCity || "Recife");
-      }
-      setLoading(false);
-    }).catch(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/admin/pix/config");
+      const json = await resp.json();
+      setKeys(json.keys || []);
+      setDefaultKeyId(json.defaultKeyId);
+      setTestKeyId(json.defaultKeyId || "");
+    } catch {}
+    setLoading(false);
   }, []);
 
-  async function handleSave() {
-    setSaving(true);
+  useEffect(() => { load(); }, [load]);
+
+  async function handleAddKey() {
+    if (!newKey.value) return;
     await fetch("/api/admin/pix/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pixKey, merchantName, merchantCity }),
+      body: JSON.stringify({ action: "add", key: newKey }),
     });
-    setSaving(false);
-    alert("PIX configurado com sucesso!");
+    setNewKey({ ...newKey, label: "", value: "" });
+    await load();
+  }
+
+  async function handleRemoveKey(keyId: string) {
+    if (!confirm("Remover esta chave PIX?")) return;
+    await fetch("/api/admin/pix/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remove", keyId }),
+    });
+    await load();
+  }
+
+  async function handleSetDefault(keyId: string) {
+    await fetch("/api/admin/pix/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "setDefault", keyId }),
+    });
+    await load();
   }
 
   async function handleGenerate() {
@@ -467,7 +488,7 @@ function PixConfigWidget() {
       const resp = await fetch("/api/admin/pix/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: parseFloat(testAmount), description: "Site Profissional" }),
+        body: JSON.stringify({ amount: parseFloat(testAmount), description: "Site Profissional", keyId: testKeyId || undefined }),
       });
       const json = await resp.json();
       setPixResult(json);
@@ -484,70 +505,157 @@ function PixConfigWidget() {
     }
   }
 
+  const keyTypes: Record<string, string> = {
+    phone: "Telefone",
+    email: "Email",
+    cpf: "CPF",
+    random: "Aleatória",
+    brcode: "BR Code completo",
+  };
+
   return (
-    <Widget title="Configuração PIX" icon={<DollarSign className="h-4 w-4 text-emerald-400" />} className="mt-4">
+    <Widget title="Chaves PIX" icon={<DollarSign className="h-4 w-4 text-emerald-400" />} className="mt-4">
       {loading ? (
         <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-600" /></div>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label>Chave PIX (CPF, email, telefone ou aleatória)</Label>
-              <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="Ex: clodoaldo608@gmail.com" />
-            </div>
-            <div>
-              <Label>Nome do recebedor (max 25 caracteres)</Label>
-              <Input value={merchantName} onChange={(e) => setMerchantName(e.target.value)} maxLength={25} />
-            </div>
-            <div>
-              <Label>Cidade (max 15 caracteres)</Label>
-              <Input value={merchantCity} onChange={(e) => setMerchantCity(e.target.value)} maxLength={15} />
-            </div>
-          </div>
-          <Button variant="primary" onClick={handleSave} disabled={saving || !pixKey}>
-            {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando…</> : <><Save className="h-3.5 w-3.5" /> Salvar PIX</>}
-          </Button>
-
-          {/* Testar geração de cobrança */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Testar cobrança PIX</div>
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <Label>Valor (R$)</Label>
-                <Input value={testAmount} onChange={(e) => setTestAmount(e.target.value)} placeholder="297" type="number" />
-              </div>
-              <Button variant="outline" onClick={handleGenerate}>
-                <QrCode className="h-3.5 w-3.5" /> Gerar PIX
-              </Button>
-            </div>
-
-            {pixResult?.error && (
-              <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">{pixResult.error}</div>
-            )}
-
-            {pixResult?.qrUrl && (
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="shrink-0">
-                    <img src={pixResult.qrUrl} alt="QR Code PIX" className="rounded-xl border border-white/10" width={200} height={200} />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="text-lg font-bold text-emerald-300">{pixResult.amountFormatted}</div>
-                    <div>
-                      <Label>PIX Copia e Cola</Label>
-                      <pre className="whitespace-pre-wrap break-all rounded-lg bg-black/30 border border-white/10 p-2 text-[10px] font-mono text-zinc-400 max-h-32 overflow-y-auto">{pixResult.brCode}</pre>
+          {/* === Lista de chaves cadastradas === */}
+          {keys.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Chaves cadastradas ({keys.length})</div>
+              {keys.map((k) => (
+                <div key={k.id} className={`flex items-center justify-between gap-2 rounded-lg border p-3 ${defaultKeyId === k.id ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-white/[0.02]"}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-white">{k.label || "Sem nome"}</span>
+                      <span className="text-[10px] text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded">{keyTypes[k.type] || k.type}</span>
+                      {defaultKeyId === k.id && <span className="text-[10px] text-emerald-400 font-bold">★ Padrão</span>}
                     </div>
-                    <Button variant="outline" size="sm" onClick={copyBRCode}>
-                      {copied ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar código</>}
-                    </Button>
+                    <div className="text-[11px] text-zinc-400 truncate mt-1 font-mono">
+                      {k.type === "brcode" ? `${k.value.slice(0, 50)}...` : k.value}
+                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">{k.merchantName} • {k.merchantCity}</div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1">
+                    {defaultKeyId !== k.id && (
+                      <button onClick={() => handleSetDefault(k.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">Definir padrão</button>
+                    )}
+                    <button onClick={() => handleRemoveKey(k.id)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* === Adicionar nova chave === */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Adicionar nova chave PIX</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Nome/Label</Label>
+                <Input value={newKey.label} onChange={(e) => setNewKey({ ...newKey, label: e.target.value })} placeholder="Ex: Clodoaldo telefone" />
               </div>
-            )}
+              <div>
+                <Label>Tipo da chave</Label>
+                <select
+                  value={newKey.type}
+                  onChange={(e) => setNewKey({ ...newKey, type: e.target.value })}
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                >
+                  <option value="phone">Telefone</option>
+                  <option value="email">Email</option>
+                  <option value="cpf">CPF</option>
+                  <option value="random">Aleatória</option>
+                  <option value="brcode">BR Code completo (PIX Copia e Cola)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>{newKey.type === "brcode" ? "BR Code completo (PIX Copia e Cola)" : "Chave PIX"}</Label>
+              {newKey.type === "brcode" ? (
+                <Textarea
+                  value={newKey.value}
+                  onChange={(e) => setNewKey({ ...newKey, value: e.target.value })}
+                  placeholder="Cole aqui o código completo do PIX (00020126...)"
+                  rows={3}
+                  className="font-mono text-xs"
+                />
+              ) : (
+                <Input value={newKey.value} onChange={(e) => setNewKey({ ...newKey, value: e.target.value })} placeholder={newKey.type === "phone" ? "81971133707" : newKey.type === "email" ? "email@gmail.com" : "Digite a chave"} />
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Nome do recebedor (max 25)</Label>
+                <Input value={newKey.merchantName} onChange={(e) => setNewKey({ ...newKey, merchantName: e.target.value })} maxLength={25} />
+              </div>
+              <div>
+                <Label>Cidade (max 15)</Label>
+                <Input value={newKey.merchantCity} onChange={(e) => setNewKey({ ...newKey, merchantCity: e.target.value })} maxLength={15} />
+              </div>
+            </div>
+            <Button variant="primary" onClick={handleAddKey} disabled={!newKey.value}>
+              <Plus className="h-3.5 w-3.5" /> Adicionar chave
+            </Button>
           </div>
 
+          {/* === Testar cobrança === */}
+          {keys.length > 0 && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Testar cobrança PIX</div>
+              <div className="flex items-end gap-2 flex-wrap">
+                <div className="flex-1 min-w-[100px]">
+                  <Label>Valor (R$)</Label>
+                  <Input value={testAmount} onChange={(e) => setTestAmount(e.target.value)} placeholder="297" type="number" />
+                </div>
+                <div className="flex-1 min-w-[150px]">
+                  <Label>Chave</Label>
+                  <select
+                    value={testKeyId}
+                    onChange={(e) => setTestKeyId(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  >
+                    {keys.map((k) => (
+                      <option key={k.id} value={k.id}>{k.label || "Sem nome"} ({keyTypes[k.type]})</option>
+                    ))}
+                  </select>
+                </div>
+                <Button variant="outline" onClick={handleGenerate}>
+                  <QrCode className="h-3.5 w-3.5" /> Gerar PIX
+                </Button>
+              </div>
+
+              {pixResult?.error && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">{pixResult.error}</div>
+              )}
+
+              {pixResult?.qrUrl && (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="shrink-0">
+                      <img src={pixResult.qrUrl} alt="QR Code PIX" className="rounded-xl border border-white/10" width={200} height={200} />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <div className="text-lg font-bold text-emerald-300">{pixResult.amountFormatted}</div>
+                      {pixResult.keyUsed && (
+                        <div className="text-[11px] text-zinc-500">Chave: {pixResult.keyUsed.label} ({keyTypes[pixResult.keyUsed.type]})</div>
+                      )}
+                      <div>
+                        <Label>PIX Copia e Cola</Label>
+                        <pre className="whitespace-pre-wrap break-all rounded-lg bg-black/30 border border-white/10 p-2 text-[10px] font-mono text-zinc-400 max-h-32 overflow-y-auto">{pixResult.brCode}</pre>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={copyBRCode}>
+                        {copied ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar código</>}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3 text-[11px] text-emerald-200/70">
-            💡 O PIX é integrado automaticamente no fluxo de entrega do projeto. Quando o cliente aprova, a mensagem de entrega inclui a cobrança PIX com QR Code.
+            💡 Você pode cadastrar múltiplas chaves PIX (telefone, email, CPF, aleatória ou BR Code completo). A chave padrão é usada automaticamente no fluxo de entrega do projeto.
           </div>
         </div>
       )}
