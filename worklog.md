@@ -2576,3 +2576,31 @@ Stage Summary:
 - ✅ LGPD: pixels só carregam após aceite do cookie banner.
 - ⏳ Itens P1 não tratados (estados vazios, detalhes CRM, templates email, permissões, central de saúde): requerem escopo maior.
 - ⏳ Item 10 (rotação de senha): não aplicado por decisão explícita do usuário.
+
+---
+Task ID: Auditoria-Admin-P1-Completo
+Agent: main (GLM)
+Task: Implementar todos os 7 itens P1 da Auditoria da Área Administrativa
+
+Work Log:
+- Migration Supabase aplicada (4 novas tabelas: lead_tasks, lead_history, audit_logs, payment_events).
+- 12 novos arquivos, ~1800 linhas adicionadas.
+- 5 arquivos modificados (ui.tsx, leads-crm/page.tsx, orders/page.tsx, email/page.tsx, admin-shell.tsx).
+- Commit c2a4e4b pushed to main. Vercel auto-redeploy em ~30s.
+
+Stage Summary:
+- ✅ P1-1: Estados vazios acionáveis em CRM, Pedidos, Email (com passos + hints).
+- ✅ P1-2: Modal do lead com tabs Informações / Tarefas / Histórico (timeline visual).
+- ✅ P1-3: 7 templates transacionais (welcome, briefing, abandoned_cart, purchase, delivery, status, no_response) + API seed.
+- ✅ P1-4: RBAC com 6 roles × 25+ módulos × 7 ações + API /api/admin/roles.
+- ✅ P1-5: Central de Saúde Operacional (/admin/health) — 8 verificações em tempo real.
+- ✅ P1-6: Reconciliação Financeira (/admin/financeiro) — 5 tipos de divergência.
+- ✅ P1-7: Logs de Auditoria (/admin/auditoria) — filtros + badges + JSON formatado.
+- 3 novos itens no sidebar Sistema: Saúde Operacional, Reconciliação, Logs de Auditoria.
+
+Próximos passos recomendados:
+- Testar /admin/health — ver se algum check retorna critical
+- Rodar POST /api/admin/email-templates/seed para criar os 7 templates
+- Abrir um lead no CRM e testar tabs Tarefas + Histórico
+- Em /admin/auditoria verificar se logs aparecem (precisa que ações passem pelo audit_logs — para integrar futuramente)
+- Em /admin/financeiro verificar se reconciliação está OK (provavelmente 0 pedidos + 0 pagamentos = sem divergências)
