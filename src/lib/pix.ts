@@ -32,11 +32,10 @@ export function generatePixBRCode(payment: PixPayment): string {
   }
 
   // Merchant account info
-  // Use PIX key as-is — banks register keys in different formats
-  // Nubank: phone without 55 (81971133707)
-  // Some banks: with 55 (5581971133707)
-  // User should register the key exactly as shown in their bank app
-  const pixKey = config.pixKey;
+  // Use PIX key as-is, but strip + prefix (PIX BR Code doesn't accept +)
+  // Nubank phone: +5581971133707 → 5581971133707
+  // C6 random: 6cf7994f-57e3-4ab3-9185-06d95b3291d6 (UUID, no changes)
+  const pixKey = config.pixKey.replace(/^\+/, "");
 
   const gui = tlv("00", "br.gov.bcb.pix");
   const key = tlv("01", pixKey);
