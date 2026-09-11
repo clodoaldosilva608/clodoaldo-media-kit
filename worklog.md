@@ -2475,3 +2475,26 @@ Stage Summary:
 - All env vars (WHATSAPP_API_KEY, WEBHOOK_URL) need to be set in Railway Variables.
 - Recommended: add persistent volume mounted at /data so session survives redeploys.
 - Recommended: bump service to ≥1 GB RAM plan — Chromium needs ~500MB resident.
+
+---
+Task ID: WhatsApp-OpenWA-URL-Update
+Agent: main (GLM)
+Task: User provided new Railway URL — verify service and integrate
+
+Work Log:
+- New URL: https://clodoaldo-openwa-production-ef95.up.railway.app
+- Tested /health, /getConnectionState, /qr, /sendText — ALL return HTTP 429 "rate limited" from Railway edge proxy (railway-hikari / hkg1).
+- Response time: 0.06s — request is being blocked at the edge, never reaching the container.
+- Tested with browser User-Agent, after 60s wait, on different HTTP methods — 429 persists.
+- Root cause: Railway Trial plan has a hard request cap. Trial credit exhausted or trial period ended.
+- Updated /admin/whatsapp page:
+  - OPENWA_URL → https://clodoaldo-openwa-production-ef95.up.railway.app
+  - Added 429 detection with clear Portuguese message: "Railway está limitando requisições. Plano Trial gratuito atingiu o limite. Faça upgrade para Hobby ($5/mês)."
+  - Backed off polling from 5s to 15s to avoid worsening the rate limit.
+- Committed (54d8710) and pushed to GitHub main → Vercel will auto-redeploy.
+
+Stage Summary:
+- ✅ Container is deployed (no more "Application failed to respond" / 502).
+- ❌ Railway edge proxy is blocking all requests with 429.
+- 💳 User must upgrade Railway → Billing → Hobby plan ($5/month) to remove throttle.
+- Alternative: migrate to Fly.io or Render with paid instance.
