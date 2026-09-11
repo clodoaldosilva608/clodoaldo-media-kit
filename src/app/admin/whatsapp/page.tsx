@@ -5,8 +5,12 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Textarea } from "@/components/admin/ui";
 import {
   MessageCircle, RefreshCw, QrCode, Wifi, WifiOff, Send, Loader2,
-  CheckCircle2, AlertTriangle, Smartphone, Zap, Clock,
+  CheckCircle2, AlertTriangle, Smartphone, Zap, Clock, ExternalLink,
 } from "lucide-react";
+
+// External WhatsApp service URL (Render.com free tier)
+const WA_SERVICE_URL = "https://clodoaldo-whatsapp.onrender.com";
+const WA_API_KEY = "clodoaldo-whatsapp-secret-2026";
 
 interface WhatsAppStatus {
   status: "disconnected" | "connecting" | "connected" | "qr_ready";
@@ -28,37 +32,50 @@ export default function WhatsAppPage() {
   const [testMessage, setTestMessage] = useState("");
   const [sendResult, setSendResult] = useState<any>(null);
   const [sending, setSending] = useState(false);
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
-      const resp = await fetch("/api/whatsapp/status");
+      const resp = await fetch(`${WA_SERVICE_URL}/status`, {
+        headers: { "x-api-key": WA_API_KEY },
+      });
+      if (!resp.ok) throw new Error(`Service responded ${resp.status}`);
       const json = await resp.json();
       setStatus(json);
-    } catch {}
+      setError(null);
+    } catch (e: any) {
+      setError(`Não foi possível conectar ao serviço WhatsApp. Verifique se o serviço está online: ${WA_SERVICE_URL}`);
+    }
     setLoading(false);
   }, []);
 
-  // Poll status every 2 seconds when connecting or qr_ready
   useEffect(() => {
     loadStatus();
-    pollRef.current = setInterval(loadStatus, 2000);
+    pollRef.current = setInterval(loadStatus, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [loadStatus]);
 
   async function handleConnect() {
     setConnecting(true);
+    setError(null);
     try {
-      await fetch("/api/whatsapp/connect", { method: "POST" });
-      // Polling will pick up the status change
-    } catch {}
+      await fetch(`${WA_SERVICE_URL}/connect`, {
+        method: "POST",
+        headers: { "x-api-key": WA_API_KEY },
+      });
+    } catch (e: any) {
+      setError(`Erro ao conectar: ${e.message}`);
+    }
     setConnecting(false);
   }
 
   async function handleDisconnect() {
-    if (!confirm("Desconectar WhatsApp? Você precisará escanear o QR Code novamente para reconectar.")) return;
-    await fetch("/api/whatsapp/disconnect", { method: "POST" });
+    if (!confirm("Desconectar WhatsApp? Você precisará escanear o QR Code novamente.")) return;
+    await fetch(`${WA_SERVICE_URL}/disconnect`, {
+      method: "POST",
+      headers: { "x-api-key": WA_API_KEY },
+    });
     loadStatus();
   }
 
@@ -67,16 +84,14 @@ export default function WhatsAppPage() {
     setSending(true);
     setSendResult(null);
     try {
-      const resp = await fetch("/api/whatsapp/send", {
+      const resp = await fetch(`${WA_SERVICE_URL}/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-api-key": WA_API_KEY },
         body: JSON.stringify({ phone: testPhone, text: testMessage }),
       });
       const json = await resp.json();
       setSendResult(json);
-      if (json.ok) {
-        setTestMessage("");
-      }
+      if (json.ok) setTestMessage("");
     } catch (e: any) {
       setSendResult({ ok: false, error: e.message });
     }
@@ -88,7 +103,7 @@ export default function WhatsAppPage() {
   const isConnecting = status.status === "connecting" || connecting;
 
   return (
-    <AdminShell title="WhatsApp — Conexão via Baileys">
+    <AdminShell title="WhatsApp — Conexão via Baileys (Render)">
       {/* Status Bar */}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
@@ -131,6 +146,22 @@ export default function WhatsAppPage() {
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-rose-200">Serviço WhatsApp offline</h4>
+              <p className="mt-1 text-xs text-rose-200/80">{error}</p>
+              <p className="mt-2 text-xs text-rose-200/60">
+                O serviço roda gratuitamente no Render.com. Pode levar 30-60s para "acordar" após inatividade.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Warning */}
       <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4">
         <div className="flex items-start gap-3">
@@ -138,37 +169,50 @@ export default function WhatsAppPage() {
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-amber-200">⚠️ Uso não-oficial do WhatsApp</h4>
             <p className="mt-1 text-xs text-amber-200/80">
-              Esta conexão usa a biblioteca Baileys (não-oficial). O WhatsApp pode banir o número se houver spam.
-              <strong> Limite de {status.dailyLimit} mensagens/dia</strong> para reduzir o risco. Use apenas para responder leads que iniciaram contato.
+              Esta conexão usa Baileys (não-oficial). Limite de <strong>{status.dailyLimit} mensagens/dia</strong> para reduzir risco de banimento.
+              Use apenas para responder leads. Não enviar spam.
             </p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        {/* === QR Code / Connection === */}
+        {/* QR Code / Connection */}
         <Widget
           title="Conexão WhatsApp"
           icon={<MessageCircle className="h-4 w-4 text-emerald-400" />}
           action={
-            isConnected ? (
-              <Button variant="outline" size="sm" onClick={handleDisconnect}>
-                <WifiOff className="h-3.5 w-3.5" /> Desconectar
-              </Button>
-            ) : !isConnecting ? (
-              <Button variant="primary" size="sm" onClick={handleConnect}>
-                <Wifi className="h-3.5 w-3.5" /> Conectar
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" disabled>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Aguarde...
-              </Button>
-            )
+            <div className="flex items-center gap-2">
+              <a href={WA_SERVICE_URL} target="_blank" rel="noreferrer" className="text-[10px] text-zinc-500 hover:text-zinc-300">
+                <ExternalLink className="h-3 w-3 inline" /> Serviço
+              </a>
+              {isConnected ? (
+                <Button variant="outline" size="sm" onClick={handleDisconnect}>
+                  <WifiOff className="h-3.5 w-3.5" /> Desconectar
+                </Button>
+              ) : !isConnecting ? (
+                <Button variant="primary" size="sm" onClick={handleConnect}>
+                  <Wifi className="h-3.5 w-3.5" /> Conectar
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Aguarde...
+                </Button>
+              )}
+            </div>
           }
         >
           {loading ? (
             <div className="py-12 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-zinc-600" />
+            </div>
+          ) : error ? (
+            <div className="py-8 text-center space-y-4">
+              <WifiOff className="h-16 w-16 text-zinc-600 mx-auto" />
+              <p className="text-sm text-zinc-500">Serviço offline. Aguarde 60s e recarregue.</p>
+              <Button variant="outline" onClick={loadStatus}>
+                <RefreshCw className="h-4 w-4" /> Recarregar
+              </Button>
             </div>
           ) : isConnected ? (
             <div className="py-8 text-center space-y-4">
@@ -176,7 +220,7 @@ export default function WhatsAppPage() {
               <div>
                 <h4 className="text-lg font-bold text-emerald-300">WhatsApp Conectado!</h4>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Número (81) 92005-1068 conectado e pronto para enviar/receber mensagens.
+                  Número (81) 92005-1068 conectado e pronto para enviar/receber mensagens automaticamente.
                 </p>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300">
@@ -186,9 +230,8 @@ export default function WhatsAppPage() {
           ) : isQRReady && status.qr ? (
             <div className="py-6 text-center space-y-4">
               <div className="inline-block rounded-2xl border-2 border-white/10 bg-white p-4">
-                {/* QR Code rendered as SVG via qrserver API */}
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=ffffff&color=000000&data=${encodeURIComponent(status.qr)}`}
+                  src={status.qr}
                   alt="WhatsApp QR Code"
                   width={280}
                   height={280}
@@ -226,11 +269,8 @@ export default function WhatsAppPage() {
           )}
         </Widget>
 
-        {/* === Send Test Message === */}
-        <Widget
-          title="Enviar mensagem de teste"
-          icon={<Send className="h-4 w-4 text-blue-400" />}
-        >
+        {/* Send Test Message */}
+        <Widget title="Enviar mensagem de teste" icon={<Send className="h-4 w-4 text-blue-400" />}>
           {!isConnected ? (
             <div className="py-8 text-center">
               <AlertTriangle className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
@@ -242,30 +282,14 @@ export default function WhatsAppPage() {
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
                   Número (com DDI + DDD)
                 </label>
-                <Input
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder="Ex: 5581994057216"
-                />
+                <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="Ex: 5581994057216" />
                 <p className="mt-1 text-[10px] text-zinc-500">Formato: 55 (Brasil) + DDD + número</p>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
-                  Mensagem
-                </label>
-                <Textarea
-                  value={testMessage}
-                  onChange={(e) => setTestMessage(e.target.value)}
-                  placeholder="Digite a mensagem..."
-                  rows={4}
-                />
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Mensagem</label>
+                <Textarea value={testMessage} onChange={(e) => setTestMessage(e.target.value)} placeholder="Digite a mensagem..." rows={4} />
               </div>
-              <Button
-                variant="primary"
-                onClick={handleSendTest}
-                disabled={sending || !testPhone || !testMessage}
-                className="w-full"
-              >
+              <Button variant="primary" onClick={handleSendTest} disabled={sending || !testPhone || !testMessage} className="w-full">
                 {sending ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</> : <><Send className="h-4 w-4" /> Enviar mensagem</>}
               </Button>
 
@@ -285,10 +309,7 @@ export default function WhatsAppPage() {
                   <span className="font-bold text-white">{status.messagesToday}/{status.dailyLimit}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 transition-all"
-                    style={{ width: `${Math.min((status.messagesToday / status.dailyLimit) * 100, 100)}%` }}
-                  />
+                  <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.min((status.messagesToday / status.dailyLimit) * 100, 100)}%` }} />
                 </div>
               </div>
             </div>
@@ -296,12 +317,8 @@ export default function WhatsAppPage() {
         </Widget>
       </div>
 
-      {/* === Integration Info === */}
-      <Widget
-        title="Integração com Prospecção"
-        icon={<Zap className="h-4 w-4 text-amber-400" />}
-        className="mt-4"
-      >
+      {/* Integration Info */}
+      <Widget title="Integração com Prospecção" icon={<Zap className="h-4 w-4 text-amber-400" />} className="mt-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
             <div className="flex items-center gap-2 mb-2">
@@ -309,7 +326,7 @@ export default function WhatsAppPage() {
               <span className="text-xs font-bold text-emerald-300">Envio automático</span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Ao disparar previews em massa, as mensagens são enviadas automaticamente via WhatsApp (se conectado).
+              Ao disparar previews, as mensagens são enviadas automaticamente via WhatsApp (se conectado).
             </p>
           </div>
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.03] p-3">
@@ -318,7 +335,7 @@ export default function WhatsAppPage() {
               <span className="text-xs font-bold text-blue-300">Recebimento automático</span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Respostas dos leads são recebidas e registradas automaticamente no sistema + notificação Telegram.
+              Respostas dos leads são recebidas e registradas automaticamente + notificação Telegram.
             </p>
           </div>
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3">
@@ -327,7 +344,7 @@ export default function WhatsAppPage() {
               <span className="text-xs font-bold text-amber-300">Limite diário</span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Máximo de {status.dailyLimit} mensagens/dia para reduzir risco de banimento do número.
+              Máximo de {status.dailyLimit} mensagens/dia para reduzir risco de banimento.
             </p>
           </div>
         </div>
