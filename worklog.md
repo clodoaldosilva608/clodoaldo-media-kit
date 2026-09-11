@@ -2445,3 +2445,33 @@ Stage Summary:
 - Todas as APIs funcionando: prospects, preview (8 templates), share (8 opções), approval projects, approval portal, respostas
 - Notificações Telegram processadas em todas as etapas
 - Banco de dados consistente: lead → prospect status updated → reply registered → project approved
+
+---
+Task ID: WhatsApp-OpenWA-Fix
+Agent: main (GLM)
+Task: Fix failing Open-WA Railway service ("Application failed to respond" error)
+
+Work Log:
+- Confirmed existing service https://clodoaldo-openwa-production.up.railway.app was timing out (HTTP 000 after 15s).
+- Root cause: Most likely Chromium failed to launch in Railway's container — original deployment was missing the system deps (libnss3, libatk, libgbm, etc.) that puppeteer's bundled Chromium needs on Debian-slim.
+- Built a fresh openwa-service/ with:
+  - Dockerfile based on node:20-book-slim that pre-installs ALL Chromium system deps.
+  - server.js using @open-wa/wa-automate v4.71.7 with puppeteer args tuned for containers (--no-sandbox, --disable-dev-shm-usage, --single-process, --no-zygote).
+  - railway.json with /health healthcheck, restart-on-failure policy, 60s timeout.
+  - .dockerignore for clean rebuilds.
+  - README with full deploy + troubleshooting guide.
+- API endpoints (compatible with existing /admin/whatsapp page):
+  - GET  /health                    (no auth) — Railway healthcheck
+  - GET  /getConnectionState?key=   — returns "CONNECTED" | "QRCODE" | "STARTING" | "CLOSED"
+  - GET  /qr                        — PNG image of QR code (used directly in <img src>)
+  - POST /sendText {to, content}    — sends a text message (header key=)
+  - GET  /screenshot                — debug JPEG of WA Web
+- Pushed to dedicated GitHub repo: clodoaldosilva608/clodoaldo-openwa (private, default branch main).
+- Committed openwa-service/ folder to main project repo too (clodoaldo-media-kit).
+
+Stage Summary:
+- New private repo: https://github.com/clodoaldosilva608/clodoaldo-openwa
+- Next user action: In Railway dashboard, point existing service to this new repo (Settings → GitHub connect → pick clodoaldo-openwa), redeploy, then visit /qr to scan.
+- All env vars (WHATSAPP_API_KEY, WEBHOOK_URL) need to be set in Railway Variables.
+- Recommended: add persistent volume mounted at /data so session survives redeploys.
+- Recommended: bump service to ≥1 GB RAM plan — Chromium needs ~500MB resident.
