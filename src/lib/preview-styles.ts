@@ -11,7 +11,7 @@
  * mas têm layouts, paletas e estruturas visualmente diferentes.
  */
 
-import { renderTemplateA, renderTemplateB, renderTemplateC, renderTemplateD } from "./niche-templates";
+import { renderTemplateA, renderTemplateB, renderTemplateC, renderTemplateD, renderTemplateE, renderTemplateF, renderTemplateG, renderTemplateH } from "./niche-templates";
 
 export interface StyleContext {
   lead: {
@@ -61,7 +61,7 @@ export interface PreviewStyle {
 }
 
 // =====================================================
-// 4 TEMPLATES DISTINTOS POR NICHO
+// 8 TEMPLATES DISTINTOS POR NICHO
 // =====================================================
 const templateSplit: PreviewStyle = {
   id: "split",
@@ -95,6 +95,38 @@ const templateMinimal: PreviewStyle = {
   render: renderTemplateD,
 };
 
+const templateMagazine: PreviewStyle = {
+  id: "magazine",
+  name: "Magazine",
+  description: "Layout de revista, grid assimétrico, serifas italic",
+  emoji: "📰",
+  render: renderTemplateE,
+};
+
+const templateShowcase: PreviewStyle = {
+  id: "showcase",
+  name: "Showcase",
+  description: "Hero com mosaico de fotos, grid 4 imagens",
+  emoji: "🖼️",
+  render: renderTemplateF,
+};
+
+const templateSidebar: PreviewStyle = {
+  id: "sidebar",
+  name: "Sidebar",
+  description: "Sidebar lateral fixa + conteúdo principal",
+  emoji: "📋",
+  render: renderTemplateG,
+};
+
+const templateGlass: PreviewStyle = {
+  id: "glass",
+  name: "Glass 3D",
+  description: "Navbar flutuante, glassmorphism, cards 3D com perspective",
+  emoji: "💎",
+  render: renderTemplateH,
+};
+
 // =====================================================
 // EXPORTS
 // =====================================================
@@ -103,6 +135,10 @@ export const PREVIEW_STYLES: PreviewStyle[] = [
   templateCentered,
   templateCard,
   templateMinimal,
+  templateMagazine,
+  templateShowcase,
+  templateSidebar,
+  templateGlass,
 ];
 
 export function getStyleById(id: string): PreviewStyle {
