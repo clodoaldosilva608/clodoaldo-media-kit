@@ -1872,3 +1872,62 @@ Stage Summary:
 - Histórico de respostas: aparece no LeadDetailModal com badges coloridas, datas, mensagens
 - Refresh automático: ao salvar resposta, histórico atualiza sem precisar fechar/reabrir modal
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: reply-count-badges-filter-export-detail-modal
+Agent: main (Super Z)
+Task: 4 melhorias: contador de respostas no card, filtro "Com respostas", exportação CSV, modal de detalhes na aba Respostas.
+
+Work Log:
+- **API: reply counts** (respostas/counts/route.ts):
+  - GET /api/admin/respostas/counts retorna { counts: { prospect_id: count } }
+  - Query: GROUP BY prospect_id no clodoaldo_respostas
+  - Usado para mostrar badges "N respostas" nos cards sem precisar carregar todas as respostas
+
+- **Badge "N respostas" nos cards** (parceiros/page.tsx):
+  - Estado replyCounts + loadReplyCounts() no componente principal
+  - fetch /api/admin/respostas/counts no mount + após salvar resposta
+  - Aba Buscar: badge "N resp." ao lado de "Salvo" (quando replyCount > 0)
+  - Aba Leads Salvos: badge violeta "N resposta(s)" com ícone Mail (quando replyCount > 0)
+  - Testado: Bar Restaurante Santa Cruz → "1 resposta", Restaurante Fogo a Lenha → "1 resposta" ✅
+
+- **Filtro "Só com respostas" na aba Leads Salvos**:
+  - Checkbox no topo da lista com contador "(N)"
+  - Quando ativo, mostra apenas leads com replyCount > 0
+  - Contador lateral: "X com respostas • Y total"
+  - Testado: 145 leads → filtrou para 3 com respostas ✅
+
+- **Exportação CSV do histórico** (respostas/export/route.ts):
+  - GET /api/admin/respostas/export?prospect_id=UUID&format=csv
+  - Retorna CSV com header (nome, nicho, cidade, status, total) + linhas (data, classificação, mensagem, ação, próximo passo)
+  - Content-Disposition: attachment; filename="historico_{name}_{date}.csv"
+  - Suporta formato JSON também (?format=json)
+  - Botão "Exportar histórico de respostas (CSV)" no LeadDetailModal (após "Abrir link")
+  - Botão "Exportar histórico completo (CSV)" no ReplyDetailModal
+
+- **Aba Respostas reformulada** (parceiros/page.tsx → RespostasView + ReplyDetailModal):
+  - Removido form antigo de registro manual (agora usa botão "Resposta" na aba Buscar)
+  - Adicionados filtros: Nicho + Classificação (com contadores)
+  - Cada resposta é clicável (card com hover violeta)
+  - Mensagem truncada com line-clamp-2 + hint "Clique para ver detalhes e responder"
+  - Criado componente ReplyDetailModal:
+    - Header com nome, nicho, cidade, data, badge de classificação
+    - Seção "💬 Mensagem recebida" — mensagem completa (não truncada)
+    - Cards "📋 Ação tomada" + "→ Próximo passo" (quando preenchidos)
+    - Card "📞 Contato" — WhatsApp + cidade
+    - 3 botões de ação:
+      1. "Registrar nova resposta deste lead [R]" → abre ReplyModal
+      2. "Abrir WhatsApp do lead" → wa.me link
+      3. "Exportar histórico completo (CSV)" → download
+    - Body scroll lock + ESC handler
+  - RespostasView aceita prop onOpenReply (passa setReplyLead do componente principal)
+  - Testado: clicou em Restaurante Fogo a Lenha → modal abriu com mensagem completa + ação + próximo passo + contato + 3 botões ✅
+
+Stage Summary:
+- 3 arquivos criados: respostas/counts/route.ts, respostas/export/route.ts, (+200 linhas ReplyDetailModal)
+- 1 arquivo modificado: parceiros/page.tsx (+400 linhas total)
+- Badges de contagem: aparecem em Buscar + Leads Salvos
+- Filtro "Só com respostas": funciona na aba Leads Salvos (145 → 3 leads)
+- Exportação CSV: botão no LeadDetailModal + ReplyDetailModal
+- Aba Respostas: cards clicáveis + modal de detalhes completo + filtros
+- Tudo testado em produção via agent-browser

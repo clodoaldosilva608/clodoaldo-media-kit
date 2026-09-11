@@ -9,6 +9,7 @@ import {
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
   Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
   FileCheck, Send, CheckSquare, Square, Sparkles, ChevronRight,
+  FileDown, Filter, Reply, MessageSquare,
 } from "lucide-react";
 import {
   getRelevantObjections,
@@ -58,6 +59,21 @@ export default function AdminParceirosPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [replyLead, setReplyLead] = useState<Lead | null>(null);
   const [replyVersion, setReplyVersion] = useState(0); // increments when a reply is saved → triggers LeadDetailModal refresh
+  const [replyCounts, setReplyCounts] = useState<Record<string, number>>({}); // prospect_id → reply count
+  const [showRepliedOnly, setShowRepliedOnly] = useState(false); // filter in "Leads Salvos"
+
+  // Fetch reply counts (called on mount + after each reply save)
+  const loadReplyCounts = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/admin/respostas/counts");
+      const json = await resp.json();
+      setReplyCounts(json.counts || {});
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  useEffect(() => { loadReplyCounts(); }, [loadReplyCounts]);
 
   // === Keyboard shortcut: press "R" to open Reply modal ===
   // Works when:
@@ -677,6 +693,11 @@ Clodoaldo Silva`;
                           </div>
                         </div>
                         {savedIds.has(lead.place_id!)&&<Badge variant="success"><CheckCircle2 className="h-3 w-3" /> Salvo</Badge>}
+                        {(replyCounts[lead.id || ""] || 0) > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-zinc-300 bg-white/5 px-1.5 py-0.5 rounded" title={`${replyCounts[lead.id || ""]} resposta(s)`}>
+                            <Mail className="h-2.5 w-2.5" /> {replyCounts[lead.id || ""]} {replyCounts[lead.id || ""] === 1 ? "resp." : "resps."}
+                          </span>
+                        )}
                       </div>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {lead.hasWebsite?<Badge variant="info"><Globe className="h-3 w-3" /> Tem site</Badge>:<Badge variant="warning"><AlertTriangle className="h-3 w-3" /> Sem site</Badge>}
@@ -831,13 +852,35 @@ Clodoaldo Silva`;
             <EmptyState icon={<CheckCircle2 className="h-8 w-8 text-zinc-600" />} title="Nenhum lead salvo" description="Busque estabelecimentos e eles serão salvos automaticamente aqui." />
           ) : (
             <>
+              {/* === Filter bar === */}
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-2.5">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-zinc-300 hover:text-zinc-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={showRepliedOnly}
+                    onChange={e => setShowRepliedOnly(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 text-violet-500 focus:ring-1 focus:ring-violet-500/40"
+                  />
+                  <Filter className="h-3 w-3" />
+                  Só com respostas ({Object.values(replyCounts).filter(c => c > 0).length})
+                </label>
+                <div className="flex-1" />
+                <span className="text-[11px] text-zinc-500">
+                  {prospects.filter(p => (replyCounts[p.id || ""] || 0) > 0).length} com respostas • {prospects.length} total
+                </span>
+              </div>
+
               <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-3 py-2 text-xs text-blue-200">
-                💡 Dica: clique em qualquer lead (card) para ver todos os detalhes — mensagens prontas (WhatsApp/Email), prompt do site, preview e quebra de objeções.
+                💡 Dica: clique em qualquer lead (card) para ver todos os detalhes — mensagens prontas (WhatsApp/Email), prompt do site, preview, histórico de respostas e quebra de objeções.
               </div>
               <div className="space-y-2">
-                {prospects.map((p) => {
+                {prospects.filter(p => {
+                  if (!showRepliedOnly) return true;
+                  return (replyCounts[p.id || ""] || 0) > 0;
+                }).map((p) => {
                   const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
                   const wa = genWA(p);
+                  const replyCount = replyCounts[p.id || ""] || 0;
                   return (
                     <div
                       key={p.id || p.place_id}
@@ -866,6 +909,14 @@ Clodoaldo Silva`;
                             {p.webDevOpportunity && (
                               <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded shrink-0">
                                 <Zap className="h-2.5 w-2.5" /> Oportunidade
+                              </span>
+                            )}
+                            {replyCount > 0 && (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[10px] font-bold text-violet-300 bg-violet-500/15 px-1.5 py-0.5 rounded shrink-0"
+                                title={`${replyCount} resposta(s) recebida(s)`}
+                              >
+                                <Mail className="h-2.5 w-2.5" /> {replyCount} {replyCount === 1 ? "resposta" : "respostas"}
                               </span>
                             )}
                           </div>
@@ -988,6 +1039,7 @@ Clodoaldo Silva`;
           onClose={() => setReplyLead(null)}
           onSaved={async () => {
             await loadProspects();
+            await loadReplyCounts();
             setReplyVersion(v => v + 1); // trigger LeadDetailModal reply history refresh
           }}
         />
@@ -1019,7 +1071,7 @@ Clodoaldo Silva`;
       )}
 
       {view==="envios" && <EnviosView />}
-      {view==="respostas" && <RespostasView />}
+      {view==="respostas" && <RespostasView onOpenReply={(lead) => setReplyLead(lead)} />}
       {view==="report" && <ReportView />}
     </AdminShell>
   );
@@ -1186,19 +1238,314 @@ function EnviosView() {
   );
 }
 
-function RespostasView() {
-  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true); const [showAdd,setShowAdd]=useState(false); const [reply,setReply]=useState({prospect_id:"",message_text:""});
-  const load=useCallback(()=>{setLoading(true);fetch("/api/admin/respostas?limit=200").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
+function RespostasView({ onOpenReply }: { onOpenReply: (lead: Lead) => void }) {
+  const [data,setData]=useState<any[]>([]); const [loading,setLoading]=useState(true);
+  const [selectedReply, setSelectedReply] = useState<any | null>(null);
+  const [nicheFilter, setNicheFilter] = useState<string>("all");
+  const [classFilter, setClassFilter] = useState<string>("all");
+
+  const load=useCallback(()=>{setLoading(true);fetch("/api/admin/respostas?limit=500").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
   useEffect(()=>{load();},[load]);
+
   const cc:Record<string,any> = {permission_to_send:"info",interessado:"success",meeting_ready:"success",opt_out:"danger",pricing_question:"warning",ambiguous:"muted",unclassified:"muted"};
-  async function submit(){if(!reply.prospect_id||!reply.message_text)return;await fetch("/api/admin/respostas",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(reply)});setReply({prospect_id:"",message_text:""});setShowAdd(false);load();}
+  const classMeta: Record<string, { emoji: string; label: string }> = {
+    permission_to_send: { emoji: "✅", label: "Permitiu info" },
+    interessado: { emoji: "🔥", label: "Interessado" },
+    meeting_ready: { emoji: "📅", label: "Quer reunião" },
+    opt_out: { emoji: "🚫", label: "Não quer" },
+    pricing_question: { emoji: "💰", label: "Preço" },
+    ambiguous: { emoji: "❓", label: "Ambíguo" },
+    unclassified: { emoji: "📋", label: "Sem classificação" },
+  };
+
+  // Derive unique niches + classifications
+  const niches = Array.from(new Set(data.map((r:any)=>r.prospect_niche).filter(Boolean))) as string[];
+  const classes = Array.from(new Set(data.map((r:any)=>r.classification).filter(Boolean))) as string[];
+
+  // Apply filters
+  const filtered = data.filter((r:any) => {
+    if (nicheFilter !== "all" && r.prospect_niche !== nicheFilter) return false;
+    if (classFilter !== "all" && r.classification !== classFilter) return false;
+    return true;
+  });
+
   return (
-    <Widget title="Respostas Recebidas" icon={<Mail className="h-4 w-4 text-emerald-400" />} action={<Button size="sm" variant="primary" onClick={()=>setShowAdd(!showAdd)}><Plus className="h-3.5 w-3.5" /> Registrar</Button>}>
-      {showAdd&&<div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 space-y-2"><Input placeholder="ID do prospect" value={reply.prospect_id} onChange={e=>setReply({...reply,prospect_id:e.target.value})} /><Textarea placeholder="Mensagem recebida…" value={reply.message_text} onChange={e=>setReply({...reply,message_text:e.target.value})} rows={3} /><Button size="sm" variant="primary" onClick={submit}>Classificar e Salvar</Button></div>}
-      {loading?<div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>:
-      data.length===0?<EmptyState title="Nenhuma resposta" icon={<Mail className="h-8 w-8" />} />:
-      <div className="space-y-2">{data.map((r:any)=><div key={r.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-3"><div className="flex items-start justify-between gap-2 mb-2"><div><span className="text-sm font-bold text-white">{r.prospect_name||"—"}</span><span className="ml-2 text-[11px] text-zinc-500">{new Date(r.received_at).toLocaleString("pt-BR")}</span></div><Badge variant={cc[r.classification]||"muted"}>{r.classification}</Badge></div><p className="text-xs text-zinc-300 mb-2 italic">"{r.message_text}"</p><div className="flex gap-4 text-[11px] text-zinc-500"><span>📋 {r.action_taken||"—"}</span><span>→ {r.next_step||"—"}</span></div></div>)}</div>}
+    <Widget title="Respostas Recebidas" icon={<Mail className="h-4 w-4 text-emerald-400" />} action={
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <RefreshCw className={`h-3.5 w-3.5 ${loading?"animate-spin":""}`} /><span className="ml-1">Atualizar</span>
+        </Button>
+      </div>
+    }>
+      {loading ? (
+        <div className="py-12 text-center text-sm text-zinc-500"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></div>
+      ) : data.length === 0 ? (
+        <EmptyState title="Nenhuma resposta" icon={<Mail className="h-8 w-8" />} description="Quando um lead responder no WhatsApp, registre a resposta via botão 'Resposta' na aba Buscar." />
+      ) : (
+        <div className="space-y-3">
+          {/* === Stats + filters === */}
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
+              <select
+                value={nicheFilter}
+                onChange={e=>setNicheFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[140px]"
+              >
+                <option value="all">Todos ({data.length})</option>
+                {niches.map(n => (
+                  <option key={n} value={n}>{n} ({data.filter(r=>r.prospect_niche===n).length})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Classificação</label>
+              <select
+                value={classFilter}
+                onChange={e=>setClassFilter(e.target.value)}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[160px]"
+              >
+                <option value="all">Todas ({data.length})</option>
+                {classes.map(c => (
+                  <option key={c} value={c}>{classMeta[c]?.emoji || ""} {classMeta[c]?.label || c} ({data.filter(r=>r.classification===c).length})</option>
+                ))}
+              </select>
+            </div>
+            {(nicheFilter !== "all" || classFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => { setNicheFilter("all"); setClassFilter("all"); }}
+                className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
+          {/* === Replies list === */}
+          {filtered.length === 0 ? (
+            <EmptyState title="Nenhuma resposta com esses filtros" description="Tente limpar os filtros ou alterar a seleção." icon={<Mail className="h-8 w-8" />} />
+          ) : (
+            <div className="space-y-2">
+              {filtered.map((r:any) => {
+                const cm = classMeta[r.classification] || classMeta.unclassified;
+                return (
+                  <div
+                    key={r.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedReply(r)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedReply(r); } }}
+                    className="block w-full text-left rounded-xl border border-white/5 bg-white/[0.02] hover:bg-violet-500/[0.06] hover:border-violet-500/30 active:bg-violet-500/[0.1] p-3 transition group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-white group-hover:text-violet-300 transition truncate">{r.prospect_name||"—"}</span>
+                          {r.prospect_niche && (
+                            <span className="text-[10px] text-zinc-500 capitalize">{r.prospect_niche}</span>
+                          )}
+                          <span className="text-[11px] text-zinc-500">{new Date(r.received_at).toLocaleString("pt-BR")}</span>
+                        </div>
+                      </div>
+                      <Badge variant={cc[r.classification]||"muted"}>
+                        {cm.emoji} {cm.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-zinc-300 mb-2 italic line-clamp-2 overflow-hidden">
+                      "{r.message_text}"
+                    </p>
+                    {(r.action_taken || r.next_step) && (
+                      <div className="flex gap-4 text-[11px] text-zinc-500">
+                        {r.action_taken && <span>📋 {r.action_taken}</span>}
+                        {r.next_step && <span>→ {r.next_step}</span>}
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-violet-400/70 group-hover:text-violet-300 transition">
+                      <Eye className="h-3 w-3" /> Clique para ver detalhes e responder
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === Reply Detail Modal === */}
+      {selectedReply && (
+        <ReplyDetailModal
+          reply={selectedReply}
+          onClose={() => setSelectedReply(null)}
+          onOpenReply={onOpenReply}
+        />
+      )}
     </Widget>
+  );
+}
+
+// =====================================================
+// REPLY DETAIL MODAL — shows full reply + actions
+// =====================================================
+function ReplyDetailModal({
+  reply,
+  onClose,
+  onOpenReply,
+}: {
+  reply: any;
+  onClose: () => void;
+  onOpenReply: (lead: Lead) => void;
+}) {
+  // Body scroll lock + ESC
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  const classMeta: Record<string, { emoji: string; label: string; color: string }> = {
+    permission_to_send: { emoji: "✅", label: "Permitiu info", color: "info" },
+    interessado: { emoji: "🔥", label: "Interessado", color: "success" },
+    meeting_ready: { emoji: "📅", label: "Quer reunião", color: "success" },
+    opt_out: { emoji: "🚫", label: "Não quer", color: "danger" },
+    pricing_question: { emoji: "💰", label: "Preço", color: "warning" },
+    ambiguous: { emoji: "❓", label: "Ambíguo", color: "muted" },
+    unclassified: { emoji: "📋", label: "Sem classificação", color: "muted" },
+  };
+  const cm = classMeta[reply.classification] || classMeta.unclassified;
+  const waNum = (reply.prospect_whatsapp || reply.prospect_phone || "").replace(/\D/g, "");
+  const waLink = waNum ? `https://wa.me/${waNum}` : "";
+
+  // Build a Lead object for onOpenReply
+  const lead: Lead = {
+    id: reply.prospect_id,
+    name: reply.prospect_name || "—",
+    niche: reply.prospect_niche,
+    city: reply.prospect_city,
+    whatsapp: reply.prospect_whatsapp,
+    phone: reply.prospect_phone,
+    status: "contacted",
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Mail className="h-5 w-5 text-violet-400" />
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">{reply.prospect_name || "—"}</h3>
+              <Badge variant={(["success","info","danger","warning","muted"] as const).includes(cm.color as any) ? cm.color as any : "muted"}>
+                {cm.emoji} {cm.label}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              {reply.prospect_niche && <span className="capitalize">{reply.prospect_niche}</span>}
+              {reply.prospect_city && <span className="ml-1.5">• {reply.prospect_city}</span>}
+              <span className="ml-1.5">• {new Date(reply.received_at).toLocaleString("pt-BR")}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-4">
+          {/* Full message */}
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+              💬 Mensagem recebida
+            </div>
+            <pre className="whitespace-pre-wrap text-sm text-zinc-200 font-sans leading-relaxed">{reply.message_text}</pre>
+          </div>
+
+          {/* Action taken + next step */}
+          {(reply.action_taken || reply.next_step) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {reply.action_taken && (
+                <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">📋 Ação tomada</div>
+                  <div className="text-xs text-zinc-300">{reply.action_taken}</div>
+                </div>
+              )}
+              {reply.next_step && (
+                <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">→ Próximo passo</div>
+                  <div className="text-xs text-zinc-300">{reply.next_step}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Contact info */}
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">📞 Contato</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-zinc-500">WhatsApp:</span>{" "}
+                <span className="text-emerald-300 font-mono">{reply.prospect_whatsapp || reply.prospect_phone || "—"}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Cidade:</span>{" "}
+                <span className="text-zinc-300">{reply.prospect_city || "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="space-y-2 pt-2">
+            {/* Reply button (opens ReplyModal to register a new reply) */}
+            <button
+              onClick={() => {
+                onClose();
+                onOpenReply(lead);
+              }}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-violet-500/15 border border-violet-500/30 py-3 text-sm font-bold text-violet-300 hover:bg-violet-500/25 transition"
+            >
+              <Reply className="h-4 w-4" /> Registrar nova resposta deste lead
+              <kbd className="ml-1 rounded bg-violet-500/20 px-1 py-0.5 text-[9px] font-mono text-violet-300/80">R</kbd>
+            </button>
+
+            {/* WhatsApp button */}
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 py-3 text-sm font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+              >
+                <MessageCircle className="h-4 w-4" /> Abrir WhatsApp do lead
+              </a>
+            )}
+
+            {/* Export button */}
+            {reply.prospect_id && (
+              <a
+                href={`/api/admin/respostas/export?prospect_id=${encodeURIComponent(reply.prospect_id)}&format=csv`}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-500/15 border border-blue-500/30 py-2.5 text-xs font-bold text-blue-300 hover:bg-blue-500/25 transition"
+              >
+                <FileDown className="h-4 w-4" /> Exportar histórico completo (CSV)
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1536,6 +1883,17 @@ function LeadDetailModal({
               <Share2 className="h-3.5 w-3.5" /> Abrir link
             </button>
           </div>
+
+          {/* === EXPORT HISTORY (CSV) === */}
+          {lead.id && (
+            <a
+              href={`/api/admin/respostas/export?prospect_id=${encodeURIComponent(lead.id)}&format=csv`}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-500/15 border border-violet-500/30 py-2.5 text-xs font-bold text-violet-300 hover:bg-violet-500/25 transition"
+              title="Baixar histórico de respostas em CSV"
+            >
+              <FileDown className="h-4 w-4" /> Exportar histórico de respostas (CSV)
+            </a>
+          )}
 
           {/* === PROMPT DO SITE === */}
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.03] p-3">
