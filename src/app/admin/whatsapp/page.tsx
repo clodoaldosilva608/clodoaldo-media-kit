@@ -349,6 +349,222 @@ export default function WhatsAppPage() {
           </div>
         </div>
       </Widget>
+
+      {/* === CONVERSAS === */}
+      <ConversationsPanel />
     </AdminShell>
+  );
+}
+
+// =====================================================
+// CONVERSAS PANEL — lista de conversas + responder
+// =====================================================
+function ConversationsPanel() {
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<any>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/whatsapp/conversations");
+      const json = await resp.json();
+      setConversations(json.conversations || []);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleSendReply() {
+    if (!selected || !replyText) return;
+    setSending(true);
+    setSendResult(null);
+
+    // Get phone from conversation
+    const phone = selected.whatsapp || "";
+    if (!phone) {
+      setSendResult({ ok: false, error: "Sem número de WhatsApp" });
+      setSending(false);
+      return;
+    }
+
+    try {
+      // Try sending via Render Baileys service
+      const resp = await fetch("https://clodoaldo-whatsapp.onrender.com/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": "clodoaldo-whatsapp-secret-2026" },
+        body: JSON.stringify({ phone, text: replyText }),
+      });
+      const json = await resp.json();
+      setSendResult(json);
+
+      if (json.ok) {
+        // Add message to conversation locally
+        setSelected((prev: any) => ({
+          ...prev,
+          messages: [...prev.messages, { type: "sent", text: replyText, timestamp: new Date().toISOString() }],
+        }));
+        setReplyText("");
+      }
+    } catch (e: any) {
+      // Fallback: generate wa.me link
+      const waNum = phone.replace(/\D/g, "");
+      const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(replyText)}`;
+      setSendResult({ ok: false, error: "Envio automático falhou", waLink });
+    }
+    setSending(false);
+  }
+
+  if (loading) {
+    return (
+      <Widget title="Conversas" icon={<MessageCircle className="h-4 w-4 text-blue-400" />} className="mt-4">
+        <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-600" /></div>
+      </Widget>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <Widget title="Conversas" icon={<MessageCircle className="h-4 w-4 text-blue-400" />} className="mt-4">
+        <EmptyState title="Nenhuma conversa ainda" description="As conversas aparecerão aqui quando os leads responderem." icon={<MessageCircle className="h-8 w-8" />} />
+      </Widget>
+    );
+  }
+
+  return (
+    <Widget title={`Conversas (${conversations.length})`} icon={<MessageCircle className="h-4 w-4 text-blue-400" />} className="mt-4" action={
+      <Button variant="outline" size="sm" onClick={load}>
+        <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+      </Button>
+    }>
+      <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+        {/* Lista de conversas */}
+        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+          {conversations.map((conv) => (
+            <button
+              key={conv.prospectId}
+              onClick={() => { setSelected(conv); setSendResult(null); }}
+              className={`block w-full text-left rounded-xl border p-3 transition ${
+                selected?.prospectId === conv.prospectId
+                  ? "border-emerald-500/40 bg-emerald-500/[0.06]"
+                  : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-sm font-bold text-white truncate">{conv.prospectName}</span>
+                {conv.lastMessage && (
+                  <span className="text-[10px] text-zinc-500 shrink-0">
+                    {new Date(conv.lastMessage.timestamp).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+              {conv.lastMessage && (
+                <p className="text-[11px] text-zinc-400 truncate">
+                  {conv.lastMessage.type === "sent" ? "→ " : "← "}
+                  {conv.lastMessage.text}
+                </p>
+              )}
+              <div className="flex items-center gap-1 mt-1">
+                {conv.niche && <span className="text-[9px] text-zinc-500 capitalize">{conv.niche}</span>}
+                {conv.messages.filter((m: any) => m.type === "received").length > 0 && (
+                  <span className="text-[9px] text-blue-400">{conv.messages.filter((m: any) => m.type === "received").length} respostas</span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Conversa selecionada */}
+        {selected ? (
+          <div className="flex flex-col" style={{ minHeight: "400px" }}>
+            {/* Header */}
+            <div className="border-b border-white/5 pb-3 mb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-sm font-bold text-white">{selected.prospectName}</span>
+                  <span className="ml-2 text-[11px] text-zinc-500">{selected.whatsapp || "Sem WhatsApp"}</span>
+                </div>
+                {selected.niche && <Badge variant="info">{selected.niche}</Badge>}
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 space-y-2 overflow-y-auto pr-2" style={{ maxHeight: "350px" }}>
+              {selected.messages.map((msg: any, i: number) => (
+                <div key={i} className={`flex ${msg.type === "sent" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${
+                    msg.type === "sent"
+                      ? "bg-emerald-500/15 border border-emerald-500/20 text-emerald-100"
+                      : "bg-white/5 border border-white/5 text-zinc-200"
+                  }`}>
+                    <p className="text-xs whitespace-pre-wrap">{msg.text}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[9px] text-zinc-500">
+                        {new Date(msg.timestamp).toLocaleString("pt-BR", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                      </span>
+                      {msg.classification && (
+                        <span className="text-[9px] text-amber-400">{msg.classification}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Reply box */}
+            <div className="mt-3 border-t border-white/5 pt-3 space-y-2">
+              <Textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Digite sua resposta…"
+                rows={2}
+              />
+              <div className="flex items-center gap-2">
+                <Button variant="primary" size="sm" onClick={handleSendReply} disabled={sending || !replyText}>
+                  {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  Enviar resposta
+                </Button>
+                {selected.whatsapp && (
+                  <a
+                    href={`https://wa.me/${selected.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(replyText)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    Ou abrir no WhatsApp →
+                  </a>
+                )}
+              </div>
+
+              {sendResult && (
+                <div className={`rounded-lg border p-2 text-xs ${
+                  sendResult.ok ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                }`}>
+                  {sendResult.ok ? (
+                    <span>✅ Mensagem enviada!</span>
+                  ) : (
+                    <span>
+                      ⚠️ {sendResult.error}
+                      {sendResult.waLink && (
+                        <a href={sendResult.waLink} target="_blank" rel="noreferrer" className="ml-2 underline text-emerald-400">
+                          Enviar via WhatsApp →
+                        </a>
+                      )}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center text-zinc-500 text-sm">
+            Selecione uma conversa para ver as mensagens
+          </div>
+        )}
+      </div>
+    </Widget>
   );
 }
