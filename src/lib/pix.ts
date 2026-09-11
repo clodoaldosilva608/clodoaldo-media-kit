@@ -32,10 +32,19 @@ export function generatePixBRCode(payment: PixPayment): string {
   }
 
   // Merchant account info
+  // Normalize PIX key — add country code 55 if it's a phone without it
+  let pixKey = config.pixKey;
+  const digits = pixKey.replace(/\D/g, "");
+  if (digits.length === 10 || digits.length === 11) {
+    // Brazilian phone without country code — add 55
+    pixKey = "55" + digits;
+  }
+
   const gui = tlv("00", "br.gov.bcb.pix");
-  const key = tlv("01", config.pixKey);
+  const key = tlv("01", pixKey);
   let merchantAccount = gui + key;
   if (description) {
+    // PIX spec: field 02 in merchant account = transaction description
     merchantAccount += tlv("02", description.slice(0, 50));
   }
   const merchantAccountTLV = tlv("26", merchantAccount);
