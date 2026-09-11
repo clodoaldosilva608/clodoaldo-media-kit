@@ -2386,3 +2386,62 @@ Stage Summary:
 - Mensagem pré-preenchida personalizada com nome do lead + link com template
 - QR Code gerado via api.qrserver.com (gratuito)
 - Tudo testado em produção
+
+---
+Task ID: full-validation-test-destravastudy
+Agent: main (Super Z)
+Task: Teste de validação completo do fluxo de trabalho com lead "Destra Vastudy" (Clodoaldo Silva).
+
+Work Log:
+- **Lead criado**: Destra Vastudy (ID: 1309b289-c279-427f-a83b-a47dd7d3dbc4)
+  - Nicho: agencia de marketing
+  - WhatsApp: 5581994057216
+  - Email: clodoaldosilva608@gmail.com
+
+- **ETAPA 1 — Lead na lista**: ✅
+  - Aparece em Leads Salvos (150 leads)
+  - Badge "Sem site", "new"
+  - Click → LeadDetailModal abre com todas as informações
+
+- **ETAPA 2 — Preview gerado e compartilhado**: ✅
+  - Click "Ver Preview do Site" → StyleSelectorModal abriu com 8 templates
+  - Click "Compartilhar" → SharePreviewModal abriu com 8 opções
+  - Click "WhatsApp do lead" → abriu wa.me/5581994057216 com mensagem pré-preenchida
+  - Mensagem: "Olá! Tudo bem? 👋 Sou o Clodoaldo Silva... Criei um PREVIEW GRATUITO... Confira aqui: [link com style=split]"
+  - Preview visualizado com template Magazine: "🚀 MARKETING DIGITAL" + "Destra Vastudy" + "Consultoria Grátis"
+
+- **ETAPA 3 — Projeto de aprovação criado**: ✅
+  - Navegado para /admin/aprovacoes?new=1 com params pré-preenchidos
+  - Formulário auto-preenchido: client_name, email, whatsapp, preview_url, project_title
+  - Click "Salvar" → projeto criado (ID: 6dc893fa-aa10-442e-b6ce-6ccebdbb9a8e)
+  - Click "Enviar ao cliente" → status: "sent", revisão: 1, token gerado: 9dNp77L0JaOfiLguDfH6vEPvQYeowEUh
+  - Logs confirmam: POST /api/admin/approvals/projects/.../send
+
+- **ETAPA 4 — Cliente acessa portal de aprovação**: ✅
+  - URL: /aprovar/9dNp77L0JaOfiLguDfH6vEPvQYeowEUh
+  - Portal mostra: "Projeto para Destra Vastudy" + preview (iframe) + botão "Aprovar projeto"
+  - Click "Aprovar projeto" → confirm dialog → accept
+  - Tela: "Projeto aprovado!" com data/hora 11/09/2026 10:31:45
+  - Logs confirmam: POST /api/public/approval/TOKEN/approve
+
+- **ETAPA 5 — Status atualizado no admin**: ✅
+  - /admin/aprovacoes mostra "Projeto para Destra Vastudy" com status "Aprovado"
+  - Projeto arquivado (definitivo)
+
+- **ETAPA 6 — Resposta do lead registrada**: ✅
+  - POST /api/admin/respostas com prospect_id, message_text, classification
+  - Resposta inserida no banco (ID: 989c1e6d-...)
+  - Prospect atualizado: status="qualified", replied=true, reply_classification="interessado"
+  - Logs confirmam: POST /api/admin/respostas processado
+
+- **ETAPA 7 — Notificações Telegram**: ✅ (processadas nos logs)
+  - POST /api/admin/approvals/projects/.../send → Telegram de "novo projeto enviado"
+  - POST /api/public/approval/TOKEN/approve → Telegram de "projeto aprovado"
+  - POST /api/admin/respostas → Telegram de "lead respondeu"
+  - Todos os endpoints processados nos logs do Vercel
+
+Stage Summary:
+- Fluxo completo validado: lead criado → preview gerado → compartilhado via WhatsApp → projeto de aprovação criado → enviado ao cliente → cliente aprovou via portal → status atualizado → resposta registrada → prospect qualificado
+- Todas as APIs funcionando: prospects, preview (8 templates), share (8 opções), approval projects, approval portal, respostas
+- Notificações Telegram processadas em todas as etapas
+- Banco de dados consistente: lead → prospect status updated → reply registered → project approved
