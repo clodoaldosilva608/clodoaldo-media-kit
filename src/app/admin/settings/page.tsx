@@ -311,14 +311,16 @@ function WeeklyReportWidget() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<number>(7);
 
   async function triggerReport() {
-    if (!confirm("Disparar relatório semanal agora? Será enviado por email (se Google conectado) e Telegram.")) return;
+    const periodLabel = period === 7 ? "semanal" : period === 14 ? "quinzenal" : period === 30 ? "mensal" : `${period} dias`;
+    if (!confirm(`Disparar relatório ${periodLabel} agora? Será enviado por email (se Google conectado) e Telegram.`)) return;
     setSending(true);
     setError(null);
     setResult(null);
     try {
-      const resp = await fetch("/api/cron/weekly-report", {
+      const resp = await fetch(`/api/cron/weekly-report?days=${period}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || "bc4d32cc6d0e39e91f62a790f282b0e2c3d3d5fd6e936943"}`,
@@ -340,19 +342,32 @@ function WeeklyReportWidget() {
       icon={<Send className="h-4 w-4 text-emerald-400" />}
       className="mt-4"
       action={
-        <Button variant="primary" size="sm" onClick={triggerReport} disabled={sending}>
-          {sending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Disparando…</> : <><Send className="h-3.5 w-3.5" /> Disparar agora</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            value={String(period)}
+            onChange={e => setPeriod(Number(e.target.value))}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            title="Período do relatório"
+          >
+            <option value="7">7 dias</option>
+            <option value="14">14 dias</option>
+            <option value="30">30 dias</option>
+          </select>
+          <Button variant="primary" size="sm" onClick={triggerReport} disabled={sending}>
+            {sending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Disparando…</> : <><Send className="h-3.5 w-3.5" /> Disparar agora</>}
+          </Button>
+        </div>
       }
     >
       <div className="space-y-3">
         <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-zinc-400">
           <p>
-            O relatório semanal é enviado automaticamente <strong className="text-zinc-200">toda segunda-feira às 09h</strong> (horário de Brasília)
+            O relatório é enviado automaticamente <strong className="text-zinc-200">toda segunda-feira às 09h</strong> (horário de Brasília)
             com o resumo de disparos, respostas, top nichos, campanhas e pipeline.
           </p>
           <p className="mt-2">
-            Use o botão <strong className="text-emerald-300">"Disparar agora"</strong> para testar o envio imediatamente (email + Telegram).
+            Use o seletor de período + botão <strong className="text-emerald-300">"Disparar agora"</strong> para testar o envio imediatamente
+            (email + Telegram) com o período escolhido.
           </p>
         </div>
 

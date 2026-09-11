@@ -56,6 +56,7 @@ export default function AdminParceirosPage() {
   const [draggingId, setDraggingId] = useState<string|null>(null);
   const [dragOverCol, setDragOverCol] = useState<string|null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [replyLead, setReplyLead] = useState<Lead | null>(null);
 
   // === Bulk selection state ===
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -646,6 +647,9 @@ Clodoaldo Silva`;
                         {lead.website&&<a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/25"><ExternalLink className="h-3.5 w-3.5" /> Site</a>}
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||""))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"><MapPin className="h-3.5 w-3.5" /> Maps</a>
                         <button onClick={()=>setExpandedLead(exp?null:lead.place_id||null)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><Copy className="h-3.5 w-3.5" /> Copy + CTA</button>
+                        <button onClick={()=>setReplyLead(lead)} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/25 transition" title="Registrar resposta do lead">
+                          <Mail className="h-3.5 w-3.5" /> Resposta
+                        </button>
                       </div>
                       {exp&&(
                         <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
@@ -930,6 +934,15 @@ Clodoaldo Silva`;
           openPreviewLink={openPreviewLink}
           copyToClipboard={copyToClipboard}
           copiedText={copiedText}
+        />
+      )}
+
+      {/* === REPLY MODAL — registrar resposta do lead === */}
+      {replyLead && (
+        <ReplyModal
+          lead={replyLead}
+          onClose={() => setReplyLead(null)}
+          onSaved={loadProspects}
         />
       )}
 
@@ -1897,6 +1910,226 @@ function BulkSendModal({
           <Button variant="outline" onClick={onClose}>
             Fechar
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// REPLY MODAL — registrar resposta do lead
+// =====================================================
+function ReplyModal({
+  lead,
+  onClose,
+  onSaved,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [messageText, setMessageText] = useState("");
+  const [classification, setClassification] = useState<string>("interessado");
+  const [actionTaken, setActionTaken] = useState("");
+  const [nextStep, setNextStep] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Body scroll lock + ESC handler
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  const classifications = [
+    { value: "interessado", label: "🔥 Interessado", desc: "Quer saber mais" },
+    { value: "meeting_ready", label: "📅 Quer reunião", desc: "Pronto para agendar" },
+    { value: "permission_to_send", label: "✅ Permitiu enviar info", desc: "Autorizou enviar materiais" },
+    { value: "pricing_question", label: "💰 Pergunta de preço", desc: "Quer saber valores" },
+    { value: "ambiguous", label: "❓ Ambíguo", desc: "Resposta incerta" },
+    { value: "opt_out", label: "🚫 Não quer mais receber", desc: "Pediu para não incomodar" },
+    { value: "unclassified", label: "📋 Sem classificação", desc: "Ainda não classificado" },
+  ];
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!messageText.trim()) {
+      setError("Digite a mensagem recebida");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const prospectId = lead.id || lead.place_id || "";
+      const resp = await fetch("/api/admin/respostas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          message_text: messageText,
+          classification,
+          action_taken: actionTaken || undefined,
+          next_step: nextStep || undefined,
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || `Erro ${resp.status}`);
+      setSuccess(true);
+      // Refresh prospects list (updates status, replied flag)
+      await onSaved();
+      // Auto-close after 2 seconds
+      setTimeout(() => onClose(), 2000);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        {/* Header sticky */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Mail className="h-5 w-5 text-violet-400" />
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">
+                Registrar resposta
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              <strong className="text-zinc-300">{lead.name}</strong>
+              {lead.niche && <span className="ml-1.5">• {lead.niche}</span>}
+              {lead.city && <span className="ml-1.5">• {lead.city}</span>}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-5">
+          {success ? (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-2">
+              <CheckCircle2 className="h-12 w-12 text-emerald-400 mx-auto" />
+              <h4 className="text-base font-bold text-emerald-300">Resposta registrada!</h4>
+              <p className="text-xs text-zinc-400">
+                Lead atualizado e notificação Telegram enviada. Fechando automaticamente...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Lead info */}
+              <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-zinc-500">WhatsApp:</span>{" "}
+                    <span className="text-emerald-300 font-mono">{lead.whatsapp || lead.phone || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">Status atual:</span>{" "}
+                    <span className="text-blue-300">{lead.status || "new"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div>
+                <Label>Mensagem recebida *</Label>
+                <Textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  rows={4}
+                  placeholder="Cole aqui a mensagem que o lead enviou no WhatsApp..."
+                  className="resize-y"
+                />
+                <p className="mt-1 text-[10px] text-zinc-500">
+                  Dica: copie a mensagem diretamente do WhatsApp (Ctrl+C) e cole aqui
+                </p>
+              </div>
+
+              {/* Classification */}
+              <div>
+                <Label>Classificação</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {classifications.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setClassification(c.value)}
+                      className={`text-left rounded-lg border p-2.5 transition ${
+                        classification === c.value
+                          ? "border-violet-500/50 bg-violet-500/10"
+                          : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <div className="text-sm font-bold text-white">{c.label}</div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5">{c.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action taken */}
+              <div>
+                <Label>Ação tomada (opcional)</Label>
+                <Input
+                  value={actionTaken}
+                  onChange={(e) => setActionTaken(e.target.value)}
+                  placeholder="Ex: Respondi via WhatsApp, enviei proposta..."
+                />
+              </div>
+
+              {/* Next step */}
+              <div>
+                <Label>Próximo passo (opcional)</Label>
+                <Input
+                  value={nextStep}
+                  onChange={(e) => setNextStep(e.target.value)}
+                  placeholder="Ex: Agendar reunião, enviar orçamento..."
+                />
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="primary" disabled={saving || !messageText.trim()} className="flex-1">
+                  {saving ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</>
+                  ) : (
+                    <><Mail className="h-4 w-4" /> Registrar + notificar Telegram</>
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>

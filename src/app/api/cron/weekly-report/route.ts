@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const report = await generateWeeklyReport();
+  // Allow custom period via query param (default: 7 days for weekly cron)
+  const url = new URL(req.url);
+  const days = Math.min(Math.max(Number(url.searchParams.get("days") || 7), 1), 90);
+
+  const report = await generateWeeklyReport(days);
   if (report.error) {
     return NextResponse.json({ error: report.error }, { status: 500 });
   }
@@ -50,9 +54,10 @@ export async function POST(req: NextRequest) {
       dest = process.env.ADMIN_EMAIL || "clodoaldo608@gmail.com";
     }
     if (dest) {
+      const periodLabel = days === 7 ? "Semanal" : days === 14 ? "Quinzenal" : days === 30 ? "Mensal" : `${days} dias`;
       const result = await sendEmail(
         dest,
-        `📊 Relatório Semanal — Clodoaldo Silva (${report.period.start} a ${report.period.end})`,
+        `📊 Relatório ${periodLabel} — Clodoaldo Silva (${report.period.start} a ${report.period.end})`,
         report.html
       );
       emailSent = result.ok;
@@ -83,7 +88,7 @@ export async function POST(req: NextRequest) {
 // =====================================================
 // Report generation
 // =====================================================
-async function generateWeeklyReport(): Promise<{
+async function generateWeeklyReport(days: number = 7): Promise<{
   period: { start: string; end: string };
   stats: any;
   html: string;
@@ -91,11 +96,11 @@ async function generateWeeklyReport(): Promise<{
   error?: string;
 }> {
   const now = new Date();
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - days);
 
   const formatDate = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const period = { start: formatDate(weekAgo), end: formatDate(now) };
+  const period = { start: formatDate(startDate), end: formatDate(now) };
 
   try {
     const client = await getMeucorrePool().connect();
@@ -109,7 +114,7 @@ async function generateWeeklyReport(): Promise<{
             count(DISTINCT prospect_id)::int as unique_leads
          FROM public.clodoaldo_envios
          WHERE sent_at >= $1`,
-        [weekAgo.toISOString()]
+        [startDate.toISOString()]
       );
       const envios = enviosStats.rows[0] || {};
 
@@ -124,7 +129,7 @@ async function generateWeeklyReport(): Promise<{
             count(*) filter (where classification = 'ambiguous')::int as ambiguous
          FROM public.clodoaldo_respostas
          WHERE received_at >= $1`,
-        [weekAgo.toISOString()]
+        [startDate.toISOString()]
       );
       const respostas = respostasStats.rows[0] || {};
 
@@ -140,7 +145,7 @@ async function generateWeeklyReport(): Promise<{
          GROUP BY p.niche
          ORDER BY envios DESC
          LIMIT 5`,
-        [weekAgo.toISOString()]
+        [startDate.toISOString()]
       );
 
       // Top campaigns this week
@@ -154,7 +159,7 @@ async function generateWeeklyReport(): Promise<{
          GROUP BY campaign
          ORDER BY total DESC
          LIMIT 5`,
-        [weekAgo.toISOString()]
+        [startDate.toISOString()]
       );
 
       // Pipeline breakdown
@@ -180,7 +185,7 @@ async function generateWeeklyReport(): Promise<{
          WHERE r.received_at >= $1
          ORDER BY r.received_at DESC
          LIMIT 10`,
-        [weekAgo.toISOString()]
+        [startDate.toISOString()]
       );
 
       const replyRate = envios.sent > 0 ? Math.round((respostas.total / envios.sent) * 100) : 0;
