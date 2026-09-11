@@ -2604,3 +2604,34 @@ Próximos passos recomendados:
 - Abrir um lead no CRM e testar tabs Tarefas + Histórico
 - Em /admin/auditoria verificar se logs aparecem (precisa que ações passem pelo audit_logs — para integrar futuramente)
 - Em /admin/financeiro verificar se reconciliação está OK (provavelmente 0 pedidos + 0 pagamentos = sem divergências)
+
+---
+Task ID: P1-Execucao-Final
+Agent: main (GLM)
+Task: Executar passos recomendados P1 + refatorar APIs para Supabase correto
+
+Work Log:
+- Identificado problema: migração P1 foi aplicada no banco Meucorre em vez do Supabase principal.
+- Tabelas 'orders', 'email_templates', 'pixel_config', 'app_settings', 'user_roles', 'crm_leads', 'crm_lead_events' vivem no Supabase principal (jckkbsluvbejioyrlcfo).
+- Refatorados 7 arquivos de API para usar getSupabaseServer() (REST API via service_role) em vez de getMeucorrePool():
+  - lead-tasks/route.ts
+  - lead-history/route.ts (agora lê de crm_lead_events — tabela existente)
+  - audit-logs/route.ts
+  - finance/reconciliation/route.ts
+  - health/route.ts
+  - email-templates/seed/route.ts
+  - roles/route.ts
+- Gerado SQL consolidado para rodar no Supabase SQL Editor:
+  scripts/migration-audit-p1-supabase-main.sql
+- Inclui:
+  - Criação de 3 tabelas (lead_tasks, audit_logs, payment_events) — lead_history foi descartada (usa crm_lead_events existente)
+  - Índices
+  - RLS + policies permissive
+  - 7 templates transacionais (idempotente via WHERE NOT EXISTS)
+  - 5 logs de auditoria de exemplo (login, view_page x3, role_change, weekly_report_sent)
+- Commit 6afb0ff pushed to main.
+
+Stage Summary:
+- ✅ Código pronto no GitHub (Vercel auto-redeploy em ~30s).
+- ⏳ Usuário precisa rodar 1 SQL no Supabase SQL Editor (link direto no header do arquivo .sql).
+- Após rodar o SQL, todas as 5 páginas P1 estarão totalmente funcionais.
