@@ -32,6 +32,9 @@ import {
   RotateCcw,
   Users2,
   ClipboardCheck,
+  Activity,
+  Coins,
+  History,
 } from "lucide-react";
 
 interface NavItem {
@@ -64,6 +67,9 @@ const NAV: NavItem[] = [
   { href: "/admin/subscriptions", label: "Assinaturas", icon: CreditCard, group: "marketing" },
   { href: "/admin/notifications", label: "Notificações", icon: Bell, group: "config" },
   { href: "/admin/settings", label: "Configurações", icon: Settings, group: "config" },
+  { href: "/admin/health", label: "Saúde Operacional", icon: Activity, group: "config" },
+  { href: "/admin/financeiro", label: "Reconciliação", icon: Coins, group: "config" },
+  { href: "/admin/auditoria", label: "Logs de Auditoria", icon: History, group: "config" },
 ];
 
 const GROUP_LABELS: Record<NavItem["group"], string> = {

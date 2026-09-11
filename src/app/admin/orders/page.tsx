@@ -131,7 +131,18 @@ export default function AdminOrdersPage() {
         {loading ? (
           <div className="py-12 text-center text-sm text-zinc-500">Carregando…</div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Nenhum pedido encontrado" description="Ajuste os filtros ou aguarde novos pedidos." icon={<ShoppingCart className="h-8 w-8" />} />
+          <EmptyState
+            title="Nenhum pedido ainda"
+            description="Pedidos são criados quando um cliente conclui o checkout."
+            icon={<ShoppingCart className="h-8 w-8" />}
+            steps={[
+              "Configure PIX em /admin/settings para habilitar pagamento.",
+              "Teste o fluxo: acesse /servicos/[slug] → 'Contratar' → finalizar checkout.",
+              "Confirme o pedido em /admin/orders e marque como 'paid' após receber PIX.",
+              "Use a página de reconciliação (/admin/financeiro) para conferir pagamentos vs pedidos.",
+            ]}
+            hint="Pedidos têm 4 status: pending → paid → delivered → refunded. CSV exportável contém apenas campos essenciais (sem dados sensíveis)."
+          />
         ) : (
           <div className="-mx-2 overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">

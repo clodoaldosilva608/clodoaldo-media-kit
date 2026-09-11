@@ -150,8 +150,18 @@ export default function AdminEmailPage() {
             ) : templates.length === 0 ? (
               <EmptyState
                 title="Nenhum template"
-                description="Crie templates para boas-vindas, carrinho abandonado, pós-compra, etc."
+                description="Crie templates transacionais para automatizar seu funil."
                 icon={<Mail className="h-8 w-8" />}
+                steps={[
+                  "Crie 'Boas-vindas' (trigger: welcome) — enviado quando lead se cadastra.",
+                  "Crie 'Confirmação de briefing' (manual) — quando cliente envia briefing.",
+                  "Crie 'Carrinho abandonado' (trigger: abandoned_cart) — recupera checkouts parados.",
+                  "Crie 'Confirmação de compra' (manual) — quando pagamento é confirmado.",
+                  "Crie 'Entrega de produto digital' (manual) — para liberar acesso.",
+                  "Crie 'Mudança de status' (manual) — avisa cliente sobre progresso.",
+                  "Crie 'Lead sem resposta' (manual) — reativa leads que não responderam em 7 dias.",
+                ]}
+                hint="Email transacional ≠ email marketing. Opt-in comercial deve ser separado do aceite necessário para atender o pedido (LGPD)."
                 action={<Button variant="primary" onClick={() => setEditing({ ...EMPTY })}><Plus className="h-3.5 w-3.5" /> Criar template</Button>}
               />
             ) : (
@@ -192,7 +202,18 @@ export default function AdminEmailPage() {
             {loading ? (
               <div className="py-12 text-center text-sm text-zinc-500">Carregando…</div>
             ) : subscribers.length === 0 ? (
-              <EmptyState title="Nenhum inscrito" description="Inscreveremos automaticamente leads e clientes." icon={<Users className="h-8 w-8" />} />
+              <EmptyState
+                title="Nenhum inscrito"
+                description="Leads e clientes são inscritos automaticamente nos seus templates."
+                icon={<Users className="h-8 w-8" />}
+                steps={[
+                  "Crie um template 'Boas-vindas' (trigger: welcome) para receber novos leads.",
+                  "Todo lead do quiz/formulário vira inscrito automaticamente.",
+                  "Todo cliente que finaliza checkout é inscrito.",
+                  "Opt-in comercial é separado do aceite necessário para atendimento (LGPD).",
+                ]}
+                hint="Inscrições podem ser revogadas a qualquer momento pelo link de descadastro em cada email."
+              />
             ) : (
               <div className="-mx-2 overflow-x-auto">
                 <table className="w-full min-w-[600px] text-left text-sm">

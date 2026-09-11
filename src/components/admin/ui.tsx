@@ -121,17 +121,36 @@ export function EmptyState({
   description,
   action,
   icon,
+  steps,
+  hint,
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
   icon?: React.ReactNode;
+  steps?: string[];
+  hint?: string;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
       {icon && <div className="mb-3 text-zinc-500">{icon}</div>}
       <h4 className="text-sm font-semibold text-zinc-300">{title}</h4>
       {description && <p className="mt-1 max-w-sm text-xs text-zinc-500">{description}</p>}
+      {steps && steps.length > 0 && (
+        <ol className="mt-4 max-w-md space-y-1.5 text-left text-xs text-zinc-400">
+          {steps.map((s, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-300">{i + 1}</span>
+              <span>{s}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {hint && (
+        <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-3 py-1.5 text-[10px] text-amber-200/80">
+          💡 {hint}
+        </div>
+      )}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
