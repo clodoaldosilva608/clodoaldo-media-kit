@@ -32,13 +32,11 @@ export function generatePixBRCode(payment: PixPayment): string {
   }
 
   // Merchant account info
-  // Normalize PIX key — add country code 55 if it's a phone without it
-  let pixKey = config.pixKey;
-  const digits = pixKey.replace(/\D/g, "");
-  if (digits.length === 10 || digits.length === 11) {
-    // Brazilian phone without country code — add 55
-    pixKey = "55" + digits;
-  }
+  // Use PIX key as-is — banks register keys in different formats
+  // Nubank: phone without 55 (81971133707)
+  // Some banks: with 55 (5581971133707)
+  // User should register the key exactly as shown in their bank app
+  const pixKey = config.pixKey;
 
   const gui = tlv("00", "br.gov.bcb.pix");
   const key = tlv("01", pixKey);
