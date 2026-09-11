@@ -2338,3 +2338,51 @@ Stage Summary:
 - Cada template tem layout, fonte e visual próprios
 - Todos funcionam com os 20 nichos (conteúdo específico)
 - Tudo testado em produção
+
+---
+Task ID: share-preview-modal
+Agent: main (Super Z)
+Task: Adicionar botão "Compartilhar" que abre modal com redes sociais, email, WhatsApp e QR Code.
+
+Work Log:
+- **SharePreviewModal criado** (parceiros/page.tsx):
+  - 8 opções de compartilhamento:
+    1. **WhatsApp do lead** — abre wa.me com mensagem pré-preenchida personalizada
+    2. **WhatsApp outro** — para compartilhar com outro contato
+    3. **Telegram** — compartilha via Telegram com mensagem
+    4. **Email** — abre mailto com subject + body pré-preenchidos
+    5. **Facebook** — compartilha link no Facebook
+    6. **Twitter / X** — posta no Twitter com texto pré-preenchido
+    7. **LinkedIn** — compartilha no LinkedIn
+    8. **QR Code** — gera QR code 300x300 para o cliente escanear
+
+  - **Mensagem pré-preenchida personalizada**: "Olá! Tudo bem? 👋 Sou o Clodoaldo Silva... Criei um PREVIEW GRATUITO do site profissional que faria para o [nome do lead]... Confira aqui: [link com estilo]..."
+  - **Link inclui template selecionado**: ?style=magazine (cliente vê o template exato escolhido)
+  - **QR Code via api.qrserver.com**: gratuito, sem API key, fundo escuro + pontos brancos
+  - **Botão "Copiar texto"** da mensagem para uso manual
+  - **Botão "Abrir preview no navegador"** para visualização rápida
+  - **Link copiável** com botão "Copiar"
+  - **Dica contextual**: explica que o link inclui o template e sugere WhatsApp vs QR Code
+
+- **Botão "Compartilhar" adicionado no StyleSelectorModal**:
+  - Aparece ao lado de "Visualizar" e "Copiar link"
+  - Ao clicar → abre SharePreviewModal com o template atualmente selecionado
+  - Passa styleId para o share modal
+
+- **Estados no componente principal**:
+  - shareLead: controla abertura do SharePreviewModal
+  - shareStyleId: template selecionado para compartilhar
+
+- **Testado via agent-browser**:
+  - Login → Leads Salvos → Restaurante Do Mar e Brasa → Ver Preview → StyleSelectorModal abriu
+  - Clicou "Compartilhar" → SharePreviewModal abriu
+  - 8 opções visíveis: WhatsApp do lead, WhatsApp outro, Telegram, Email, Facebook, Twitter/X, LinkedIn, QR Code ✅
+  - Clicou "QR Code" → QR code 300x300 gerado e exibido ✅
+  - Mensagem pré-preenchida visível com botão "Copiar texto" ✅
+
+Stage Summary:
+- 1 arquivo modificado: parceiros/page.tsx (+150 linhas SharePreviewModal + botão no StyleSelectorModal)
+- 8 opções de compartilhamento: WhatsApp lead, WhatsApp outro, Telegram, Email, Facebook, Twitter/X, LinkedIn, QR Code
+- Mensagem pré-preenchida personalizada com nome do lead + link com template
+- QR Code gerado via api.qrserver.com (gratuito)
+- Tudo testado em produção

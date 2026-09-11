@@ -60,6 +60,8 @@ export default function AdminParceirosPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [replyLead, setReplyLead] = useState<Lead | null>(null);
   const [styleSelectorLead, setStyleSelectorLead] = useState<Lead | null>(null);
+  const [shareLead, setShareLead] = useState<Lead | null>(null);
+  const [shareStyleId, setShareStyleId] = useState<string>("split");
   const [replyVersion, setReplyVersion] = useState(0); // increments when a reply is saved → triggers LeadDetailModal refresh
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({}); // prospect_id → reply count
   const [showRepliedOnly, setShowRepliedOnly] = useState(false); // filter in "Leads Salvos"
@@ -1079,6 +1081,16 @@ Clodoaldo Silva`;
           onClose={() => setStyleSelectorLead(null)}
           onSelectStyle={(styleId) => openPreviewWithStyle(styleSelectorLead, styleId)}
           getPreviewLinkWithStyle={getPreviewLinkWithStyle}
+          onShare={(styleId) => { setShareStyleId(styleId); setShareLead(styleSelectorLead); }}
+        />
+      )}
+
+      {/* === SHARE PREVIEW MODAL === */}
+      {shareLead && (
+        <SharePreviewModal
+          lead={shareLead}
+          styleId={shareStyleId}
+          onClose={() => setShareLead(null)}
         />
       )}
 
@@ -2693,11 +2705,13 @@ function StyleSelectorModal({
   onClose,
   onSelectStyle,
   getPreviewLinkWithStyle,
+  onShare,
 }: {
   lead: Lead;
   onClose: () => void;
   onSelectStyle: (styleId: string) => void;
   getPreviewLinkWithStyle: (lead: Lead, styleId: string) => string;
+  onShare: (styleId: string) => void;
 }) {
   const [styles, setStyles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2898,6 +2912,13 @@ function StyleSelectorModal({
                     {copiedStyle === current.id ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
                     {copiedStyle === current.id ? "Copiado!" : "Copiar link"}
                   </button>
+                  <button
+                    onClick={() => onShare(current.id)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-500/15 border border-violet-500/30 px-4 py-3.5 text-sm font-bold text-violet-300 hover:bg-violet-500/25 transition"
+                    title="Compartilhar preview por WhatsApp, email, redes sociais"
+                  >
+                    <Share2 className="h-4 w-4" /> Compartilhar
+                  </button>
                 </div>
               )}
 
@@ -2911,6 +2932,155 @@ function StyleSelectorModal({
               </div>
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// SHARE PREVIEW MODAL — compartilhar preview em redes sociais
+// =====================================================
+function SharePreviewModal({
+  lead,
+  styleId,
+  onClose,
+}: {
+  lead: Lead;
+  styleId: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  const leadId = lead.id || lead.place_id || "";
+  const previewUrl = `https://clodoaldo.vercel.app/api/preview?lead=${encodeURIComponent(leadId)}&style=${encodeURIComponent(styleId)}`;
+
+  const waMessage = `Olá! Tudo bem? 👋\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um PREVIEW GRATUITO do site profissional que faria para o ${lead.name} — já com o nome, avaliação e endereço de vocês preenchidos! 🎨\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só me chamar aqui no WhatsApp! 🙌\n\n📱 (81) 92005-1068\n🌐 clodoaldo.vercel.app`;
+
+  const waRaw = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
+  const waNum = waRaw.startsWith("55") ? waRaw : (waRaw.length === 10 || waRaw.length === 11 ? "55" + waRaw : waRaw);
+
+  const emailSubject = `Preview gratuito do site para ${lead.name} 🎨`;
+  const emailBody = `Olá, equipe ${lead.name}!\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um preview gratuito do site profissional que faria para vocês — já com o nome, avaliação e endereço preenchidos!\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só responder este email ou me chamar no WhatsApp: (81) 92005-1068.\n\nAbraço,\nClodoaldo Silva\n🌐 clodoaldo.vercel.app`;
+
+  const shareOptions = [
+    { id: "wa-lead", label: "WhatsApp do lead", desc: "Mensagem pronta", emoji: "💬", color: "emerald", href: waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(waMessage)}` : null },
+    { id: "wa-other", label: "WhatsApp outro", desc: "Outro contato", emoji: "📲", color: "emerald", href: `https://wa.me/?text=${encodeURIComponent(waMessage)}` },
+    { id: "telegram", label: "Telegram", desc: "Via Telegram", emoji: "✈️", color: "blue", href: `https://t.me/share/url?url=${encodeURIComponent(previewUrl)}&text=${encodeURIComponent(waMessage)}` },
+    { id: "email", label: "Email", desc: "Cliente de email", emoji: "📧", color: "amber", href: `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}` },
+    { id: "facebook", label: "Facebook", desc: "Compartilhar", emoji: "👍", color: "blue", href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(previewUrl)}` },
+    { id: "twitter", label: "Twitter / X", desc: "Postar", emoji: "🐦", color: "blue", href: `https://twitter.com/intent/tweet?url=${encodeURIComponent(previewUrl)}&text=${encodeURIComponent(`Confira o preview do site que criei para ${lead.name}! 🎨`)}` },
+    { id: "linkedin", label: "LinkedIn", desc: "Compartilhar", emoji: "💼", color: "blue", href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(previewUrl)}` },
+    { id: "qr", label: "QR Code", desc: "Escanear celular", emoji: "📱", color: "violet", href: null, action: () => setShowQR(!showQR) },
+  ];
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(previewUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const cc: Record<string, string> = {
+    emerald: "bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25",
+    blue: "bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25",
+    amber: "bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25",
+    violet: "bg-violet-500/15 border-violet-500/30 text-violet-300 hover:bg-violet-500/25",
+  };
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} className="relative w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Share2 className="h-5 w-5 text-violet-400" />
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">Compartilhar Preview</h3>
+            </div>
+            <p className="mt-1 text-xs text-zinc-400"><strong className="text-zinc-300">{lead.name}</strong><span className="ml-1.5">• Template: {styleId}</span></p>
+          </div>
+          <button onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-4">
+          {/* Link + copy */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Link do preview</div>
+            <div className="flex items-center gap-2">
+              <input type="text" value={previewUrl} readOnly className="flex-1 rounded-lg bg-black/30 border border-white/10 px-3 py-2 text-xs text-zinc-300 font-mono truncate" />
+              <button onClick={handleCopyLink} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/25 transition">
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copiado!" : "Copiar"}
+              </button>
+            </div>
+          </div>
+
+          {/* QR Code */}
+          {showQR && (
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-6 text-center space-y-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-violet-300">📱 QR Code — peça para o cliente escanear</div>
+              <div className="flex justify-center">
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&bgcolor=0a0a0a&color=FFFFFF&data=${encodeURIComponent(previewUrl)}`} alt="QR Code" className="rounded-xl border border-white/10" width={250} height={250} />
+              </div>
+              <p className="text-[11px] text-zinc-500">O cliente aponta a câmera do celular → abre o preview direto no navegador</p>
+            </div>
+          )}
+
+          {/* Share options */}
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Compartilhar via</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {shareOptions.map((opt) => {
+                if (opt.href === null && opt.action) {
+                  return (
+                    <button key={opt.id} onClick={opt.action} className={`rounded-xl border p-4 text-center transition ${cc[opt.color]}`}>
+                      <div className="text-2xl mb-2">{opt.emoji}</div>
+                      <div className="text-xs font-bold">{opt.label}</div>
+                      <div className="text-[10px] opacity-60 mt-1">{opt.desc}</div>
+                    </button>
+                  );
+                }
+                if (opt.href === null) return null;
+                return (
+                  <a key={opt.id} href={opt.href} target="_blank" rel="noreferrer" className={`rounded-xl border p-4 text-center transition ${cc[opt.color]}`}>
+                    <div className="text-2xl mb-2">{opt.emoji}</div>
+                    <div className="text-xs font-bold">{opt.label}</div>
+                    <div className="text-[10px] opacity-60 mt-1">{opt.desc}</div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Message preview */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">💬 Mensagem pré-preenchida</span>
+              <button onClick={() => navigator.clipboard.writeText(waMessage)} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">Copiar texto</button>
+            </div>
+            <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans leading-relaxed max-h-40 overflow-y-auto">{waMessage}</pre>
+          </div>
+
+          {/* Open preview */}
+          <a href={previewUrl} target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 py-3 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition">
+            <Eye className="h-4 w-4" /> Abrir preview no navegador
+          </a>
+
+          {/* Helper */}
+          <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.04] p-3 text-[11px] text-violet-200/80 flex items-start gap-2">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <div><strong>Dica:</strong> O link inclui o template selecionado ({styleId}). Use o <strong>WhatsApp do lead</strong> para envio direto, ou o <strong>QR Code</strong> se estiver com o cliente presencialmente.</div>
+          </div>
         </div>
       </div>
     </div>
