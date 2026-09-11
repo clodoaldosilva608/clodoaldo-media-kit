@@ -1793,3 +1793,39 @@ Stage Summary:
 - Telegram: enviado com sucesso (notificação de reply + relatório semanal)
 - Resposta de lead: registrada via UI, prospect atualizado, Telegram enviado
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: period-selector-and-reply-button
+Agent: main (Super Z)
+Task: Adicionar seletor de período no "Disparar relatório agora" + botão "Registrar resposta" na aba Buscar.
+
+Work Log:
+- **Seletor de período no relatório** (weekly-report/route.ts + settings/page.tsx):
+  - Backend: generateWeeklyReport agora aceita parâmetro `days` (default 7, min 1, max 90)
+  - POST /api/cron/weekly-report?days=14 gera relatório dos últimos 14 dias
+  - Subject do email muda conforme período: "Relatório Semanal" (7d), "Relatório Quinzenal" (14d), "Relatório Mensal" (30d)
+  - Frontend: WeeklyReportWidget agora tem select com 3 opções (7/14/30 dias) + botão "Disparar agora"
+  - Confirm dialog mostra o período escolhido: "Disparar relatório quinzenal agora?"
+  - Testado: 14 dias selecionados → relatório gerado período 28/08/2026 a 11/09/2026 → email + Telegram enviados ✅
+
+- **Botão "Resposta" na aba Buscar** (parceiros/page.tsx):
+  - Adicionado estado `replyLead` no componente principal
+  - Adicionado botão violeta "Resposta" (ícone Mail) ao lado de "Copy + CTA" em cada card de lead
+  - Criado componente ReplyModal completo:
+    - Header com nome do lead, nicho, cidade
+    - Card de info: WhatsApp + status atual
+    - Textarea para mensagem recebida (com dica de copiar do WhatsApp)
+    - Grid de 7 opções de classificação visual (Interessado, Quer reunião, Permitiu info, Pergunta de preço, Ambíguo, Não quer, Sem classificação) — cada uma com emoji + descrição
+    - Campos opcionais: ação tomada + próximo passo
+    - Botão "Registrar + notificar Telegram" (desabilitado até preencher mensagem)
+    - Body scroll lock + ESC handler
+    - Tela de sucesso: "Resposta registrada!" com auto-close em 2s
+  - Ao salvar: chama /api/admin/respostas (que registra no banco + atualiza prospect + envia Telegram)
+  - Após salvar: chama onSaved (loadProspects) para atualizar a lista
+  - Testado: clicou "Resposta" em "Bar Restaurante Santa Cruz" → preencheu mensagem + classificação "interessado" + ação + próximo passo → registrou com sucesso → prospect status mudou para "qualified" → Telegram enviado
+
+Stage Summary:
+- 3 arquivos modificados: weekly-report/route.ts (+10 linhas days param), settings/page.tsx (+15 linhas period select), parceiros/page.tsx (+200 linhas ReplyModal + botão)
+- Seletor de período: 7/14/30 dias funcionando end-to-end (UI + backend + email subject)
+- Botão "Resposta" na aba Buscar: modal completo com 7 classificações + campos opcionais + notificação Telegram automática
+- Tudo testado em produção via agent-browser
