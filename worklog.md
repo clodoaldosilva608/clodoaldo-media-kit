@@ -2143,3 +2143,70 @@ Stage Summary:
 - Modal carrossel com capas SVG, setas, dots, grid de thumbnails
 - API aceita ?style= para gerar preview com qualquer estilo
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: premium-styles-with-real-photos
+Agent: main (Super Z)
+Task: Elevar os 4 estilos de preview com fotos reais (Unsplash), fontes premium (Google Fonts) e animações sofisticadas.
+
+Work Log:
+- **Criado niche-photos.ts** (novo, 250 linhas):
+  - Mapa de fotos reais do Unsplash para 20 nichos
+  - Cada nicho tem: hero (1600px), about (1000px), gallery (6 fotos 600px), features (3 fotos 600px)
+  - URLs Unsplash diretas (sem API key necessária): images.unsplash.com/photo-XXX?w=800&q=80&auto=format&fit=crop
+  - Função getNichePhotos(niche) com fallback genérico
+
+- **4 estilos premium reescritos** (src/lib/styles/):
+  1. **dark-premium.ts** (~150 linhas):
+     - Glassmorphism real (backdrop-filter:blur(24px))
+     - Hero com foto fullscreen do Unsplash + overlay gradient
+     - Google Fonts: Space Grotesk (headings) + Inter (body)
+     - Animações: fadeInUp nos cards, marquee animado
+     - Cards com foto de background + overlay
+     - Mapa com filter invert para dark mode
+     - CTA com foto background + blur
+
+  2. **light-minimal.ts** (~120 linhas):
+     - Fundo claro #fafafa, cards brancos com sombras suaves
+     - Google Fonts: Sora (headings) + Inter (body)
+     - Hero sem foto, tipografia gigante (clamp até 5rem)
+     - Galeria com fotos reais
+     - CTA dark (preto) com border-radius 40px
+     - Footer dark
+
+  3. **bold-editorial.ts** (~130 linhas):
+     - Hero com foto fullscreen + overlay colorido do nicho
+     - Tipografia gigante (clamp até 9rem)
+     - Google Fonts: Space Grotesk
+     - Nav com mix-blend-mode:difference
+     - Marquee com "/" como separador
+     - Features com fotos de background + numeração 01/02/03
+     - Stats em bordas (grid com border-right)
+     - CTA com foto fullscreen + overlay
+
+  4. **elegant-classic.ts** (~140 linhas):
+     - Google Fonts: Playfair Display (serif) + Inter
+     - Hero com foto + overlay sepia
+     - Divisores elegantes (✦ com linhas)
+     - Features com foto circular + texto
+     - Stats em bordas
+     - Depoimentos com citação em itálico serif
+     - CTA com foto + overlay escuro
+
+- **preview-styles.ts atualizado**:
+  - Importa os 4 novos renderizadores
+  - Cada estilo delega para seu renderizador premium
+  - Interfaces PreviewStyle, StyleContext, NicheConfig mantidas
+
+- **Testado via agent-browser** (4 estilos com lead real):
+  - Dark Premium: "✂️ BARBEARIA PREMIUM" + "Empório Barbearia" + marquee "CORTE DEGRADÊ" + features com fotos + depoimentos ✅
+  - Light Minimal: fundo claro + Sora + "Empório Barbearia" + galeria com fotos ✅
+  - Bold Editorial: hero fullscreen + "Empório Barbearia" + tipografia gigante + marquee ✅
+  - Elegant Classic: Playfair Display + "Empório Barbearia" + divisores ✦ + features circulares ✅
+  - Screenshots salvos (300KB-600KB cada, confirmando fotos reais carregando)
+
+Stage Summary:
+- 6 arquivos criados/modificados: niche-photos.ts (novo), styles/dark-premium.ts (novo), styles/light-minimal.ts (novo), styles/bold-editorial.ts (novo), styles/elegant-classic.ts (novo), preview-styles.ts (refatorado)
+- 4 estilos premium com: fotos reais do Unsplash, Google Fonts (Space Grotesk, Sora, Playfair Display, Inter), animações (fadeInUp, marquee, hover), glassmorphism real
+- 20 nichos com fotos específicas (hero, galeria, features, about)
+- Tudo testado em produção via agent-browser — 4 screenshots gerados confirmando visual premium
