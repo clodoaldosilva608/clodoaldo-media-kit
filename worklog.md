@@ -2522,3 +2522,57 @@ Stage Summary:
 - ✅ Strategy is now: cron → IA messages → Telegram + /admin/leads-crm → wa.me link → 1-click send.
 - ✅ Open-WA service on Railway no longer needed; user can cancel/deploy it.
 - ✅ GitHub repo clodoaldosilva608/clodoaldo-openwa left intact for future use if needed.
+
+---
+Task ID: Auditoria-Admin-P0-Correcoes
+Agent: main (GLM)
+Task: Aplicar correções P0 da Auditoria da Área Administrativa (sem trocar senha)
+
+Work Log:
+- Lida auditoria enviada pelo usuário (Auditoria_da_Área_Administrativa_—_Clodoaldo_Silva.docx).
+- User explicitou: PULAR item 10 (rotação de senha).
+- Mapeados 4 achados P0 acionáveis em código:
+  - P0-A: inconsistência Analytics (Visitas: 0 vs Funil: 1 vs /quiz: 14)
+  - P0-B: alerta Kiwify falso-positivo
+  - P0-C: chave PIX exposta em texto plano
+  - P0-D: pixels carregando sem consentimento LGPD
+- Implementado:
+
+  P0-A (src/app/admin/analytics/page.tsx):
+   - Bug 1: funil usava `visits || 1` → mostrava 1 quando visitas=0. Removido `|| 1`.
+   - Bug 2: topPaths contava TODOS os eventos com path (lead, quiz_completed, etc.) como "visitas". Agora filtra só event_name === "page_view" || "PageView".
+   - Adicionado "contrato de métricas" no topo do painel: definição de Visitas, Checkouts, Compras + janela (hoje/7d/30d/tudo) + BRT.
+   - Adicionado "última atualização" (timestamp do evento mais recente).
+   - Aviso acionável quando visits=0: 4 passos para configurar pixel.
+
+  P0-B (src/app/api/admin/system/envs/route.ts + src/app/admin/settings/page.tsx):
+   - Criada API GET /api/admin/system/envs que retorna status real das envs (booleano por variável).
+   - Status consolidado por área: core, analytics, kiwify, email, telegram.
+   - Widget 'Variáveis de ambiente' reescrito: lê da API em tempo real.
+   - Kiwify não configurado → badge cinza "Não utilizado" (não mais amarelo "Pendente").
+   - Hint: "Configure apenas se for adotar Kiwify" — vendas atuais usam checkout direto.
+
+  P0-C (src/app/admin/settings/page.tsx — PixConfigWidget):
+   - Chaves PIX aparecem mascaradas por padrão: `••••••••••••1234` (primeiros 4 + últimos 4).
+   - BR Code mostra primeiros 30 chars + `••••••••••••••••••••`.
+   - Adicionado botão toggle por chave: "👁 Revelar" ↔ "🙈 Ocultar".
+   - Estado de revelação NÃO persiste em localStorage (reset a cada sessão — menor exposição).
+
+  P0-D (src/components/site/pixel-loader.tsx):
+   - PixelLoader agora lê consentimento do localStorage (key `cookie-consent-v1`).
+   - Scripts Meta/GA4/Google Ads/TikTok só injetados se consent === true.
+   - trackEvent() bloqueado quando sem consentimento.
+   - Re-check de consentimento a cada 2s + storage event listener.
+   - GA4 config: adicionado `anonymize_ip: true` por padrão.
+   - Adicionado `window.__cookieConsent` para inspeção.
+
+- TypeScript verificado: 0 erros nos arquivos modificados.
+- Commit fd46059 pushed to main. Vercel auto-redeploy em ~30s.
+
+Stage Summary:
+- ✅ Analytics consistente: KPI/Funil/Páginas usam mesma definição de "visita" (page_view).
+- ✅ Kiwify: badge cinza "Não utilizado" em vez de amarelo "Pendente" — falso alerta removido.
+- ✅ PIX: chaves mascaradas por padrão, botão revelar por chave.
+- ✅ LGPD: pixels só carregam após aceite do cookie banner.
+- ⏳ Itens P1 não tratados (estados vazios, detalhes CRM, templates email, permissões, central de saúde): requerem escopo maior.
+- ⏳ Item 10 (rotação de senha): não aplicado por decisão explícita do usuário.
