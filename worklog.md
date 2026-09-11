@@ -2210,3 +2210,72 @@ Stage Summary:
 - 4 estilos premium com: fotos reais do Unsplash, Google Fonts (Space Grotesk, Sora, Playfair Display, Inter), animações (fadeInUp, marquee, hover), glassmorphism real
 - 20 nichos com fotos específicas (hero, galeria, features, about)
 - Tudo testado em produção via agent-browser — 4 screenshots gerados confirmando visual premium
+
+---
+Task ID: four-distinct-templates-per-niche
+Agent: main (Super Z)
+Task: Criar 4 templates visualmente distintos para cada nicho (não 4 estilos globais).
+
+Work Log:
+- **Entendido o requisito**: em vez de 4 estilos globais (dark/light/bold/elegant) aplicados a qualquer nicho, cada nicho deve ter 4 templates com layouts e estruturas visualmente diferentes.
+
+- **Criado niche-templates.ts** (novo, ~600 linhas):
+  4 templates distintos, cada um com layout próprio:
+
+  1. **Template A "Split"** 📐 — Hero Split:
+     - Layout: grid 2 colunas (texto + foto lado a lado)
+     - Fonte: Space Grotesk + Inter
+     - Visual: foto ocupa metade da tela, texto na outra metade
+     - Features: cards com foto de background
+     - Sobre: grid 2 colunas (foto + texto)
+
+  2. **Template B "Centered"** 🎯 — Hero Centered:
+     - Layout: foto fullscreen com overlay + conteúdo centralizado
+     - Fonte: Sora + Inter
+     - Visual: hero com foto de fundo + overlay gradient escuro
+     - Botões: pill grandes com glassmorphism
+     - CTA: foto fullscreen com overlay
+
+  3. **Template C "Card"** 🎴 — Hero Card:
+     - Layout: texto + foto em card flutuante arredondado
+     - Fonte: Playfair Display (serif) + Inter
+     - Visual: fundo claro #f5f0e8, card com bordas arredondadas (border-radius arco)
+     - Badge flutuante com avaliação Google
+     - Features: cards brancos centrados com sombras suaves
+     - CTA: card arredondado colorido
+
+  4. **Template D "Minimal"** ⚡ — Hero Minimal:
+     - Layout: sem foto no hero, tipografia gigante + cor de fundo
+     - Fonte: Space Grotesk (gigante até 9rem)
+     - Visual: hero com cor sólida do nicho, texto escuro
+     - Nav com mix-blend-mode:difference
+     - Marquee animado com "/"
+     - Features: cards com numeração 01/02/03
+     - Stats: bordas em grid (border-right)
+     - Galeria: grid com bordas
+
+- **preview-styles.ts atualizado**:
+  - 4 estilos agora são: split, centered, card, minimal
+  - Cada um delega para seu renderizador em niche-templates.ts
+  - Compatível com todos os 20 nichos (conteúdo específico de NICHE_CONFIG)
+
+- **API /api/preview/styles atualizada**:
+  - Thumbnails SVG regenerados para os 4 novos templates
+  - Cada thumbnail representa visualmente o layout do template:
+    - Split: texto + foto lado a lado
+    - Centered: foto fullscreen + overlay
+    - Card: card flutuante arredondado
+    - Minimal: cor sólida + tipografia gigante
+
+- **Testado via agent-browser** (4 templates com barbearia):
+  - Split: "EmpórioBarbearia" + layout 2 colunas ✅
+  - Centered: "EmpórioBarbearia" + hero fullscreen ✅
+  - Card: "Empório Barbearia" + card flutuante arredondado ✅
+  - Minimal: "Empório" + "✂️ BARBEARIA PREMIUM" + tipografia gigante ✅
+  - Screenshots: 430KB-560KB cada (visuais distintos confirmados)
+
+Stage Summary:
+- 3 arquivos criados/modificados: niche-templates.ts (novo, 600 linhas), preview-styles.ts (refatorado), api/preview/styles/route.ts (thumbnails atualizados)
+- 4 templates visualmente distintos: Split (grid 2 col), Centered (fullscreen), Card (flutuante arredondado), Minimal (gigante)
+- Cada template funciona com TODOS os 20 nichos (conteúdo específico de NICHE_CONFIG)
+- Tudo testado em produção via agent-browser — 4 screenshots com visuais distintos

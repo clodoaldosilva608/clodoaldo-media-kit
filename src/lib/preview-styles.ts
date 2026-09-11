@@ -1,18 +1,17 @@
 /**
- * Estilos de design premium para previews de site.
+ * Sistema de templates de preview — 4 templates distintos por nicho.
  *
- * 4 estilos originais com fotos reais (Unsplash), fontes premium (Google Fonts)
- * e animações sofisticadas:
- * 1. "dark" — Dark Premium (glassmorphism, fotos fullscreen, Space Grotesk)
- * 2. "light" — Light Minimal (fundo claro, Sora, whitespace generoso)
- * 3. "bold" — Bold Editorial (fotos fullscreen, tipografia gigante, ousado)
- * 4. "elegant" — Elegant Classic (Playfair Display, serifas, fotos elegantes)
+ * Cada nicho tem 4 templates visualmente diferentes:
+ * - "split"    — Hero split (foto + texto lado a lado)
+ * - "centered" — Hero centered (foto fullscreen + overlay)
+ * - "card"     — Hero card (foto em card flutuante arredondado)
+ * - "minimal"  — Hero minimal (sem foto no hero, tipografia gigante)
+ *
+ * Os 4 templates compartilham o conteúdo do nicho (features, depoimentos, etc.)
+ * mas têm layouts, paletas e estruturas visualmente diferentes.
  */
 
-import { renderDarkPremium } from "./styles/dark-premium";
-import { renderLightMinimal } from "./styles/light-minimal";
-import { renderBoldEditorial } from "./styles/bold-editorial";
-import { renderElegantClassic } from "./styles/elegant-classic";
+import { renderTemplateA, renderTemplateB, renderTemplateC, renderTemplateD } from "./niche-templates";
 
 export interface StyleContext {
   lead: {
@@ -62,44 +61,49 @@ export interface PreviewStyle {
 }
 
 // =====================================================
-// ESTILOS PREMIUM (com fotos reais, fontes premium, animações)
+// 4 TEMPLATES DISTINTOS POR NICHO
 // =====================================================
-const styleDark: PreviewStyle = {
-  id: "dark",
-  name: "Dark Premium",
-  description: "Glassmorphism, fotos fullscreen, fontes Space Grotesk + Inter",
-  emoji: "🌙",
-  render: renderDarkPremium,
+const templateSplit: PreviewStyle = {
+  id: "split",
+  name: "Hero Split",
+  description: "Foto + texto lado a lado, layout moderno",
+  emoji: "📐",
+  render: renderTemplateA,
 };
 
-const styleLight: PreviewStyle = {
-  id: "light",
-  name: "Light Minimal",
-  description: "Fundo claro, tipografia Sora, whitespace generoso, fotos reais",
-  emoji: "☀️",
-  render: renderLightMinimal,
+const templateCentered: PreviewStyle = {
+  id: "centered",
+  name: "Hero Centered",
+  description: "Foto fullscreen com overlay, tipografia centralizada",
+  emoji: "🎯",
+  render: renderTemplateB,
 };
 
-const styleBold: PreviewStyle = {
-  id: "bold",
-  name: "Bold Editorial",
-  description: "Fotos fullscreen, tipografia gigante, layout ousado",
-  emoji: "🔥",
-  render: renderBoldEditorial,
+const templateCard: PreviewStyle = {
+  id: "card",
+  name: "Hero Card",
+  description: "Foto em card flutuante arredondado, estilo elegante",
+  emoji: "🎴",
+  render: renderTemplateC,
 };
 
-const styleElegant: PreviewStyle = {
-  id: "elegant",
-  name: "Elegant Classic",
-  description: "Playfair Display, serifas, fotos elegantes, paleta sofisticada",
-  emoji: "🎩",
-  render: renderElegantClassic,
+const templateMinimal: PreviewStyle = {
+  id: "minimal",
+  name: "Hero Minimal",
+  description: "Sem foto no hero, tipografia gigante, ousado",
+  emoji: "⚡",
+  render: renderTemplateD,
 };
 
 // =====================================================
 // EXPORTS
 // =====================================================
-export const PREVIEW_STYLES: PreviewStyle[] = [styleDark, styleLight, styleBold, styleElegant];
+export const PREVIEW_STYLES: PreviewStyle[] = [
+  templateSplit,
+  templateCentered,
+  templateCard,
+  templateMinimal,
+];
 
 export function getStyleById(id: string): PreviewStyle {
   return PREVIEW_STYLES.find(s => s.id === id) || PREVIEW_STYLES[0];
