@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertTriangle, Smartphone, Zap, Clock, ExternalLink,
 } from "lucide-react";
 
-const OPENWA_URL = "https://clodoaldo-openwa-production.up.railway.app";
+const OPENWA_URL = "https://clodoaldo-openwa-production-ef95.up.railway.app";
 const OPENWA_KEY = "clodoaldo-openwa-secret-2026";
 
 export default function WhatsAppPage() {
@@ -34,6 +34,8 @@ export default function WhatsAppPage() {
         } else {
           setConnected(false);
         }
+      } else if (resp.status === 429) {
+        setError("Railway está limitando requisições (HTTP 429). Plano Trial gratuito atingiu o limite. Faça upgrade para Hobby ($5/mês) em railway.app → Billing.");
       } else {
         // Fallback: try /qr endpoint — if it returns image, we're not connected
         const qrResp = await fetch(`${OPENWA_URL}/qr`);
@@ -47,7 +49,7 @@ export default function WhatsAppPage() {
 
   useEffect(() => {
     checkStatus();
-    pollRef.current = setInterval(checkStatus, 5000);
+    pollRef.current = setInterval(checkStatus, 15000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [checkStatus]);
 
