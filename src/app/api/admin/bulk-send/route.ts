@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMeucorrePool } from "@/lib/meucorre-db";
+import { normalizeBrazilianPhone } from "@/lib/phone-utils";
 
 /**
  * POST /api/admin/bulk-send
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // Build wa.me link + return
     const results = messages.map((m) => {
-      const num = ((m.lead.whatsapp || m.lead.phone || "") as string).replace(/\D/g, "");
+      const num = normalizeBrazilianPhone(m.lead.whatsapp || m.lead.phone) || "";
       const waLink = num
         ? `https://wa.me/${num}?text=${encodeURIComponent(m.message)}`
         : null;

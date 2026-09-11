@@ -1931,3 +1931,54 @@ Stage Summary:
 - Exportação CSV: botão no LeadDetailModal + ReplyDetailModal
 - Aba Respostas: cards clicáveis + modal de detalhes completo + filtros
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: fix-whatsapp-phone-numbers
+Agent: main (Super Z)
+Task: Corrigir números de WhatsApp que não estavam sendo reconhecidos pelo WhatsApp (faltava código do país 55).
+
+Work Log:
+- **Problema identificado**: números armazenados como "81981774711" (sem código 55), mas wa.me exige formato internacional "5581981774711"
+- Verificado no banco: 136 prospects com phone, 84 com números sem o "55" prefix
+
+- **Criado utilitário** (src/lib/phone-utils.ts):
+  - normalizeBrazilianPhone(phone): strip non-digits + adiciona "55" se faltar
+    - 10-11 dígitos sem 55 → prepend "55"
+    - já tem 55 + 12-13 dígitos → mantém
+    - 55 + 10-11 dígitos (DDD 55 RS) → prepend "55" adicional
+  - formatPhoneForDisplay(phone): formata para "+55 (81) 98177-4711"
+
+- **Backend corrigido** (prospect/search/route.ts):
+  - Google Maps: whatsapp = normalizeBrazilianPhone(phone) (antes era phone.replace(/\D/g, ""))
+  - OSM: mesmo tratamento para tags["contact:whatsapp"] e phone
+
+- **Frontend corrigido** (parceiros/page.tsx):
+  - Importado normalizeBrazilianPhone
+  - 5 locais corrigidos onde num/waNum era calculado:
+    1. Card na aba Buscar (linha 658)
+    2. Card no Kanban (linha 818)
+    3. Card na aba Leads Salvos (linha 882)
+    4. ReplyDetailModal waNum (linha 1421)
+    5. LeadDetailModal num (linha 1606)
+  - Todos agora usam normalizeBrazilianPhone() como safety net (mesmo se o banco já tiver 55, não duplica)
+
+- **Bulk-send corrigido** (bulk-send/route.ts):
+  - waLink agora usa normalizeBrazilianPhone() para construir o link
+
+- **Migration script** (scripts/fix-phone-numbers.js):
+  - Script node que percorre todos os 136 prospects
+  - Normaliza o campo whatsapp no banco
+  - Resultado: 84 corrigidos, 52 já estavam corretos, 0 pulados
+  - Exemplos: "81981774711" → "5581981774711", "8133251984" → "558133251984"
+
+- **Verificação em produção**:
+  - Deploy concluído
+  - Testado via agent-browser: link wa.me agora mostra "5581987318785" (com 55)
+  - Antes: "81987318785" (sem 55) → WhatsApp não reconhecia
+  - Agora: "5581987318785" (com 55) → WhatsApp abre conversa diretamente
+
+Stage Summary:
+- 4 arquivos modificados: phone-utils.ts (novo, 95 linhas), prospect/search/route.ts (2 linhas), bulk-send/route.ts (2 linhas), parceiros/page.tsx (6 linhas + 1 import)
+- 1 migration script: fix-phone-numbers.js (corrigiu 84 leads no banco)
+- Problema resolvido: wa.me links agora usam formato internacional completo "55DDDNNNNNNNNN"
+- Tudo testado em produção via agent-browser

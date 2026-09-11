@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { getMeucorreJwt } from "@/lib/meucorre-db";
+import { normalizeBrazilianPhone } from "@/lib/phone-utils";
 
 /**
  * POST /api/admin/prospect/search
@@ -447,7 +448,7 @@ async function searchGoogleMaps(niche: string, location: string, lat: number, ln
       leads.push({
         name: place.name || "Sem nome",
         phone,
-        whatsapp: phone ? phone.replace(/\D/g, "") : null,
+        whatsapp: normalizeBrazilianPhone(phone),
         formatted_address: place.vicinity || place.formatted_address || "",
         city: location,
         lat: place.geometry?.location?.lat || lat,
@@ -530,7 +531,7 @@ async function searchOpenStreetMap(niche: string, location: string, lat: number,
             return {
               name: tags.name || "Sem nome",
               phone,
-              whatsapp: tags["contact:whatsapp"] || (phone ? phone.replace(/\D/g, "") : null),
+              whatsapp: tags["contact:whatsapp"] ? normalizeBrazilianPhone(tags["contact:whatsapp"]) : normalizeBrazilianPhone(phone),
               formatted_address: addr || "",
               city: location,
               lat: e.lat || e.center?.lat || lat,

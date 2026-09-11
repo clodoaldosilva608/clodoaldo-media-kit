@@ -17,6 +17,7 @@ import {
   formatObjectionForDisplay,
 } from "@/lib/objections";
 import { generatePreviewHTML } from "@/lib/preview-generator";
+import { normalizeBrazilianPhone } from "@/lib/phone-utils";
 
 interface Lead {
   place_id?: string; id?: string; name: string; phone?: string | null;
@@ -654,7 +655,7 @@ Clodoaldo Silva`;
                 {results.map(lead => {
                   const exp = expandedLead===lead.place_id;
                   const wa = genWA(lead); const em = genEmail(lead); const pr = genPrompt(lead);
-                  const num = (lead.whatsapp||lead.phone||"").replace(/\D/g,"");
+                  const num = normalizeBrazilianPhone(lead.whatsapp||lead.phone) || "";
                   const leadId = lead.id || lead.place_id || "";
                   const isSelected = selectedIds.has(leadId);
                   const canBulk = !!num;
@@ -814,7 +815,7 @@ Clodoaldo Silva`;
                   <div className="space-y-2 max-h-[500px] overflow-y-auto">
                     {loadingProspects?<div className="py-4 text-center text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>:items.length===0?<div className="py-4 text-center text-xs text-zinc-600">Vazio</div>:
                     items.map(p => {
-                      const num=(p.whatsapp||p.phone||"").replace(/\D/g,"");
+                      const num = normalizeBrazilianPhone(p.whatsapp||p.phone) || "";
                       const wa=genWA(p);
                       return (
                         <div key={p.id} draggable onDragStart={e=>setDraggingId(p.id!)} onDragEnd={()=>{setDraggingId(null);setDragOverCol(null);}} className="cursor-grab rounded-lg border border-white/5 bg-white/[0.04] p-3 hover:bg-white/[0.08] transition active:cursor-grabbing">
@@ -878,7 +879,7 @@ Clodoaldo Silva`;
                   if (!showRepliedOnly) return true;
                   return (replyCounts[p.id || ""] || 0) > 0;
                 }).map((p) => {
-                  const num = (p.whatsapp||p.phone||"").replace(/\D/g,"");
+                  const num = normalizeBrazilianPhone(p.whatsapp||p.phone) || "";
                   const wa = genWA(p);
                   const replyCount = replyCounts[p.id || ""] || 0;
                   return (
@@ -1417,7 +1418,7 @@ function ReplyDetailModal({
     unclassified: { emoji: "📋", label: "Sem classificação", color: "muted" },
   };
   const cm = classMeta[reply.classification] || classMeta.unclassified;
-  const waNum = (reply.prospect_whatsapp || reply.prospect_phone || "").replace(/\D/g, "");
+  const waNum = normalizeBrazilianPhone(reply.prospect_whatsapp || reply.prospect_phone) || "";
   const waLink = waNum ? `https://wa.me/${waNum}` : "";
 
   // Build a Lead object for onOpenReply
@@ -1602,7 +1603,7 @@ function LeadDetailModal({
   const wa = genWA(lead);
   const em = genEmail(lead);
   const pr = genPrompt(lead);
-  const num = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
+  const num = normalizeBrazilianPhone(lead.whatsapp || lead.phone) || "";
   const leadId = lead.id || lead.place_id || "";
 
   // === Fetch reply history for this lead ===
