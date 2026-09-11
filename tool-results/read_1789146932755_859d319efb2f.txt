@@ -1,0 +1,665 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { AdminShell } from "@/components/admin/admin-shell";
+     5→import { Widget, Badge, EmptyState, Button, Input, Label, Textarea } from "@/components/admin/ui";
+     6→import { adminUpsert, fetchAdminData } from "@/lib/admin/data";
+     7→import { Settings, RefreshCw, Save, Database, AlertTriangle, Code, Copy, Check, FileText, Mail, Send, Loader2, CheckCircle2, QrCode, DollarSign, Plus, Trash2 } from "lucide-react";
+     8→
+     9→interface AppSetting {
+    10→  key: string;
+    11→  value: any;
+    12→  updated_at: string;
+    13→}
+    14→
+    15→export default function AdminSettingsPage() {
+    16→  const [settings, setSettings] = useState<AppSetting[]>([]);
+    17→  const [loading, setLoading] = useState(true);
+    18→  const [editing, setEditing] = useState<Record<string, any>>({});
+    19→  const [saving, setSaving] = useState(false);
+    20→  const [copied, setCopied] = useState(false);
+    21→
+    22→  const load = async () => {
+    23→    setLoading(true);
+    24→    const data = await fetchAdminData<AppSetting>("app_settings", 100);
+    25→    setSettings(data || []);
+    26→    const obj: Record<string, any> = {};
+    27→    (data || []).forEach((s) => (obj[s.key] = s.value));
+    28→    setEditing(obj);
+    29→    setLoading(false);
+    30→  };
+    31→
+    32→  useEffect(() => {
+    33→    load();
+    34→  }, []);
+    35→
+    36→  async function save() {
+    37→    setSaving(true);
+    38→    for (const [key, value] of Object.entries(editing)) {
+    39→      adminUpsert("app_settings", { key, value, updated_at: new Date().toISOString() });
+    40→    }
+    41→    setSaving(false);
+    42→    alert("Configurações salvas!");
+    43→    await load();
+    44→  }
+    45→
+    46→  function copyMigration() {
+    47→    const sql = `-- Aplicar no Supabase SQL Editor:
+    48→-- https://supabase.com/dashboard/project/jckkbsluvbejioyrlcfo/sql/new
+    49→-- Conteúdo do arquivo: upload/codigo-01/supabase/migrations/20260903090000_admin_expansion.sql`;
+    50→    navigator.clipboard.writeText(sql);
+    51→    setCopied(true);
+    52→    setTimeout(() => setCopied(false), 2000);
+    53→  }
+    54→
+    55→  return (
+    56→    <AdminShell title="Configurações">
+    57→      <Widget
+    58→        title="Configurações do sistema"
+    59→        icon={<Settings className="h-4 w-4 text-emerald-400" />}
+    60→        action={
+    61→          <div className="flex items-center gap-2">
+    62→            <Button variant="outline" size="sm" onClick={load}>
+    63→              <RefreshCw className="h-3.5 w-3.5" /> Atualizar
+    64→            </Button>
+    65→            <Button variant="primary" size="sm" onClick={save} disabled={saving}>
+    66→              <Save className="h-3.5 w-3.5" /> {saving ? "Salvando…" : "Salvar tudo"}
+    67→            </Button>
+    68→          </div>
+    69→        }
+    70→      >
+    71→        {loading ? (
+    72→          <div className="py-12 text-center text-sm text-zinc-500">Carregando…</div>
+    73→        ) : Object.keys(editing).length === 0 ? (
+    74→          <EmptyState title="Sem configurações" description="As configurações do app aparecerão aqui." icon={<Settings className="h-8 w-8" />} />
+    75→        ) : (
+    76→          <div className="space-y-4">
+    77→            {Object.entries(editing).map(([key, value]) => (
+    78→              <div key={key} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+    79→                <Label>{key}</Label>
+    80→                {typeof value === "object" && value !== null ? (
+    81→                  <Textarea
+    82→                    value={JSON.stringify(value, null, 2)}
+    83→                    onChange={(e) => {
+    84→                      try {
+    85→                        const parsed = JSON.parse(e.target.value);
+    86→                        setEditing({ ...editing, [key]: parsed });
+    87→                      } catch {
+    88→                        // ignore parse errors while typing
+    89→                      }
+    90→                    }}
+    91→                    rows={Math.min(10, JSON.stringify(value, null, 2).split("\n").length)}
+    92→                    className="font-mono text-xs"
+    93→                  />
+    94→                ) : Array.isArray(value) ? (
+    95→                  <Textarea
+    96→                    value={value.join("\n")}
+    97→                    onChange={(e) => setEditing({ ...editing, [key]: e.target.value.split("\n") })}
+    98→                    rows={Math.min(10, value.length)}
+    99→                  />
+   100→                ) : (
+   101→                  <Input
+   102→                    value={String(value ?? "")}
+   103→                    onChange={(e) => setEditing({ ...editing, [key]: e.target.value })}
+   104→                  />
+   105→                )}
+   106→              </div>
+   107→            ))}
+   108→          </div>
+   109→        )}
+   110→      </Widget>
+   111→
+   112→      <Widget title="Status do banco de dados" icon={<Database className="h-4 w-4 text-blue-400" />} className="mt-4">
+   113→        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
+   114→          <div className="flex items-start gap-3">
+   115→            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+   116→            <div className="flex-1">
+   117→              <h4 className="text-sm font-semibold text-emerald-200">✅ Migration aplicada — Banco de dados completo</h4>
+   118→              <p className="mt-1 text-xs text-emerald-200/80">
+   119→                Todas as tabelas do admin estão criadas e funcionando: cupons, depoimentos, contagem regressiva, pixels, WhatsApp, afiliados, e-mail marketing, assinaturas, notificações e PIX.
+   120→              </p>
+   121→            </div>
+   122→          </div>
+   123→        </div>
+   124→
+   125→        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+   126→          <DBStat label="orders" exists />
+   127→          <DBStat label="service_queue" exists />
+   128→          <DBStat label="quiz_leads" exists />
+   129→          <DBStat label="service_requests" exists />
+   130→          <DBStat label="offers" exists />
+   131→          <DBStat label="analytics_events" exists />
+   132→          <DBStat label="user_roles" exists />
+   133→          <DBStat label="knowledge_items" exists />
+   134→          <DBStat label="coupons" exists />
+   135→          <DBStat label="testimonials" exists />
+   136→          <DBStat label="countdown_campaigns" exists />
+   137→          <DBStat label="pixel_config" exists />
+   138→          <DBStat label="whatsapp_config" exists />
+   139→          <DBStat label="affiliates" exists />
+   140→          <DBStat label="email_templates" exists />
+   141→          <DBStat label="subscription_plans" exists />
+   142→        </div>
+   143→      </Widget>
+   144→
+   145→      <Widget title="Variáveis de ambiente" icon={<Code className="h-4 w-4 text-violet-400" />} className="mt-4">
+   146→        <div className="space-y-2 text-xs">
+   147→          {[
+   148→            { k: "NEXT_PUBLIC_SUPABASE_URL", v: "✓ Configurado" },
+   149→            { k: "SUPABASE_SERVICE_ROLE_KEY", v: "✓ Configurado" },
+   150→            { k: "KIWIFY_API_TOKEN", v: "⚠ Pendente (configurar no .env)" },
+   151→            { k: "KIWIFY_WEBHOOK_SECRET", v: "⚠ Pendente (configurar no .env)" },
+   152→            { k: "KIWIFY_DEFAULT_PRODUCT_ID", v: "⚠ Pendente (configurar no .env)" },
+   153→          ].map((e) => (
+   154→            <div key={e.k} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-3 py-2">
+   155→              <code className="font-mono text-zinc-300">{e.k}</code>
+   156→              <span className="text-zinc-400">{e.v}</span>
+   157→            </div>
+   158→          ))}
+   159→        </div>
+   160→      </Widget>
+   161→
+   162→      <Widget title="Documentação" icon={<FileText className="h-4 w-4 text-blue-400" />} className="mt-4">
+   163→        <div className="space-y-2 text-sm text-zinc-300">
+   164→          <p>
+   165→            <strong className="text-white">Acesso ao admin:</strong> Faça login em <a href="/auth?redirect=/admin" className="text-emerald-400 hover:text-emerald-300">/auth</a> com sua conta Google/Supabase.
+   166→            Apenas usuários com role <code className="rounded bg-white/5 px-1">admin</code> na tabela <code className="rounded bg-white/5 px-1">user_roles</code> podem acessar.
+   167→          </p>
+   168→          <p>
+   169→            <strong className="text-white">Sua conta já está como admin</strong> (clodoaldo608@gmail.com). Para adicionar outros administradores,
+   170→            insira a linha <code className="rounded bg-white/5 px-1">INSERT INTO user_roles (user_id, role) VALUES ('USER_ID', 'admin');</code> no SQL Editor.
+   171→          </p>
+   172→        </div>
+   173→      </Widget>
+   174→
+   175→      <GoogleOAuthWidget />
+   176→      <PixConfigWidget />
+   177→      <WeeklyReportWidget />
+   178→    </AdminShell>
+   179→  );
+   180→}
+   181→
+   182→// =====================================================
+   183→// Google OAuth connection widget
+   184→// =====================================================
+   185→function GoogleOAuthWidget() {
+   186→  const [connected, setConnected] = useState<boolean | null>(null);
+   187→  const [email, setEmail] = useState<string | null>(null);
+   188→  const [loading, setLoading] = useState(true);
+   189→
+   190→  useEffect(() => {
+   191→    // Check for success/error params in URL
+   192→    const params = new URLSearchParams(window.location.search);
+   193→    if (params.get("google_connected")) {
+   194→      const emailParam = params.get("email");
+   195→      if (emailParam) setEmail(emailParam);
+   196→      window.history.replaceState({}, "", "/admin/settings");
+   197→    }
+   198→    if (params.get("google_error")) {
+   199→      alert("Erro ao conectar Google: " + params.get("google_error"));
+   200→      window.history.replaceState({}, "", "/admin/settings");
+   201→    }
+   202→
+   203→    fetch("/api/oauth/google/status")
+   204→      .then((r) => r.json())
+   205→      .then((data) => {
+   206→        setConnected(data.connected);
+   207→        setEmail(data.email);
+   208→        setLoading(false);
+   209→      })
+   210→      .catch(() => setLoading(false));
+   211→  }, []);
+   212→
+   213→  async function handleDisconnect() {
+   214→    if (!confirm("Desconectar Google? O relatório semanal por email deixará de ser enviado.")) return;
+   215→    await fetch("/api/oauth/google/disconnect", { method: "POST" });
+   216→    setConnected(false);
+   217→    setEmail(null);
+   218→  }
+   219→
+   220→  if (loading) {
+   221→    return (
+   222→      <Widget title="Google OAuth" icon={<Mail className="h-4 w-4 text-blue-400" />} className="mt-4">
+   223→        <div className="flex items-center gap-2 text-xs text-zinc-500">
+   224→          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verificando conexão...
+   225→        </div>
+   226→      </Widget>
+   227→    );
+   228→  }
+   229→
+   230→  return (
+   231→    <Widget title="Google OAuth" icon={<Mail className="h-4 w-4 text-blue-400" />} className="mt-4">
+   232→      {connected ? (
+   233→        <div className="space-y-3">
+   234→          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3 flex items-center justify-between">
+   235→            <div>
+   236→              <div className="text-sm font-bold text-emerald-300 flex items-center gap-1.5">
+   237→                <CheckCircle2 className="h-4 w-4" />
+   238→                Google conectado{email ? ` como ${email}` : ""}
+   239→              </div>
+   240→              <div className="text-[10px] text-zinc-500 mt-1">
+   241→                OAuth 2.0 ativo — relatório semanal será enviado para este email.
+   242→              </div>
+   243→            </div>
+   244→            <button
+   245→              onClick={handleDisconnect}
+   246→              className="rounded-md bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/25 transition"
+   247→            >
+   248→              Desconectar
+   249→            </button>
+   250→          </div>
+   251→          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+   252→            {[
+   253→              { name: "Gmail", desc: "Envio de emails + relatório semanal" },
+   254→              { name: "Sheets", desc: "Exportar leads" },
+   255→              { name: "Drive", desc: "Upload arquivos" },
+   256→              { name: "Calendar", desc: "Criar reuniões" },
+   257→            ].map((s) => (
+   258→              <div key={s.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
+   259→                <div className="flex items-center gap-1.5">
+   260→                  <span className="text-emerald-400 text-xs">✅</span>
+   261→                  <span className="text-xs font-bold text-zinc-200">{s.name}</span>
+   262→                </div>
+   263→                <div className="text-[10px] text-zinc-500 mt-0.5">{s.desc}</div>
+   264→              </div>
+   265→            ))}
+   266→          </div>
+   267→        </div>
+   268→      ) : (
+   269→        <div className="space-y-3">
+   270→          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3">
+   271→            <div className="text-sm font-semibold text-amber-200">⚠️ Google não conectado</div>
+   272→            <p className="mt-1 text-xs text-amber-200/80">
+   273→              Conecte sua conta Google para habilitar:
+   274→            </p>
+   275→            <ul className="mt-2 space-y-1 text-[11px] text-amber-200/70">
+   276→              <li>📧 <strong>Relatório semanal por email</strong> (enviado toda segunda-feira às 09h)</li>
+   277→              <li>📨 Envio de emails pelo Gmail (campanhas, recuperação de carrinho)</li>
+   278→              <li>📊 Exportação de leads para Google Sheets</li>
+   279→              <li>📁 Upload de arquivos no Google Drive</li>
+   280→              <li>📅 Criação de reuniões no Google Calendar</li>
+   281→            </ul>
+   282→          </div>
+   283→          <a
+   284→            href="/api/oauth/google/start"
+   285→            className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition"
+   286→          >
+   287→            🔑 Conectar Google
+   288→          </a>
+   289→        </div>
+   290→      )}
+   291→    </Widget>
+   292→  );
+   293→}
+   294→
+   295→// =====================================================
+   296→// Weekly report widget — manual trigger
+   297→// =====================================================
+   298→function WeeklyReportWidget() {
+   299→  const [sending, setSending] = useState(false);
+   300→  const [result, setResult] = useState<any>(null);
+   301→  const [error, setError] = useState<string | null>(null);
+   302→  const [period, setPeriod] = useState<number>(7);
+   303→
+   304→  async function triggerReport() {
+   305→    const periodLabel = period === 7 ? "semanal" : period === 14 ? "quinzenal" : period === 30 ? "mensal" : `${period} dias`;
+   306→    if (!confirm(`Disparar relatório ${periodLabel} agora? Será enviado por email (se Google conectado) e Telegram.`)) return;
+   307→    setSending(true);
+   308→    setError(null);
+   309→    setResult(null);
+   310→    try {
+   311→      const resp = await fetch(`/api/cron/weekly-report?days=${period}`, {
+   312→        method: "POST",
+   313→        headers: {
+   314→          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || "bc4d32cc6d0e39e91f62a790f282b0e2c3d3d5fd6e936943"}`,
+   315→        },
+   316→      });
+   317→      const json = await resp.json();
+   318→      if (!resp.ok) throw new Error(json.error || `Erro ${resp.status}`);
+   319→      setResult(json);
+   320→    } catch (e: any) {
+   321→      setError(e.message);
+   322→    } finally {
+   323→      setSending(false);
+   324→    }
+   325→  }
+   326→
+   327→  return (
+   328→    <Widget
+   329→      title="Relatório Semanal"
+   330→      icon={<Send className="h-4 w-4 text-emerald-400" />}
+   331→      className="mt-4"
+   332→      action={
+   333→        <div className="flex items-center gap-2">
+   334→          <select
+   335→            value={String(period)}
+   336→            onChange={e => setPeriod(Number(e.target.value))}
+   337→            className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+   338→            title="Período do relatório"
+   339→          >
+   340→            <option value="7">7 dias</option>
+   341→            <option value="14">14 dias</option>
+   342→            <option value="30">30 dias</option>
+   343→          </select>
+   344→          <Button variant="primary" size="sm" onClick={triggerReport} disabled={sending}>
+   345→            {sending ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Disparando…</> : <><Send className="h-3.5 w-3.5" /> Disparar agora</>}
+   346→          </Button>
+   347→        </div>
+   348→      }
+   349→    >
+   350→      <div className="space-y-3">
+   351→        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-xs text-zinc-400">
+   352→          <p>
+   353→            O relatório é enviado automaticamente <strong className="text-zinc-200">toda segunda-feira às 09h</strong> (horário de Brasília)
+   354→            com o resumo de disparos, respostas, top nichos, campanhas e pipeline.
+   355→          </p>
+   356→          <p className="mt-2">
+   357→            Use o seletor de período + botão <strong className="text-emerald-300">"Disparar agora"</strong> para testar o envio imediatamente
+   358→            (email + Telegram) com o período escolhido.
+   359→          </p>
+   360→        </div>
+   361→
+   362→        {/* Result display */}
+   363→        {result && (
+   364→          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3 space-y-2">
+   365→            <div className="flex items-center gap-2 text-sm font-bold text-emerald-300">
+   366→              <CheckCircle2 className="h-4 w-4" />
+   367→              Relatório gerado com sucesso!
+   368→            </div>
+   369→            <div className="text-xs text-zinc-300">
+   370→              <strong>Período:</strong> {result.period?.start} a {result.period?.end}
+   371→            </div>
+   372→            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+   373→              <div className="rounded border border-white/5 bg-white/[0.02] p-2 text-center">
+   374→                <div className="text-[10px] uppercase text-zinc-500">Disparos</div>
+   375→                <div className="text-base font-bold text-emerald-300">{result.stats?.envios ?? 0}</div>
+   376→              </div>
+   377→              <div className="rounded border border-white/5 bg-white/[0.02] p-2 text-center">
+   378→                <div className="text-[10px] uppercase text-zinc-500">Respostas</div>
+   379→                <div className="text-base font-bold text-blue-300">{result.stats?.respostas ?? 0}</div>
+   380→              </div>
+   381→              <div className="rounded border border-white/5 bg-white/[0.02] p-2 text-center">
+   382→                <div className="text-[10px] uppercase text-zinc-500">Tx. resposta</div>
+   383→                <div className="text-base font-bold text-amber-300">{result.stats?.replyRate ?? 0}%</div>
+   384→              </div>
+   385→              <div className="rounded border border-white/5 bg-white/[0.02] p-2 text-center">
+   386→                <div className="text-[10px] uppercase text-zinc-500">Leads únicos</div>
+   387→                <div className="text-base font-bold text-violet-300">{result.stats?.uniqueLeads ?? 0}</div>
+   388→              </div>
+   389→            </div>
+   390→            <div className="flex flex-wrap gap-3 mt-2 text-[11px]">
+   391→              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${result.emailSent ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
+   392→                {result.emailSent ? "✅" : "❌"} Email {result.emailSent ? "enviado" : result.emailError || "não enviado"}
+   393→              </span>
+   394→              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${result.telegramSent ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
+   395→                {result.telegramSent ? "✅" : "❌"} Telegram {result.telegramSent ? "enviado" : "não enviado"}
+   396→              </span>
+   397→            </div>
+   398→          </div>
+   399→        )}
+   400→
+   401→        {error && (
+   402→          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
+   403→            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+   404→            <span>{error}</span>
+   405→          </div>
+   406→        )}
+   407→      </div>
+   408→    </Widget>
+   409→  );
+   410→}
+   411→
+   412→function DBStat({ label, exists, pending }: { label: string; exists?: boolean; pending?: boolean }) {
+   413→  return (
+   414→    <div className={`rounded-lg border p-2 text-center ${exists ? "border-emerald-500/20 bg-emerald-500/[0.03]" : pending ? "border-amber-500/20 bg-amber-500/[0.03]" : "border-white/5 bg-white/[0.02]"}`}>
+   415→      <code className="block truncate font-mono text-[10px] text-zinc-300">{label}</code>
+   416→      <div className="mt-0.5">
+   417→        {exists ? (
+   418→          <Badge variant="success">OK</Badge>
+   419→        ) : pending ? (
+   420→          <Badge variant="warning">pendente</Badge>
+   421→        ) : (
+   422→          <Badge variant="muted">—</Badge>
+   423→        )}
+   424→      </div>
+   425→    </div>
+   426→  );
+   427→}
+   428→
+   429→// =====================================================
+   430→// PIX CONFIG WIDGET — múltiplas chaves PIX + cobrança
+   431→// =====================================================
+   432→function PixConfigWidget() {
+   433→  const [keys, setKeys] = useState<any[]>([]);
+   434→  const [defaultKeyId, setDefaultKeyId] = useState<string | null>(null);
+   435→  const [loading, setLoading] = useState(true);
+   436→  const [newKey, setNewKey] = useState({ label: "", type: "phone", value: "", merchantName: "Clodoaldo Silva", merchantCity: "Recife" });
+   437→  const [testAmount, setTestAmount] = useState("297");
+   438→  const [testKeyId, setTestKeyId] = useState("");
+   439→  const [pixResult, setPixResult] = useState<any>(null);
+   440→  const [copied, setCopied] = useState(false);
+   441→
+   442→  const load = useCallback(async () => {
+   443→    try {
+   444→      const resp = await fetch("/api/admin/pix/config");
+   445→      const json = await resp.json();
+   446→      setKeys(json.keys || []);
+   447→      setDefaultKeyId(json.defaultKeyId);
+   448→      setTestKeyId(json.defaultKeyId || "");
+   449→    } catch {}
+   450→    setLoading(false);
+   451→  }, []);
+   452→
+   453→  useEffect(() => { load(); }, [load]);
+   454→
+   455→  async function handleAddKey() {
+   456→    if (!newKey.value) return;
+   457→    await fetch("/api/admin/pix/config", {
+   458→      method: "POST",
+   459→      headers: { "Content-Type": "application/json" },
+   460→      body: JSON.stringify({ action: "add", key: newKey }),
+   461→    });
+   462→    setNewKey({ ...newKey, label: "", value: "" });
+   463→    await load();
+   464→  }
+   465→
+   466→  async function handleRemoveKey(keyId: string) {
+   467→    if (!confirm("Remover esta chave PIX?")) return;
+   468→    await fetch("/api/admin/pix/config", {
+   469→      method: "POST",
+   470→      headers: { "Content-Type": "application/json" },
+   471→      body: JSON.stringify({ action: "remove", keyId }),
+   472→    });
+   473→    await load();
+   474→  }
+   475→
+   476→  async function handleSetDefault(keyId: string) {
+   477→    await fetch("/api/admin/pix/config", {
+   478→      method: "POST",
+   479→      headers: { "Content-Type": "application/json" },
+   480→      body: JSON.stringify({ action: "setDefault", keyId }),
+   481→    });
+   482→    await load();
+   483→  }
+   484→
+   485→  async function handleGenerate() {
+   486→    setPixResult(null);
+   487→    try {
+   488→      const resp = await fetch("/api/admin/pix/generate", {
+   489→        method: "POST",
+   490→        headers: { "Content-Type": "application/json" },
+   491→        body: JSON.stringify({ amount: parseFloat(testAmount), description: "Site Profissional", keyId: testKeyId || undefined }),
+   492→      });
+   493→      const json = await resp.json();
+   494→      setPixResult(json);
+   495→    } catch (e: any) {
+   496→      setPixResult({ error: e.message });
+   497→    }
+   498→  }
+   499→
+   500→  function copyBRCode() {
+   501→    if (pixResult?.brCode) {
+   502→      navigator.clipboard.writeText(pixResult.brCode);
+   503→      setCopied(true);
+   504→      setTimeout(() => setCopied(false), 2000);
+   505→    }
+   506→  }
+   507→
+   508→  const keyTypes: Record<string, string> = {
+   509→    phone: "Telefone",
+   510→    email: "Email",
+   511→    cpf: "CPF",
+   512→    random: "Aleatória",
+   513→    brcode: "BR Code completo",
+   514→  };
+   515→
+   516→  return (
+   517→    <Widget title="Chaves PIX" icon={<DollarSign className="h-4 w-4 text-emerald-400" />} className="mt-4">
+   518→      {loading ? (
+   519→        <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-600" /></div>
+   520→      ) : (
+   521→        <div className="space-y-4">
+   522→          {/* === Lista de chaves cadastradas === */}
+   523→          {keys.length > 0 && (
+   524→            <div className="space-y-2">
+   525→              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Chaves cadastradas ({keys.length})</div>
+   526→              {keys.map((k) => (
+   527→                <div key={k.id} className={`flex items-center justify-between gap-2 rounded-lg border p-3 ${defaultKeyId === k.id ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-white/[0.02]"}`}>
+   528→                  <div className="min-w-0 flex-1">
+   529→                    <div className="flex items-center gap-2 flex-wrap">
+   530→                      <span className="text-sm font-bold text-white">{k.label || "Sem nome"}</span>
+   531→                      <span className="text-[10px] text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded">{keyTypes[k.type] || k.type}</span>
+   532→                      {defaultKeyId === k.id && <span className="text-[10px] text-emerald-400 font-bold">★ Padrão</span>}
+   533→                    </div>
+   534→                    <div className="text-[11px] text-zinc-400 truncate mt-1 font-mono">
+   535→                      {k.type === "brcode" ? `${k.value.slice(0, 50)}...` : k.value}
+   536→                    </div>
+   537→                    <div className="text-[10px] text-zinc-600 mt-0.5">{k.merchantName} • {k.merchantCity}</div>
+   538→                  </div>
+   539→                  <div className="shrink-0 flex items-center gap-1">
+   540→                    {defaultKeyId !== k.id && (
+   541→                      <button onClick={() => handleSetDefault(k.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">Definir padrão</button>
+   542→                    )}
+   543→                    <button onClick={() => handleRemoveKey(k.id)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
+   544→                  </div>
+   545→                </div>
+   546→              ))}
+   547→            </div>
+   548→          )}
+   549→
+   550→          {/* === Adicionar nova chave === */}
+   551→          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
+   552→            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Adicionar nova chave PIX</div>
+   553→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   554→              <div>
+   555→                <Label>Nome/Label</Label>
+   556→                <Input value={newKey.label} onChange={(e) => setNewKey({ ...newKey, label: e.target.value })} placeholder="Ex: Clodoaldo telefone" />
+   557→              </div>
+   558→              <div>
+   559→                <Label>Tipo da chave</Label>
+   560→                <select
+   561→                  value={newKey.type}
+   562→                  onChange={(e) => setNewKey({ ...newKey, type: e.target.value })}
+   563→                  className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+   564→                >
+   565→                  <option value="phone">Telefone</option>
+   566→                  <option value="email">Email</option>
+   567→                  <option value="cpf">CPF</option>
+   568→                  <option value="random">Aleatória</option>
+   569→                  <option value="brcode">BR Code completo (PIX Copia e Cola)</option>
+   570→                </select>
+   571→              </div>
+   572→            </div>
+   573→            <div>
+   574→              <Label>{newKey.type === "brcode" ? "BR Code completo (PIX Copia e Cola)" : "Chave PIX"}</Label>
+   575→              {newKey.type === "brcode" ? (
+   576→                <Textarea
+   577→                  value={newKey.value}
+   578→                  onChange={(e) => setNewKey({ ...newKey, value: e.target.value })}
+   579→                  placeholder="Cole aqui o código completo do PIX (00020126...)"
+   580→                  rows={3}
+   581→                  className="font-mono text-xs"
+   582→                />
+   583→              ) : (
+   584→                <Input value={newKey.value} onChange={(e) => setNewKey({ ...newKey, value: e.target.value })} placeholder={newKey.type === "phone" ? "81971133707" : newKey.type === "email" ? "email@gmail.com" : "Digite a chave"} />
+   585→              )}
+   586→            </div>
+   587→            <div className="grid grid-cols-2 gap-3">
+   588→              <div>
+   589→                <Label>Nome do recebedor (max 25)</Label>
+   590→                <Input value={newKey.merchantName} onChange={(e) => setNewKey({ ...newKey, merchantName: e.target.value })} maxLength={25} />
+   591→              </div>
+   592→              <div>
+   593→                <Label>Cidade (max 15)</Label>
+   594→                <Input value={newKey.merchantCity} onChange={(e) => setNewKey({ ...newKey, merchantCity: e.target.value })} maxLength={15} />
+   595→              </div>
+   596→            </div>
+   597→            <Button variant="primary" onClick={handleAddKey} disabled={!newKey.value}>
+   598→              <Plus className="h-3.5 w-3.5" /> Adicionar chave
+   599→            </Button>
+   600→          </div>
+   601→
+   602→          {/* === Testar cobrança === */}
+   603→          {keys.length > 0 && (
+   604→            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-3">
+   605→              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Testar cobrança PIX</div>
+   606→              <div className="flex items-end gap-2 flex-wrap">
+   607→                <div className="flex-1 min-w-[100px]">
+   608→                  <Label>Valor (R$)</Label>
+   609→                  <Input value={testAmount} onChange={(e) => setTestAmount(e.target.value)} placeholder="297" type="number" />
+   610→                </div>
+   611→                <div className="flex-1 min-w-[150px]">
+   612→                  <Label>Chave</Label>
+   613→                  <select
+   614→                    value={testKeyId}
+   615→                    onChange={(e) => setTestKeyId(e.target.value)}
+   616→                    className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+   617→                  >
+   618→                    {keys.map((k) => (
+   619→                      <option key={k.id} value={k.id}>{k.label || "Sem nome"} ({keyTypes[k.type]})</option>
+   620→                    ))}
+   621→                  </select>
+   622→                </div>
+   623→                <Button variant="outline" onClick={handleGenerate}>
+   624→                  <QrCode className="h-3.5 w-3.5" /> Gerar PIX
+   625→                </Button>
+   626→              </div>
+   627→
+   628→              {pixResult?.error && (
+   629→                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">{pixResult.error}</div>
+   630→              )}
+   631→
+   632→              {pixResult?.qrUrl && (
+   633→                <div className="space-y-3">
+   634→                  <div className="flex flex-col sm:flex-row gap-4">
+   635→                    <div className="shrink-0">
+   636→                      <img src={pixResult.qrUrl} alt="QR Code PIX" className="rounded-xl border border-white/10" width={200} height={200} />
+   637→                    </div>
+   638→                    <div className="flex-1 space-y-2">
+   639→                      <div className="text-lg font-bold text-emerald-300">{pixResult.amountFormatted}</div>
+   640→                      {pixResult.keyUsed && (
+   641→                        <div className="text-[11px] text-zinc-500">Chave: {pixResult.keyUsed.label} ({keyTypes[pixResult.keyUsed.type]})</div>
+   642→                      )}
+   643→                      <div>
+   644→                        <Label>PIX Copia e Cola</Label>
+   645→                        <pre className="whitespace-pre-wrap break-all rounded-lg bg-black/30 border border-white/10 p-2 text-[10px] font-mono text-zinc-400 max-h-32 overflow-y-auto">{pixResult.brCode}</pre>
+   646→                      </div>
+   647→                      <Button variant="outline" size="sm" onClick={copyBRCode}>
+   648→                        {copied ? <><Check className="h-3 w-3" /> Copiado!</> : <><Copy className="h-3 w-3" /> Copiar código</>}
+   649→                      </Button>
+   650→                    </div>
+   651→                  </div>
+   652→                </div>
+   653→              )}
+   654→            </div>
+   655→          )}
+   656→
+   657→          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3 text-[11px] text-emerald-200/70">
+   658→            💡 Você pode cadastrar múltiplas chaves PIX (telefone, email, CPF, aleatória ou BR Code completo). A chave padrão é usada automaticamente no fluxo de entrega do projeto.
+   659→          </div>
+   660→        </div>
+   661→      )}
+   662→    </Widget>
+   663→  );
+   664→}
+   665→

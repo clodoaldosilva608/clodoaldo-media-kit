@@ -143,20 +143,7 @@ export default function AdminSettingsPage() {
       </Widget>
 
       <Widget title="Variáveis de ambiente" icon={<Code className="h-4 w-4 text-violet-400" />} className="mt-4">
-        <div className="space-y-2 text-xs">
-          {[
-            { k: "NEXT_PUBLIC_SUPABASE_URL", v: "✓ Configurado" },
-            { k: "SUPABASE_SERVICE_ROLE_KEY", v: "✓ Configurado" },
-            { k: "KIWIFY_API_TOKEN", v: "⚠ Pendente (configurar no .env)" },
-            { k: "KIWIFY_WEBHOOK_SECRET", v: "⚠ Pendente (configurar no .env)" },
-            { k: "KIWIFY_DEFAULT_PRODUCT_ID", v: "⚠ Pendente (configurar no .env)" },
-          ].map((e) => (
-            <div key={e.k} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-3 py-2">
-              <code className="font-mono text-zinc-300">{e.k}</code>
-              <span className="text-zinc-400">{e.v}</span>
-            </div>
-          ))}
-        </div>
+        <EnvVarsStatus />
       </Widget>
 
       <Widget title="Documentação" icon={<FileText className="h-4 w-4 text-blue-400" />} className="mt-4">
@@ -438,6 +425,7 @@ function PixConfigWidget() {
   const [testKeyId, setTestKeyId] = useState("");
   const [pixResult, setPixResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({}); // auditoria P0-C: chaves mascaradas por padrão
 
   const load = useCallback(async () => {
     try {
@@ -523,7 +511,14 @@ function PixConfigWidget() {
           {keys.length > 0 && (
             <div className="space-y-2">
               <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Chaves cadastradas ({keys.length})</div>
-              {keys.map((k) => (
+              {keys.map((k) => {
+                const revealed = !!revealedKeys[k.id];
+                const masked = k.type === "brcode"
+                  ? `${k.value.slice(0, 30)}••••••••••••••••••••`
+                  : k.value.length > 8
+                    ? `${k.value.slice(0, 4)}${"•".repeat(Math.max(4, k.value.length - 8))}${k.value.slice(-4)}`
+                    : "••••••••";
+                return (
                 <div key={k.id} className={`flex items-center justify-between gap-2 rounded-lg border p-3 ${defaultKeyId === k.id ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-white/[0.02]"}`}>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -532,18 +527,26 @@ function PixConfigWidget() {
                       {defaultKeyId === k.id && <span className="text-[10px] text-emerald-400 font-bold">★ Padrão</span>}
                     </div>
                     <div className="text-[11px] text-zinc-400 truncate mt-1 font-mono">
-                      {k.type === "brcode" ? `${k.value.slice(0, 50)}...` : k.value}
+                      {revealed ? (k.type === "brcode" ? k.value.slice(0, 80) + "..." : k.value) : masked}
                     </div>
                     <div className="text-[10px] text-zinc-600 mt-0.5">{k.merchantName} • {k.merchantCity}</div>
                   </div>
                   <div className="shrink-0 flex items-center gap-1">
+                    <button
+                      onClick={() => setRevealedKeys((p) => ({ ...p, [k.id]: !revealed }))}
+                      className={`text-[10px] px-2 py-1 rounded transition ${revealed ? "text-amber-400 hover:text-amber-300" : "text-zinc-400 hover:text-zinc-300"}`}
+                      title={revealed ? "Ocultar chave" : "Revelar chave (visualização sensível)"}
+                    >
+                      {revealed ? "🙈 Ocultar" : "👁 Revelar"}
+                    </button>
                     {defaultKeyId !== k.id && (
-                      <button onClick={() => handleSetDefault(k.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">Definir padrão</button>
+                      <button onClick={() => handleSetDefault(k.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">Padrão</button>
                     )}
                     <button onClick={() => handleRemoveKey(k.id)} className="text-rose-400 hover:text-rose-300 p-1"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -660,5 +663,77 @@ function PixConfigWidget() {
         </div>
       )}
     </Widget>
+  );
+}
+
+// =====================================================
+// ENV VARS STATUS — Lê status real do backend (auditoria P0-B)
+// =====================================================
+function EnvVarsStatus() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/system/envs")
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="py-4 text-center text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin inline mr-1" /> Verificando…</div>;
+  }
+
+  if (!data) {
+    return <div className="text-xs text-rose-400">Falha ao verificar variáveis.</div>;
+  }
+
+  const { envs, status } = data;
+  const rows: Array<{ k: string; ok: boolean; hint?: string; status?: string }> = [
+    { k: "NEXT_PUBLIC_SUPABASE_URL", ok: envs.supabase_url },
+    { k: "SUPABASE_SERVICE_ROLE_KEY", ok: envs.supabase_service },
+    { k: "GEMINI_API_KEY", ok: envs.gemini },
+    { k: "GOOGLE_MAPS_API_KEY", ok: envs.google_maps },
+    { k: "TELEGRAM_BOT_TOKEN + CHAT_ID", ok: envs.telegram },
+    { k: "CRON_SECRET", ok: envs.cron_secret },
+    { k: "GOOGLE_OAUTH (client_id + secret)", ok: envs.google_oauth_client, hint: envs.google_oauth_client ? undefined : "Necessário para relatório semanal por email" },
+    {
+      k: "KIWIFY_API_TOKEN + WEBHOOK + PRODUCT_ID",
+      ok: envs.kiwify_token && envs.kiwify_webhook && envs.kiwify_product,
+      status: status?.kiwify,
+      hint: status?.kiwify === "not_configured"
+        ? "Não utilizado — vendas atuais usam checkout direto. Configure apenas se for adotar Kiwify."
+        : undefined,
+    },
+    {
+      k: "PIXEL ativo (Meta/GA4/Google Ads/TikTok)",
+      ok: envs.pixel_active,
+      status: status?.analytics,
+      hint: envs.pixel_active ? undefined : "Configure em /admin/pixels para começar a rastrear visitas",
+    },
+  ];
+
+  return (
+    <div className="space-y-2 text-xs">
+      {rows.map((r) => (
+        <div key={r.k} className="flex items-start justify-between gap-3 rounded-lg bg-white/[0.02] px-3 py-2">
+          <div className="min-w-0 flex-1">
+            <code className="font-mono text-zinc-300 break-all">{r.k}</code>
+            {r.hint && <div className="mt-0.5 text-[10px] text-zinc-500">{r.hint}</div>}
+          </div>
+          {r.ok ? (
+            <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">✓ Configurado</span>
+          ) : r.status === "not_configured" ? (
+            <span className="shrink-0 rounded-full bg-zinc-500/15 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">— Não utilizado</span>
+          ) : (
+            <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">⚠ Pendente</span>
+          )}
+        </div>
+      ))}
+      <div className="mt-2 text-[10px] text-zinc-500">
+        Status verificado em tempo real. Variáveis são lidas do ambiente Vercel — configurar em <code className="text-zinc-400">vercel.com → Project → Settings → Environment Variables</code>.
+      </div>
+    </div>
   );
 }

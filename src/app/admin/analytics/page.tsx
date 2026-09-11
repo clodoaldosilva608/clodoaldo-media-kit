@@ -121,10 +121,10 @@ export default function AdminAnalyticsPage() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 8);
 
-  // Top paths
+  // Top paths — APENAS eventos de page_view (não contar cliques/leads como visitas)
   const pathCounts: Record<string, number> = {};
   filteredEvents.forEach((e) => {
-    if (e.path) {
+    if (e.path && (e.event_name === "page_view" || e.event_name === "PageView")) {
       pathCounts[e.path] = (pathCounts[e.path] || 0) + 1;
     }
   });
@@ -145,15 +145,23 @@ export default function AdminAnalyticsPage() {
     .map(([slug, v]) => ({ slug, ...v }))
     .sort((a, b) => b.revenue - a.revenue);
 
-  // Conversion funnel
+  // Conversion funnel — sem || 1 (mostra 0 quando é 0, para consistência com KPI)
   const visits = filteredEvents.filter((e) => e.event_name === "page_view" || e.event_name === "PageView").length;
   const checkouts = filteredEvents.filter((e) => e.event_name === "InitiateCheckout" || e.event_name === "checkout_started").length;
   const purchases = filteredOrders.filter((o) => o.status === "paid").length;
   const funnel = [
-    { stage: "Visitas", value: visits || 1, color: "#3b82f6" },
+    { stage: "Visitas", value: visits, color: "#3b82f6" },
     { stage: "Checkout iniciado", value: checkouts, color: "#f59e0b" },
     { stage: "Compra paga", value: purchases, color: "#10b981" },
   ];
+
+  // Última atualização dos dados
+  const lastEventAt = events.length > 0
+    ? new Date(Math.max(...events.map((e) => new Date(e.created_at).getTime()))).toISOString()
+    : null;
+  const firstEventAt = events.length > 0
+    ? new Date(Math.min(...events.map((e) => new Date(e.created_at).getTime()))).toISOString()
+    : null;
 
   return (
     <AdminShell title="Analytics">
@@ -161,6 +169,40 @@ export default function AdminAnalyticsPage() {
         <p className="text-sm text-zinc-400">Acompanhe métricas de tráfego, conversão e vendas.</p>
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>
+
+      {/* Contrato de métricas + última atualização */}
+      <div className="mb-4 rounded-xl border border-white/5 bg-white/[0.02] p-3 text-[11px] text-zinc-400">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="text-zinc-300 font-semibold">Contrato de métricas:</span>
+          <span><strong className="text-zinc-200">Visitas</strong> = page_view (todas as fontes, mesmo período)</span>
+          <span><strong className="text-zinc-200">Checkouts</strong> = InitiateCheckout/checkout_started</span>
+          <span><strong className="text-zinc-200">Compras</strong> = orders.status = paid</span>
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-zinc-500">
+          <span>Janela: <strong className="text-zinc-300">{period === "today" ? "hoje" : period === "week" ? "7d" : period === "month" ? "30d" : "tudo"}</strong> · BRT</span>
+          {firstEventAt && <span>Primeiro evento: {new Date(firstEventAt).toLocaleString("pt-BR")}</span>}
+          {lastEventAt && <span>Último evento: <strong className="text-zinc-300">{new Date(lastEventAt).toLocaleString("pt-BR")}</strong></span>}
+          {!lastEventAt && <span className="text-amber-400">⚠ Nenhum evento de analytics registrado ainda</span>}
+        </div>
+      </div>
+
+      {/* Aviso se não há eventos de page_view */}
+      {visits === 0 && (
+        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-3 text-xs">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-400 font-bold">⚠ Sem eventos page_view no período</span>
+          </div>
+          <p className="mt-1 text-amber-200/80">
+            O pixel de analytics ainda não foi configurado. Para começar a rastrear visitas:
+          </p>
+          <ol className="mt-1.5 list-decimal list-inside text-amber-200/70 space-y-0.5">
+            <li>Vá em <a href="/admin/pixels" className="underline">Pixels &amp; Ads</a> e configure GA4 ou Meta Pixel</li>
+            <li>Implemente consentimento de cookies (LGPD)</li>
+            <li>Faça uma visita de teste no site</li>
+            <li>Volte aqui em 1-2 min para ver os dados</li>
+          </ol>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

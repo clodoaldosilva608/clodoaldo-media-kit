@@ -20,13 +20,30 @@ declare global {
     ttq?: any;
     Tatari?: any;
     __pixelTrackedEvents?: Set<string>;
+    __cookieConsent?: { accepted: boolean; at: string } | null;
+  }
+}
+
+const CONSENT_KEY = "cookie-consent-v1";
+
+function readConsent(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return !!parsed.accepted;
+  } catch {
+    return null;
   }
 }
 
 export function PixelLoader() {
   const [pixels, setPixels] = useState<PixelConfig[]>([]);
+  const [consent, setConsent] = useState<boolean | null>(null);
   const [trackedEvents, setTrackedEvents] = useState<Set<string>>(new Set());
 
+  // Load pixel configs from DB (only if there are any)
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -41,13 +58,34 @@ export function PixelLoader() {
     };
   }, []);
 
-  // Initialize each pixel script
+  // Watch for cookie consent (LGPD compliance — auditoria P0-D)
+  // Pixels só carregam após o usuário aceitar cookies.
   useEffect(() => {
-    if (typeof window === "undefined" || pixels.length === 0) return;
+    if (typeof window === "undefined") return;
+    const check = () => {
+      const c = readConsent();
+      setConsent(c);
+      window.__cookieConsent = c === null ? null : { accepted: c, at: new Date().toISOString() };
+    };
+    check();
+    // Re-check every 2s (cookie banner can be accepted at any time)
+    const interval = setInterval(check, 2000);
+    const onStorage = (e: StorageEvent) => { if (e.key === CONSENT_KEY) check(); };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  // Initialize each pixel script — APENAS se consent === true
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (consent !== true) return; // aguardar aceite
+    if (pixels.length === 0) return;
 
     pixels.forEach((p) => {
       if (p.provider === "meta" && !window.fbq) {
-        // Meta Pixel base code
         (function (f: any, b, e, v, n?: any, t?: any, s?: any) {
           if (f.fbq) return;
           n = f.fbq = function () {
@@ -76,7 +114,7 @@ export function PixelLoader() {
           window.dataLayer!.push(arguments);
         };
         window.gtag("js", new Date());
-        window.gtag("config", p.pixel_id);
+        window.gtag("config", p.pixel_id, { anonymize_ip: true });
         const s = document.createElement("script");
         s.async = true;
         s.src = `https://www.googletagmanager.com/gtag/js?id=${p.pixel_id}`;
@@ -120,20 +158,21 @@ export function PixelLoader() {
             o.async = true;
             o.src = r + "?sdkid=" + e + "&lib=" + t;
             var a = d.getElementsByTagName("script")[0];
-            a.parentNode.insertBefore(o, a);
+            if (a && a.parentNode) a.parentNode.insertBefore(o, a);
           };
           ttq.load(p.pixel_id);
           ttq.page();
         })(window, document, "ttq");
       }
     });
-  }, [pixels]);
+  }, [pixels, consent]);
 
-  // Helper to track events (exposed globally)
+  // Helper to track events (exposed globally) — bloqueado se sem consent
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.__pixelTrackedEvents = trackedEvents;
     (window as any).trackEvent = (eventName: string, data?: Record<string, any>) => {
+      if (consent !== true) return; // LGPD: não trackear sem consentimento
       pixels.forEach((p) => {
         if (!p.send_events?.includes(eventName)) return;
         if (p.provider === "meta" && window.fbq) {
@@ -145,7 +184,7 @@ export function PixelLoader() {
         }
       });
     };
-  }, [pixels, trackedEvents]);
+  }, [pixels, trackedEvents, consent]);
 
   return null;
 }
