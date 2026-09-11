@@ -2498,3 +2498,27 @@ Stage Summary:
 - ❌ Railway edge proxy is blocking all requests with 429.
 - 💳 User must upgrade Railway → Billing → Hobby plan ($5/month) to remove throttle.
 - Alternative: migrate to Fly.io or Render with paid instance.
+
+---
+Task ID: WhatsApp-Manual-Strategy
+Agent: main (GLM)
+Task: Switch /admin/whatsapp to manual wa.me strategy — drop Railway/Open-WA dependency
+
+Work Log:
+- User decided to use existing prospection system (cron 09:00 BRT → Telegram + /admin/leads-crm) instead of Open-WA automated sending.
+- Rationale: zero cost, zero maintenance, zero PC-required, no rate limits.
+- Refactored /admin/whatsapp page:
+  - Removed all Open-WA Railway calls (URL, key, polling, fetch logic).
+  - Removed QR code display and connection status indicator.
+  - Removed test-send-via-OpenWA widget.
+  - Added strategy banner explaining the manual flow.
+  - Added 2 quick-link cards: "Área de Prospecção" + "WhatsApp Direto".
+  - Conversations panel: reply now generates wa.me link with one-click button.
+- Committed (b3f27ac) and pushed to GitHub main → Vercel auto-redeploy.
+- Railway service `clodoaldo-openwa-production-ef95` can be safely deleted by user.
+
+Stage Summary:
+- ✅ /admin/whatsapp no longer depends on Railway service.
+- ✅ Strategy is now: cron → IA messages → Telegram + /admin/leads-crm → wa.me link → 1-click send.
+- ✅ Open-WA service on Railway no longer needed; user can cancel/deploy it.
+- ✅ GitHub repo clodoaldosilva608/clodoaldo-openwa left intact for future use if needed.
