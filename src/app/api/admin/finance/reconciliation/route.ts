@@ -1,91 +1,111 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { getMeucorrePool } from "@/lib/meucorre-db";
 
 /**
  * GET /api/admin/finance/reconciliation
  *
- * Reconciliação financeira — auditoria P1-6.
- * Compara pedidos locais com eventos do gateway (payment_events).
+ * Compara orders locais com payment_events.
+ * Ambos estão no mesmo banco (Supabase main).
  *
  * Retorna:
- *   - orders_without_payment: pedidos sem evento de pagamento correspondente
- *   - payments_without_order: eventos sem pedido local
- *   - status_mismatches: pedido "paid" mas gateway não confirmou (ou vice-versa)
- *   - amount_mismatches: valor do pedido ≠ valor do pagamento
- *   - duplicate_payments: mesmo order_id com 2+ eventos "paid"
+ *   - orders_without_payment
+ *   - payments_without_order
+ *   - status_mismatches
+ *   - amount_mismatches
+ *   - duplicate_payments
  */
+function getServer() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 export async function GET() {
   try {
-    const pool = getMeucorrePool();
-    if (!pool) return NextResponse.json({ error: "DB indisponível" }, { status: 503 });
+    const sb: any = getServer();
 
-    // 1) Pedidos sem pagamento correspondente
-    const noPay = await pool.query(`
-      SELECT o.id, o.service_slug, o.service_name, o.customer_email, o.total_cents, o.status, o.created_at
-      FROM orders o
-      LEFT JOIN payment_events p ON p.order_id = o.id
-      WHERE p.id IS NULL
-      ORDER BY o.created_at DESC LIMIT 100
-    `);
+    const [ordersR, paymentsR] = await Promise.all([
+      sb.from("orders").select("id,service_slug,service_name,customer_email,customer_name,total_cents,status,created_at").order("created_at", { ascending: false }).limit(500),
+      sb.from("payment_events").select("id,gateway,event_id,order_id,status,amount_cents,received_at,signature_valid").order("received_at", { ascending: false }).limit(500),
+    ]);
 
-    // 2) Pagamentos sem pedido local
-    const noOrder = await pool.query(`
-      SELECT p.id, p.gateway, p.event_id, p.order_id, p.status, p.amount_cents, p.received_at, p.signature_valid
-      FROM payment_events p
-      LEFT JOIN orders o ON o.id = p.order_id
-      WHERE o.id IS NULL
-      ORDER BY p.received_at DESC LIMIT 100
-    `);
+    if (ordersR.error) throw ordersR.error;
+    if (paymentsR.error) throw paymentsR.error;
 
-    // 3) Status mismatches
-    const mismatches = await pool.query(`
-      SELECT o.id AS order_id, o.service_slug, o.customer_email, o.total_cents,
-             o.status AS order_status,
-             p.status AS payment_status, p.gateway, p.received_at
-      FROM orders o
-      JOIN payment_events p ON p.order_id = o.id
-      WHERE (o.status = 'paid' AND p.status NOT IN ('paid','captured'))
-         OR (o.status <> 'paid' AND p.status IN ('paid','captured'))
-      ORDER BY p.received_at DESC LIMIT 100
-    `);
+    const orders = ordersR.data || [];
+    const payments = paymentsR.data || [];
+    const orderIds = new Set(orders.map((o: any) => o.id));
+    const paymentsByOrder: Record<string, any[]> = {};
+    payments.forEach((p: any) => {
+      const k = p.order_id || "(orphan)";
+      if (!paymentsByOrder[k]) paymentsByOrder[k] = [];
+      paymentsByOrder[k].push(p);
+    });
 
-    // 4) Amount mismatches
-    const amountMismatch = await pool.query(`
-      SELECT o.id AS order_id, o.service_slug, o.total_cents AS order_cents,
-             p.amount_cents AS payment_cents, p.gateway, p.received_at
-      FROM orders o
-      JOIN payment_events p ON p.order_id = o.id
-      WHERE p.status IN ('paid','captured')
-        AND o.total_cents > 0
-        AND ABS(o.total_cents - p.amount_cents) > 1
-      ORDER BY p.received_at DESC LIMIT 100
-    `);
+    const orders_without_payment = orders.filter((o: any) => !paymentsByOrder[o.id] || paymentsByOrder[o.id].length === 0);
+    const payments_without_order = payments.filter((p: any) => p.order_id && !orderIds.has(p.order_id));
 
-    // 5) Duplicate payments
-    const dupes = await pool.query(`
-      SELECT order_id, COUNT(*)::int AS paid_count,
-             array_agg(event_id) AS event_ids,
-             array_agg(received_at) AS received_ats
-      FROM payment_events
-      WHERE status IN ('paid','captured')
-      GROUP BY order_id
-      HAVING COUNT(*) > 1
-      ORDER BY MAX(received_at) DESC LIMIT 100
-    `);
+    const status_mismatches: any[] = [];
+    const amount_mismatches: any[] = [];
+    const duplicate_payments: any[] = [];
+
+    for (const [orderId, evs] of Object.entries(paymentsByOrder)) {
+      if (orderId === "(orphan)") continue;
+      const order = orders.find((o: any) => o.id === orderId);
+      if (!order) continue;
+
+      for (const p of evs) {
+        if (p.status === "paid" || p.status === "captured") {
+          if (order.status !== "paid") {
+            status_mismatches.push({
+              order_id: orderId,
+              service_slug: order.service_slug,
+              customer_email: order.customer_email,
+              total_cents: order.total_cents,
+              order_status: order.status,
+              payment_status: p.status,
+              gateway: p.gateway,
+              received_at: p.received_at,
+            });
+          }
+          if (order.total_cents > 0 && Math.abs(order.total_cents - (p.amount_cents || 0)) > 1) {
+            amount_mismatches.push({
+              order_id: orderId,
+              service_slug: order.service_slug,
+              order_cents: order.total_cents,
+              payment_cents: p.amount_cents,
+              gateway: p.gateway,
+              received_at: p.received_at,
+            });
+          }
+        }
+      }
+
+      const paidCount = evs.filter((p: any) => p.status === "paid" || p.status === "captured").length;
+      if (paidCount > 1) {
+        duplicate_payments.push({
+          order_id: orderId,
+          paid_count: paidCount,
+          event_ids: evs.map((p: any) => p.event_id),
+          received_ats: evs.map((p: any) => p.received_at),
+        });
+      }
+    }
 
     return NextResponse.json({
       summary: {
-        orders_without_payment: noPay.rowCount || 0,
-        payments_without_order: noOrder.rowCount || 0,
-        status_mismatches: mismatches.rowCount || 0,
-        amount_mismatches: amountMismatch.rowCount || 0,
-        duplicate_payments: dupes.rowCount || 0,
+        orders_without_payment: orders_without_payment.length,
+        payments_without_order: payments_without_order.length,
+        status_mismatches: status_mismatches.length,
+        amount_mismatches: amount_mismatches.length,
+        duplicate_payments: duplicate_payments.length,
       },
-      orders_without_payment: noPay.rows,
-      payments_without_order: noOrder.rows,
-      status_mismatches: mismatches.rows,
-      amount_mismatches: amountMismatch.rows,
-      duplicate_payments: dupes.rows,
+      orders_without_payment,
+      payments_without_order,
+      status_mismatches,
+      amount_mismatches,
+      duplicate_payments,
       generatedAt: new Date().toISOString(),
     });
   } catch (e: any) {

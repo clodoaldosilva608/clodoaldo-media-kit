@@ -1,44 +1,65 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { getMeucorrePool } from "@/lib/meucorre-db";
 import { DEFAULT_TEMPLATES } from "@/lib/email-templates";
 
 /**
- * GET  /api/admin/email-templates/seed
- *   Lista os 7 templates que seriam criados.
- *
- * POST /api/admin/email-templates/seed
- *   Insere os 7 templates transacionais padrão se ainda não existirem.
- *   Idempotente: templates existentes (mesmo trigger) não são duplicados.
+ * GET  /api/admin/email-templates/seed   → lista templates disponíveis
+ * POST /api/admin/email-templates/seed   → insere idempotentemente no Supabase
  */
+function getServer() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 export async function GET() {
-  return NextResponse.json({ templates: DEFAULT_TEMPLATES.map(t => ({ trigger: t.trigger, name: t.name, subject: t.subject })) });
+  return NextResponse.json({
+    templates: DEFAULT_TEMPLATES.map(t => ({ trigger: t.trigger, name: t.name, subject: t.subject })),
+  });
 }
 
 export async function POST() {
   try {
-    const pool = getMeucorrePool();
-    if (!pool) return NextResponse.json({ error: "DB pool indisponível" }, { status: 503 });
-
+    const sb: any = getServer();
     let inserted = 0;
     let skipped = 0;
+    const errors: string[] = [];
+
     for (const t of DEFAULT_TEMPLATES) {
-      const exists = await pool.query(
-        "SELECT id FROM email_templates WHERE trigger = $1 LIMIT 1",
-        [t.trigger]
-      );
-      if ((exists.rowCount ?? 0) > 0) {
+      // Check if exists
+      const { data: existing, error: eErr } = await sb.from("email_templates")
+        .select("id").eq("trigger", t.trigger).maybeSingle();
+      if (eErr) {
+        errors.push(`${t.trigger}: ${eErr.message}`);
+        continue;
+      }
+      if (existing) {
         skipped++;
         continue;
       }
-      await pool.query(
-        `INSERT INTO email_templates (name, subject, preheader, body_html, trigger, active, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, now())`,
-        [t.name, t.subject, t.preheader, t.body_html, t.trigger, t.active]
-      );
-      inserted++;
+      const { error: insErr } = await sb.from("email_templates").insert({
+        name: t.name,
+        subject: t.subject,
+        preheader: t.preheader,
+        body_html: t.body_html,
+        trigger: t.trigger,
+        active: t.active,
+      });
+      if (insErr) {
+        errors.push(`${t.trigger}: ${insErr.message}`);
+      } else {
+        inserted++;
+      }
     }
 
-    return NextResponse.json({ ok: true, inserted, skipped, total: DEFAULT_TEMPLATES.length });
+    return NextResponse.json({
+      ok: true,
+      inserted,
+      skipped,
+      total: DEFAULT_TEMPLATES.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
