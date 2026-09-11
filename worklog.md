@@ -1982,3 +1982,42 @@ Stage Summary:
 - 1 migration script: fix-phone-numbers.js (corrigiu 84 leads no banco)
 - Problema resolvido: wa.me links agora usam formato internacional completo "55DDDNNNNNNNNN"
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: fix-preview-per-niche
+Agent: main (Super Z)
+Task: Corrigir previews de site que mostravam conteúdo de restaurante para todos os nichos.
+
+Work Log:
+- **Problema identificado**: preview-generator.ts tinha apenas UM template hardcoded (de restaurante) — features "Especial da Casa", "Opção Fitness", "Bebidas & Sobremesas", CTA "Fazer Pedido". Apenas as cores mudavam por nicho, mas o conteúdo era sempre de restaurante.
+
+- **Solução**: refatorado preview-generator.ts com sistema de configuração por nicho (NICHE_CONFIG):
+  - 18 nichos configurados com conteúdo específico:
+    barbearia, restaurante, pizzaria, hamburgueria, cafeteria, academia,
+    salao de beleza, clinica estetica, farmacia, pet shop,
+    escritorio de advocacia, consultorio odontologico, loja de roupas,
+    papelaria, estetica automotiva, imobiliaria, contabilidade,
+    agencia de marketing, estudio de pilates, loja de conveniencia
+  - Cada nicho tem: colors, heroBadge, heroSubtitle, searchPlaceholder, categoryPills, sectionTitle, sectionSub, features (emoji+tag+title+desc), aboutText, ctaTitle, ctaSubtitle, ctaButton
+  - DEFAULT_CONFIG fallback para nichos não mapeados
+  - Busca case-insensitive por niche key
+
+- **Exemplos de conteúdo por nicho**:
+  - Barbearia: "✂️ Barbearia Premium" / "Corte Degradê", "Barba Modelada", "Pigmentação" / "Pronto para um novo visual?" / "📅 Agendar Horário"
+  - Restaurante: "🔥 Em alta · Restaurante" / "Especial da Casa", "Opção Fitness", "Bebidas" / "Pronto para experimentar?" / "📱 Fazer Pedido"
+  - Academia: "💪 Academia Premium" / "Plano Musculação", "Funcional", "Personal" / "Pronto para treinar?" / "💪 Aula Grátis"
+  - Pizzaria: "🍕 Pizzaria Artesanal" / "Margherita", "Portuguesa", "Chocolate" / "🍕 Pedir Pizza"
+  - Advocacia: "⚖️ Advocacia" / "Direito Civil", "Empresarial", "Trabalhista" / "⚖️ Agendar Consulta"
+  - Odontologia: "🦷 Odontologia" / "Clareamento", "Lentes", "Limpeza" / "🦷 Agendar Avaliação"
+
+- **Também corrigido**: número de WhatsApp no preview agora usa normalizeBrazilianPhone inline (adiciona "55" se faltar)
+
+- **Testado via agent-browser** (3 nichos):
+  1. Empório Barbearia → "✂️ BARBEARIA PREMIUM" / "Corte Degradê" / "Barba Modelada" / "📅 Agendar Horário" ✅
+  2. Bob's Burger (restaurante) → "🔥 EM ALTA · RESTAURANTE" / "Especial da Casa" / "📱 Fazer Pedido" ✅
+  3. Gym Fit academia → "💪 ACADEMIA PREMIUM" / "Plano Musculação" / "💪 Aula Grátis" ✅
+
+Stage Summary:
+- 1 arquivo modificado: preview-generator.ts (refatorado completamente, ~600 linhas com 18 configs de nicho)
+- Previews agora mostram conteúdo 100% específico por nicho (features, CTAs, categorias, textos)
+- Tudo testado em produção via agent-browser — barbearia mostra barbearia, restaurante mostra restaurante
