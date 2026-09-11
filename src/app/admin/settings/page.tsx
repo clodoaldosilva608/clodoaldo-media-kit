@@ -110,27 +110,14 @@ export default function AdminSettingsPage() {
       </Widget>
 
       <Widget title="Status do banco de dados" icon={<Database className="h-4 w-4 text-blue-400" />} className="mt-4">
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-4">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
             <div className="flex-1">
-              <h4 className="text-sm font-semibold text-amber-200">Migration pendente — Admin Expansion</h4>
-              <p className="mt-1 text-xs text-amber-200/80">
-                Para habilitar todas as funcionalidades do admin (cupons, depoimentos, contagem regressiva, pixels, WhatsApp, afiliados, e-mail marketing, assinaturas, notificações), 
-                você precisa aplicar a migration <code className="rounded bg-amber-500/10 px-1">20260903090000_admin_expansion.sql</code> no Supabase SQL Editor.
+              <h4 className="text-sm font-semibold text-emerald-200">✅ Migration aplicada — Banco de dados completo</h4>
+              <p className="mt-1 text-xs text-emerald-200/80">
+                Todas as tabelas do admin estão criadas e funcionando: cupons, depoimentos, contagem regressiva, pixels, WhatsApp, afiliados, e-mail marketing, assinaturas, notificações e PIX.
               </p>
-              <ol className="mt-2 space-y-1 text-[11px] text-amber-200/70">
-                <li>1. Acesse: <a href="https://supabase.com/dashboard/project/jckkbsluvbejioyrlcfo/sql/new" target="_blank" rel="noreferrer" className="font-mono underline">Supabase SQL Editor</a></li>
-                <li>2. Abra o arquivo: <code className="rounded bg-amber-500/10 px-1">upload/codigo-01/supabase/migrations/20260903090000_admin_expansion.sql</code></li>
-                <li>3. Cole todo o conteúdo no SQL Editor</li>
-                <li>4. Clique em <strong>Run</strong></li>
-              </ol>
-              <div className="mt-3">
-                <Button variant="outline" size="sm" onClick={copyMigration}>
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? "Copiado!" : "Copiar instruções"}
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -144,14 +131,14 @@ export default function AdminSettingsPage() {
           <DBStat label="analytics_events" exists />
           <DBStat label="user_roles" exists />
           <DBStat label="knowledge_items" exists />
-          <DBStat label="coupons" pending />
-          <DBStat label="testimonials" pending />
-          <DBStat label="countdown_campaigns" pending />
-          <DBStat label="pixel_config" pending />
-          <DBStat label="whatsapp_config" pending />
-          <DBStat label="affiliates" pending />
-          <DBStat label="email_templates" pending />
-          <DBStat label="subscription_plans" pending />
+          <DBStat label="coupons" exists />
+          <DBStat label="testimonials" exists />
+          <DBStat label="countdown_campaigns" exists />
+          <DBStat label="pixel_config" exists />
+          <DBStat label="whatsapp_config" exists />
+          <DBStat label="affiliates" exists />
+          <DBStat label="email_templates" exists />
+          <DBStat label="subscription_plans" exists />
         </div>
       </Widget>
 
