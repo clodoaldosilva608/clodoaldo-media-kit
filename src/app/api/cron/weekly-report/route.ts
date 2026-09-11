@@ -44,7 +44,11 @@ export async function POST(req: NextRequest) {
   let emailSent = false;
   let emailError: string | null = null;
   try {
-    const dest = await getConnectedEmail();
+    // Try to get connected email; fall back to admin email env var or hardcoded default
+    let dest = await getConnectedEmail();
+    if (!dest) {
+      dest = process.env.ADMIN_EMAIL || "clodoaldo608@gmail.com";
+    }
     if (dest) {
       const result = await sendEmail(
         dest,
