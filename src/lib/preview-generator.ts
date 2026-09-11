@@ -13,7 +13,10 @@
  * - Footer com "Criado por Clodoaldo Silva"
  *
  * Todo conteúdo é específico por nicho (18 nichos configurados).
+ * 4 estilos visuais disponíveis: dark, light, bold, elegant.
  */
+
+import { PREVIEW_STYLES, getStyleById } from "./preview-styles";
 
 export interface PreviewLead {
   name: string;
@@ -35,7 +38,7 @@ export interface PreviewLead {
 // =====================================================
 // NICHE CONFIG — conteúdo específico por nicho
 // =====================================================
-interface NicheConfig {
+export interface NicheConfig {
   colors: { primary: string; accent: string; dark: string; light: string };
   heroBadge: string;
   heroTitle: (name: string) => string;
@@ -54,7 +57,7 @@ interface NicheConfig {
   galleryEmojis: string[];
 }
 
-const NICHE_CONFIG: Record<string, NicheConfig> = {
+export const NICHE_CONFIG: Record<string, NicheConfig> = {
   // === BARBEARIA ===
   barbearia: {
     colors: { primary: "#FFD600", accent: "#37474F", dark: "#0a0a0a", light: "#FFD600" },
@@ -677,7 +680,7 @@ const NICHE_CONFIG: Record<string, NicheConfig> = {
 };
 
 // Fallback genérico
-const DEFAULT_CONFIG: NicheConfig = {
+export const DEFAULT_CONFIG: NicheConfig = {
   colors: { primary: "#10b981", accent: "#059669", dark: "#0a0a0a", light: "#10b981" },
   heroBadge: "✨ EM ALTA",
   heroTitle: (name) => name,
@@ -1019,4 +1022,42 @@ footer .social a:hover{background:var(--primary);color:${c.dark};border-color:va
 
 </body>
 </html>`;
+}
+
+/**
+ * Gera preview HTML com um estilo visual específico.
+ * @param lead Dados do lead
+ * @param styleId ID do estilo: "dark" | "light" | "bold" | "elegant" (default: "dark")
+ */
+export function generatePreviewHTMLWithStyle(lead: PreviewLead, styleId: string = "dark"): string {
+  // Normaliza o número de WhatsApp (adiciona 55 se faltar)
+  const waRaw = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
+  const wa = waRaw.startsWith("55") ? waRaw : (waRaw.length === 10 || waRaw.length === 11 ? "55" + waRaw : waRaw);
+
+  const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name + " " + (lead.formatted_address || lead.city || ""))}`;
+  const embed = `https://www.google.com/maps?q=${lead.lat || 0},${lead.lng || 0}&z=16&output=embed`;
+  const n = lead.niche || lead.category || "estabelecimento";
+  const city = lead.city || "";
+
+  // Busca configuração do nicho
+  const nicheKey = (n || "").toLowerCase().trim();
+  const cfg = NICHE_CONFIG[nicheKey] || DEFAULT_CONFIG;
+
+  // Busca estilo visual
+  const style = getStyleById(styleId);
+
+  // Delega para o estilo escolhido
+  return style.render(cfg, { lead, wa, maps, embed, n, city });
+}
+
+/**
+ * Lista os estilos visuais disponíveis (para o seletor no admin).
+ */
+export function listPreviewStyles() {
+  return PREVIEW_STYLES.map(s => ({
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    emoji: s.emoji,
+  }));
 }

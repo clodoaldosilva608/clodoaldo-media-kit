@@ -59,6 +59,7 @@ export default function AdminParceirosPage() {
   const [dragOverCol, setDragOverCol] = useState<string|null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [replyLead, setReplyLead] = useState<Lead | null>(null);
+  const [styleSelectorLead, setStyleSelectorLead] = useState<Lead | null>(null);
   const [replyVersion, setReplyVersion] = useState(0); // increments when a reply is saved → triggers LeadDetailModal refresh
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({}); // prospect_id → reply count
   const [showRepliedOnly, setShowRepliedOnly] = useState(false); // filter in "Leads Salvos"
@@ -510,13 +511,37 @@ Clodoaldo Silva`;
   }
 
   function openPreview(lead:Lead) {
-    const blob = new Blob([genPreview(lead)], {type:"text/html"});
-    window.open(URL.createObjectURL(blob), "_blank");
+    // Abre o seletor de estilos primeiro (carrossel de capas)
+    setStyleSelectorLead(lead);
+  }
+
+  function openPreviewWithStyle(lead:Lead, styleId:string) {
+    // Abre o preview via API com o estilo escolhido
+    const id = lead.id || lead.place_id || "";
+    if (!id) {
+      // Fallback: gera localmente sem estilo
+      const blob = new Blob([genPreview(lead)], {type:"text/html"});
+      window.open(URL.createObjectURL(blob), "_blank");
+    } else {
+      window.open(`https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
+    }
+    setStyleSelectorLead(null);
+  }
+
+  function openPreviewLinkWithStyle(lead:Lead, styleId:string) {
+    const id = lead.id || lead.place_id || "";
+    window.open(`https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
+    setStyleSelectorLead(null);
   }
 
   function getPreviewLink(lead:Lead):string {
     const id = lead.id || lead.place_id || "";
     return `https://clodoaldo.vercel.app/api/preview?lead=${id}`;
+  }
+
+  function getPreviewLinkWithStyle(lead:Lead, styleId:string):string {
+    const id = lead.id || lead.place_id || "";
+    return `https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`;
   }
 
   function copyPreviewLink(lead:Lead) {
@@ -527,7 +552,8 @@ Clodoaldo Silva`;
   }
 
   function openPreviewLink(lead:Lead) {
-    window.open(getPreviewLink(lead), "_blank");
+    // Abre o seletor de estilos primeiro
+    setStyleSelectorLead(lead);
   }
 
   const total = prospects.length;
@@ -1043,6 +1069,16 @@ Clodoaldo Silva`;
             await loadReplyCounts();
             setReplyVersion(v => v + 1); // trigger LeadDetailModal reply history refresh
           }}
+        />
+      )}
+
+      {/* === STYLE SELECTOR MODAL — carrossel de estilos de preview === */}
+      {styleSelectorLead && (
+        <StyleSelectorModal
+          lead={styleSelectorLead}
+          onClose={() => setStyleSelectorLead(null)}
+          onSelectStyle={(styleId) => openPreviewWithStyle(styleSelectorLead, styleId)}
+          getPreviewLinkWithStyle={getPreviewLinkWithStyle}
         />
       )}
 
@@ -2642,6 +2678,238 @@ function ReplyModal({
                 </Button>
               </div>
             </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// STYLE SELECTOR MODAL — carrossel de estilos de preview
+// =====================================================
+function StyleSelectorModal({
+  lead,
+  onClose,
+  onSelectStyle,
+  getPreviewLinkWithStyle,
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onSelectStyle: (styleId: string) => void;
+  getPreviewLinkWithStyle: (lead: Lead, styleId: string) => string;
+}) {
+  const [styles, setStyles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [copiedStyle, setCopiedStyle] = useState<string | null>(null);
+
+  // Body scroll lock + ESC
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onEsc);
+    };
+  }, [onClose]);
+
+  // Fetch styles with thumbnails
+  useEffect(() => {
+    const niche = lead.niche || lead.category || "";
+    fetch(`/api/preview/styles?niche=${encodeURIComponent(niche)}`)
+      .then(r => r.json())
+      .then(data => {
+        setStyles(data.styles || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [lead.niche, lead.category]);
+
+  function handleCopyLink(styleId: string) {
+    const link = getPreviewLinkWithStyle(lead, styleId);
+    navigator.clipboard.writeText(link);
+    setCopiedStyle(styleId);
+    setTimeout(() => setCopiedStyle(null), 2000);
+  }
+
+  function prevSlide() {
+    setCurrentIdx(i => (i === 0 ? styles.length - 1 : i - 1));
+  }
+
+  function nextSlide() {
+    setCurrentIdx(i => (i === styles.length - 1 ? 0 : i + 1));
+  }
+
+  const current = styles[currentIdx];
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full sm:max-w-4xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-white/5 bg-zinc-950/95 backdrop-blur p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Eye className="h-5 w-5 text-amber-400" />
+              <h3 className="text-base sm:text-lg font-bold text-white truncate">
+                Escolha o estilo do preview
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-zinc-400">
+              <strong className="text-zinc-300">{lead.name}</strong>
+              {lead.niche && <span className="ml-1.5">• {lead.niche}</span>}
+              {lead.city && <span className="ml-1.5">• {lead.city}</span>}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-white/5 p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition min-h-9 min-w-9 flex items-center justify-center"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+            </div>
+          ) : styles.length === 0 ? (
+            <div className="py-12 text-center text-sm text-zinc-500">
+              Nenhum estilo disponível.
+            </div>
+          ) : (
+            <>
+              {/* === Carrossel principal === */}
+              <div className="relative">
+                {/* Slide atual */}
+                <div className="overflow-hidden rounded-2xl border border-white/10">
+                  {current && (
+                    <div className="relative">
+                      {/* Thumbnail SVG */}
+                      <div className="aspect-[400/280] bg-white/5 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={current.thumbnail}
+                          alt={current.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      {/* Overlay com info do estilo */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-2xl">{current.emoji}</span>
+                          <h4 className="text-lg font-bold text-white">{current.name}</h4>
+                        </div>
+                        <p className="text-xs text-zinc-300">{current.description}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Setas de navegação */}
+                {styles.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevSlide}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/70 backdrop-blur p-2.5 text-white hover:bg-black/90 transition border border-white/10"
+                      aria-label="Anterior"
+                    >
+                      <ChevronRight className="h-5 w-5 rotate-180" />
+                    </button>
+                    <button
+                      onClick={nextSlide}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/70 backdrop-blur p-2.5 text-white hover:bg-black/90 transition border border-white/10"
+                      aria-label="Próximo"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* === Indicadores (dots) === */}
+              {styles.length > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  {styles.map((s, i) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setCurrentIdx(i)}
+                      className={`h-2 rounded-full transition-all ${
+                        i === currentIdx ? "w-8 bg-amber-400" : "w-2 bg-white/20 hover:bg-white/40"
+                      }`}
+                      aria-label={`Estilo ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* === Thumbnails menores (todos os estilos) === */}
+              <div className="mt-6">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+                  Todos os estilos ({styles.length})
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {styles.map((s, i) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setCurrentIdx(i)}
+                      className={`rounded-xl overflow-hidden border-2 transition ${
+                        i === currentIdx
+                          ? "border-amber-400 ring-2 ring-amber-400/30"
+                          : "border-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="aspect-[400/280] bg-white/5">
+                        <img src={s.thumbnail} alt={s.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-2 bg-white/[0.02]">
+                        <div className="text-[11px] font-bold text-white truncate">
+                          {s.emoji} {s.name}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* === Botões de ação === */}
+              {current && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => onSelectStyle(current.id)}
+                    className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 py-3.5 text-sm font-bold text-white shadow-lg hover:scale-[1.01] transition"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Visualizar com {current.name}
+                  </button>
+                  <button
+                    onClick={() => handleCopyLink(current.id)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500/15 border border-blue-500/30 px-4 py-3.5 text-sm font-bold text-blue-300 hover:bg-blue-500/25 transition"
+                    title="Copiar link compartilhável com este estilo"
+                  >
+                    {copiedStyle === current.id ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}
+                    {copiedStyle === current.id ? "Copiado!" : "Copiar link"}
+                  </button>
+                </div>
+              )}
+
+              {/* Info helper */}
+              <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-[11px] text-amber-200/80 flex items-start gap-2">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Dica:</strong> Cada estilo adapta automaticamente as cores e conteúdo ao nicho do lead.
+                  Use as setas ou os thumbnails abaixo para navegar entre os 4 estilos disponíveis.
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>

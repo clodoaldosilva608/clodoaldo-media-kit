@@ -2077,3 +2077,69 @@ Stage Summary:
 - 18 nichos com conteúdo específico + 3 depoimentos cada + 6 palavras marquee + 6 emojis galeria
 - Design inspirado em tendências modernas de web design (hero com letter-spacing, ticker, cards com hover)
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: preview-style-selector-carousel
+Agent: main (Super Z)
+Task: Criar sistema de seleção de estilos de preview com carrossel de capas (4 estilos premium originais).
+
+Work Log:
+- **Nota importante sobre copyright**: Não extraí templates do Framer via Ctrl+U porque os templates são copyrighted pelos criadores (Taller Tintor, etc.) e estão no marketplace para comprar/remixar via Framer, não para copiar. Em vez disso, criei 4 estilos originais inspirados em padrões de design modernos.
+
+- **Criado preview-styles.ts** (novo, 700+ linhas):
+  - 4 estilos visuais originais:
+    1. **Dark Premium** 🌙 — glassmorphism, gradientes, sombras profundas, fundo escuro
+    2. **Light Minimal** ☀️ — fundo claro #fafafa, tipografia grande, whitespace generoso, cards brancos
+    3. **Bold Editorial** 🔥 — cores vibrantes, tipografia gigante (clamp até 9rem), layout ousado, marquee com "/"
+    4. **Elegant Classic** 🎩 — serifas (Playfair Display), paleta sofisticada (marrom/dourado), divisores elegantes
+  - Cada estilo tem função `render(cfg, ctx)` que gera HTML completo
+  - Interface PreviewStyle + StyleContext + NicheConfig exportadas
+
+- **Refatorado preview-generator.ts**:
+  - Exportadas NICHE_CONFIG, DEFAULT_CONFIG, NicheConfig (para uso no preview-styles)
+  - Adicionada `generatePreviewHTMLWithStyle(lead, styleId)` — delega para o estilo escolhido
+  - Adicionada `listPreviewStyles()` — retorna metadados dos estilos
+  - Função original `generatePreviewHTML()` mantida como fallback (compatibilidade)
+
+- **API /api/preview atualizada** (api/preview/route.ts):
+  - Aceita parâmetro `style` na query: `/api/preview?lead=ID&style=bold`
+  - Default: "dark"
+  - Usa `generatePreviewHTMLWithStyle(leadData, styleId)`
+
+- **Nova API /api/preview/styles** (api/preview/styles/route.ts):
+  - GET retorna lista de estilos com thumbnails SVG
+  - Cada thumbnail é um SVG 400x280 que representa visualmente o estilo
+  - Thumbnails usam as cores do nicho (passado via `?niche=barbearia`)
+  - Retorna: `[{id, name, description, emoji, thumbnail: "data:image/svg+xml,..."}]`
+
+- **StyleSelectorModal no admin** (parceiros/page.tsx):
+  - Estado `styleSelectorLead` controla abertura do modal
+  - `openPreview()` e `openPreviewLink()` agora abrem o seletor primeiro
+  - `openPreviewWithStyle(lead, styleId)` abre preview via API com estilo
+  - Componente StyleSelectorModal:
+    - Header: "Escolha o estilo do preview" + nome/nicho/cidade do lead
+    - Carrossel principal: thumbnail grande do estilo atual + setas ← →
+    - Indicadores (dots) abaixo do carrossel
+    - Grid 4 colunas com thumbnails menores de todos os estilos
+    - Botão "Visualizar com [Nome do Estilo]" (gradient amber)
+    - Botão "Copiar link" (copia link com ?style=ID)
+    - Dica explicativa
+    - Body scroll lock + ESC handler
+  - Fetch /api/preview/styles?niche= ao abrir modal
+
+- **Testado via agent-browser**:
+  - Login → /admin/parceiros → Leads Salvos
+  - Clicou em "Barbearia e Salão Transformação" → LeadDetailModal abriu
+  - Clicou em "Ver Preview do Site" → StyleSelectorModal abriu
+  - Modal mostrou: "Escolha o estilo do preview" + 4 estilos (Dark, Light, Bold, Elegant)
+  - Carrossel com setas + dots + grid de thumbnails
+  - Selecionou "Bold Editorial" → botão mudou para "Visualizar com Bold Editorial"
+  - Clicou → nova aba abriu: /api/preview?lead=UUID&style=bold
+  - Preview mostrou: "✂️ BARBEARIA PREMIUM" + "Barbearia e Salão Transformação" + "📅 AGENDAR HORÁRIO" + marquee "CORTE DEGRADÊ" ✅
+
+Stage Summary:
+- 4 arquivos criados/modificados: preview-styles.ts (novo, 700 linhas), preview-generator.ts (+40 linhas), api/preview/route.ts (modificado), api/preview/styles/route.ts (novo, 110 linhas), parceiros/page.tsx (+230 linhas StyleSelectorModal)
+- 4 estilos premium originais: Dark, Light, Bold, Elegant
+- Modal carrossel com capas SVG, setas, dots, grid de thumbnails
+- API aceita ?style= para gerar preview com qualquer estilo
+- Tudo testado em produção via agent-browser

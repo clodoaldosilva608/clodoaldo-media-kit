@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { generatePreviewHTML } from "@/lib/preview-generator";
+import { generatePreviewHTML, generatePreviewHTMLWithStyle } from "@/lib/preview-generator";
 
 /**
- * GET /api/preview?lead=<prospect_id>
+ * GET /api/preview?lead=<prospect_id>&style=<dark|light|bold|elegant>
  * Returns a full HTML page with the site preview for the lead.
- * Shareable link: https://clodoaldo.vercel.app/api/preview?lead=<id>
+ * Shareable link: https://clodoaldo.vercel.app/api/preview?lead=<id>&style=dark
  */
 export async function GET(req: NextRequest) {
   try {
     const leadId = req.nextUrl.searchParams.get("lead");
+    const styleId = req.nextUrl.searchParams.get("style") || "dark";
     if (!leadId) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
     }
@@ -17,10 +18,8 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabaseServer();
 
     // Try to fetch from clodoaldo_prospects (meucorre DB via pg)
-    // Fall back to fetching from supabase if available
     let leadData: any = null;
 
-    // Try meucorre prospects table via pg pool
     try {
       const { getMeucorrePool } = await import("@/lib/meucorre-db");
       const pool = getMeucorrePool();
@@ -37,7 +36,7 @@ export async function GET(req: NextRequest) {
         client.release();
       }
     } catch {
-      // meucorre not available — try local fallback
+      // meucorre not available
     }
 
     if (!leadData) {
@@ -48,7 +47,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const html = generatePreviewHTML(leadData);
+    // Usa o estilo selecionado (ou "dark" como default)
+    const html = generatePreviewHTMLWithStyle(leadData, styleId);
     return new NextResponse(html, {
       status: 200,
       headers: {
