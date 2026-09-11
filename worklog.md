@@ -1829,3 +1829,46 @@ Stage Summary:
 - Seletor de período: 7/14/30 dias funcionando end-to-end (UI + backend + email subject)
 - Botão "Resposta" na aba Buscar: modal completo com 7 classificações + campos opcionais + notificação Telegram automática
 - Tudo testado em produção via agent-browser
+
+---
+Task ID: keyboard-shortcut-and-reply-history
+Agent: main (Super Z)
+Task: Adicionar atalho de teclado "R" para abrir modal de resposta + histórico de respostas no card/modal do lead.
+
+Work Log:
+- **Atalho de teclado "R"** (parceiros/page.tsx):
+  - Adicionado useEffect com keydown listener no componente principal
+  - Quando "R" é pressionada (sem modificadores, não em input/textarea):
+    - Se LeadDetailModal aberto → usa selectedLead
+    - Se card expandido na aba Buscar → encontra lead correspondente em results
+  - Não dispara se ReplyModal já está aberto (evita empilhamento)
+  - Não dispara com Ctrl/Alt/Meta/Shift (evita conflito com atalhos do browser)
+  - Botão "Resposta" agora mostra <kbd>R</kbd> visual no canto (hidden em mobile)
+  - Testado: card expandido + pressionar R → ReplyModal abriu ✅
+  - Testado: LeadDetailModal aberto + pressionar R → ReplyModal abriu por cima ✅
+
+- **Histórico de respostas no LeadDetailModal** (parceiros/page.tsx):
+  - Adicionado estado `replies` + `loadingReplies` no LeadDetailModal
+  - useEffect busca /api/admin/respostas?limit=50 ao abrir modal
+  - Filtra respostas por prospect_id (UUID) OU prospect_name (fallback)
+  - Adicionado seção "Histórico de respostas (N)" no final do modal, com:
+    - Botão "Registrar nova [R]" no canto direito (abre ReplyModal)
+    - Loading state com spinner
+    - Empty state: "Nenhuma resposta registrada ainda" + dica do atalho R
+    - Lista de respostas: cada uma mostra badge de classificação (com emoji + label), data/hora, mensagem completa, ação tomada (se houver), próximo passo (se houver)
+  - Cores das badges: success (interessado/meeting), info (permission), danger (opt_out), warning (pricing), muted (ambiguous/unclassified)
+  - Testado: Restaurante Fogo a Lenha (qualified) → mostra 1 resposta anterior com badge "INTERESSADO" + mensagem + data ✅
+
+- **Refresh automático do histórico**:
+  - Adicionado estado `replyVersion` no componente principal (counter)
+  - LeadDetailModal aceita prop `replyVersion` e inclui nas dependências do useEffect
+  - ReplyModal onSaved agora: chama loadProspects + incrementa replyVersion
+  - Quando uma nova resposta é salva, o LeadDetailModal re-busca as respostas automaticamente
+  - Fluxo: LeadDetailModal aberto → press R → ReplyModal → salvar → auto-close → histórico atualiza ✅
+
+Stage Summary:
+- 1 arquivo modificado: parceiros/page.tsx (+120 linhas: keyboard shortcut useEffect + reply history section + replyVersion state)
+- Atalho "R": funciona com card expandido e com LeadDetailModal aberto
+- Histórico de respostas: aparece no LeadDetailModal com badges coloridas, datas, mensagens
+- Refresh automático: ao salvar resposta, histórico atualiza sem precisar fechar/reabrir modal
+- Tudo testado em produção via agent-browser

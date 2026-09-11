@@ -57,6 +57,47 @@ export default function AdminParceirosPage() {
   const [dragOverCol, setDragOverCol] = useState<string|null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [replyLead, setReplyLead] = useState<Lead | null>(null);
+  const [replyVersion, setReplyVersion] = useState(0); // increments when a reply is saved → triggers LeadDetailModal refresh
+
+  // === Keyboard shortcut: press "R" to open Reply modal ===
+  // Works when:
+  //   - LeadDetailModal is open (selectedLead set) → uses selectedLead
+  //   - A card is expanded in Buscar tab (expandedLead set) → finds matching lead in results
+  // Does NOT trigger when:
+  //   - ReplyModal is already open (replyLead set)
+  //   - User is typing in an input/textarea/select
+  //   - Any modifier key (Ctrl, Alt, Meta) is held
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Skip if ReplyModal is already open
+      if (replyLead) return;
+      // Skip if user is typing
+      const target = e.target as HTMLElement;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable) return;
+      // Skip if modifier keys are held
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+      // Only trigger on "r" or "R"
+      if (e.key.toLowerCase() !== "r") return;
+
+      // Priority 1: LeadDetailModal is open
+      if (selectedLead) {
+        e.preventDefault();
+        setReplyLead(selectedLead);
+        return;
+      }
+      // Priority 2: a card is expanded in Buscar tab
+      if (expandedLead && view === "search") {
+        const lead = results.find(r => (r.place_id === expandedLead || r.id === expandedLead));
+        if (lead) {
+          e.preventDefault();
+          setReplyLead(lead);
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selectedLead, replyLead, expandedLead, view, results]);
 
   // === Bulk selection state ===
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -647,8 +688,9 @@ Clodoaldo Silva`;
                         {lead.website&&<a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:bg-blue-500/25"><ExternalLink className="h-3.5 w-3.5" /> Site</a>}
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.name+" "+(lead.formatted_address||""))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25"><MapPin className="h-3.5 w-3.5" /> Maps</a>
                         <button onClick={()=>setExpandedLead(exp?null:lead.place_id||null)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><Copy className="h-3.5 w-3.5" /> Copy + CTA</button>
-                        <button onClick={()=>setReplyLead(lead)} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/25 transition" title="Registrar resposta do lead">
+                        <button onClick={()=>setReplyLead(lead)} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/25 transition" title="Registrar resposta do lead (atalho: R)">
                           <Mail className="h-3.5 w-3.5" /> Resposta
+                          <kbd className="hidden sm:inline-block ml-0.5 rounded bg-violet-500/20 px-1 py-0.5 text-[9px] font-mono text-violet-300/80">R</kbd>
                         </button>
                       </div>
                       {exp&&(
@@ -934,6 +976,8 @@ Clodoaldo Silva`;
           openPreviewLink={openPreviewLink}
           copyToClipboard={copyToClipboard}
           copiedText={copiedText}
+          onOpenReply={setReplyLead}
+          replyVersion={replyVersion}
         />
       )}
 
@@ -942,7 +986,10 @@ Clodoaldo Silva`;
         <ReplyModal
           lead={replyLead}
           onClose={() => setReplyLead(null)}
-          onSaved={loadProspects}
+          onSaved={async () => {
+            await loadProspects();
+            setReplyVersion(v => v + 1); // trigger LeadDetailModal reply history refresh
+          }}
         />
       )}
 
@@ -1185,12 +1232,12 @@ function SB({label,value,icon:Icon,c="emerald"}:{label:string;value:number;icon:
 
 // =====================================================
 // MODAL DETALHES DO LEAD — mostra todas as informações
-// + mensagens WhatsApp/Email + Prompt + Preview + Objeções
+// + mensagens WhatsApp/Email + Prompt + Preview + Objeções + Histórico de respostas
 // =====================================================
 function LeadDetailModal({
   lead, onClose, genWA, genEmail, genPrompt,
   openPreview, copyPreviewLink, openPreviewLink,
-  copyToClipboard, copiedText,
+  copyToClipboard, copiedText, onOpenReply, replyVersion,
 }: {
   lead: Lead;
   onClose: () => void;
@@ -1202,12 +1249,46 @@ function LeadDetailModal({
   openPreviewLink: (l: Lead) => void;
   copyToClipboard: (text: string, id: string) => void;
   copiedText: string | null;
+  onOpenReply: (lead: Lead) => void;
+  replyVersion: number;
 }) {
   const wa = genWA(lead);
   const em = genEmail(lead);
   const pr = genPrompt(lead);
   const num = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
   const leadId = lead.id || lead.place_id || "";
+
+  // === Fetch reply history for this lead ===
+  const [replies, setReplies] = useState<any[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadReplies() {
+      if (!leadId) { setLoadingReplies(false); return; }
+      setLoadingReplies(true);
+      try {
+        const resp = await fetch(`/api/admin/respostas?limit=50`);
+        const json = await resp.json();
+        if (cancelled) return;
+        const all = json.data || [];
+        // Filter replies for this lead (match by prospect_id UUID OR place_id)
+        const leadReplies = all.filter((r: any) => {
+          if (lead.id && r.prospect_id === lead.id) return true;
+          // Also match by prospect_name as fallback
+          if (r.prospect_name && lead.name && r.prospect_name === lead.name) return true;
+          return false;
+        });
+        setReplies(leadReplies);
+      } catch {
+        if (!cancelled) setReplies([]);
+      } finally {
+        if (!cancelled) setLoadingReplies(false);
+      }
+    }
+    loadReplies();
+    return () => { cancelled = true; };
+  }, [leadId, lead.id, lead.name, replyVersion]);
 
   // Body scroll lock
   useEffect(() => {
@@ -1224,6 +1305,17 @@ function LeadDetailModal({
     niche: lead.niche || lead.category,
     hasWebsite: lead.hasWebsite,
   });
+
+  // Classification metadata for reply history
+  const classMeta: Record<string, { emoji: string; label: string; color: string }> = {
+    permission_to_send: { emoji: "✅", label: "Permitiu info", color: "info" },
+    interessado: { emoji: "🔥", label: "Interessado", color: "success" },
+    meeting_ready: { emoji: "📅", label: "Quer reunião", color: "success" },
+    opt_out: { emoji: "🚫", label: "Não quer", color: "danger" },
+    pricing_question: { emoji: "💰", label: "Preço", color: "warning" },
+    ambiguous: { emoji: "❓", label: "Ambíguo", color: "muted" },
+    unclassified: { emoji: "📋", label: "Sem classificação", color: "muted" },
+  };
 
   return (
     <div
@@ -1506,6 +1598,68 @@ function LeadDetailModal({
               </div>
             </div>
           )}
+
+          {/* === HISTÓRICO DE RESPOSTAS === */}
+          <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.03] p-3">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-violet-300">
+                <Mail className="h-3.5 w-3.5" />
+                Histórico de respostas ({replies.length})
+              </span>
+              <button
+                onClick={() => onOpenReply(lead)}
+                className="inline-flex items-center gap-1 rounded-md bg-violet-500/20 px-2 py-1 text-[10px] font-semibold text-violet-300 hover:bg-violet-500/30 transition"
+                title="Registrar nova resposta (atalho: R)"
+              >
+                <Plus className="h-3 w-3" /> Registrar nova
+                <kbd className="ml-0.5 rounded bg-violet-500/20 px-1 py-0.5 text-[9px] font-mono text-violet-300/80">R</kbd>
+              </button>
+            </div>
+
+            {loadingReplies ? (
+              <div className="flex items-center gap-2 py-3 text-[11px] text-zinc-500">
+                <Loader2 className="h-3 w-3 animate-spin" /> Carregando respostas...
+              </div>
+            ) : replies.length === 0 ? (
+              <div className="py-3 text-center text-[11px] text-zinc-600">
+                Nenhuma resposta registrada ainda.
+                <br />
+                Clique em "Registrar nova" ou pressione <kbd className="rounded bg-white/5 px-1 py-0.5 text-[9px] font-mono">R</kbd> quando este lead responder.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {replies.map((r: any, idx: number) => {
+                  const cm = classMeta[r.classification] || classMeta.unclassified;
+                  const badgeVariant = (["success","info","danger","warning","muted"] as const).includes(cm.color as any) ? cm.color as any : "muted";
+                  return (
+                    <div key={r.id || idx} className="rounded-md border border-white/5 bg-black/20 p-2.5">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={badgeVariant}>
+                            {cm.emoji} {cm.label}
+                          </Badge>
+                          <span className="text-[10px] text-zinc-500">
+                            {new Date(r.received_at).toLocaleString("pt-BR")}
+                          </span>
+                        </div>
+                        {r.next_step && (
+                          <span className="text-[10px] text-zinc-400">→ {r.next_step}</span>
+                        )}
+                      </div>
+                      <pre className="whitespace-pre-wrap text-[11px] text-zinc-300 font-sans leading-relaxed mb-1.5">
+                        {r.message_text}
+                      </pre>
+                      {r.action_taken && (
+                        <div className="text-[10px] text-zinc-500 italic">
+                          📋 {r.action_taken}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
