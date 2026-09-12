@@ -5,6 +5,7 @@ import { WhatsAppButton } from "@/components/site/whatsapp-button";
 import { CountdownBanner } from "@/components/site/countdown-banner";
 import { PixelLoader } from "@/components/site/pixel-loader";
 import { CookieConsent } from "@/components/site/cookie-consent";
+import { PageViewTracker } from "@/components/site/page-view-tracker";
 import { personSchema, organizationSchema, serializeSchema } from "@/lib/schema";
 
 export const metadata: Metadata = {
@@ -79,6 +80,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-background text-foreground">
         <PixelLoader />
+        <PageViewTracker />
         <CountdownBanner />
         {children}
         <WhatsAppButton />

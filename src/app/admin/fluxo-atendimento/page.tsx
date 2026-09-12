@@ -113,7 +113,7 @@ export default function FluxoAtendimentoPage() {
       </div>
 
       {/* KPIs */}
-      <div className="mb-4 grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard label="Total leads" value={totalProspects} color="zinc" />
         <KpiCard label="Pendentes" value={totalPending} color="amber" />
         <KpiCard label="Contactados" value={totalContacted} color="blue" />
@@ -127,7 +127,7 @@ export default function FluxoAtendimentoPage() {
         <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h4 className="text-sm font-semibold text-amber-200">
                 {totalPending} leads pendentes de contato
               </h4>
@@ -146,26 +146,26 @@ export default function FluxoAtendimentoPage() {
         </div>
       )}
 
-      {/* Kanban board */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 overflow-x-auto">
+      {/* Kanban board — flex horizontal com scroll horizontal (layout kanban de verdade) */}
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
         {grouped.map(stage => (
-          <div key={stage.key} className="flex flex-col gap-2 min-w-[260px]">
+          <div key={stage.key} className="flex flex-col gap-2 w-[280px] shrink-0">
             {/* Column header */}
-            <div className={`rounded-xl border p-3 ${stageColors[stage.color].border} ${stageColors[stage.color].bg}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <stage.icon className={`h-4 w-4 ${stageColors[stage.color].text}`} />
-                  <span className="text-sm font-bold text-white">{stage.label}</span>
+            <div className={`rounded-xl border p-3 ${stageColors[stage.color].border} ${stageColors[stage.color].bg} sticky top-0`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <stage.icon className={`h-4 w-4 shrink-0 ${stageColors[stage.color].text}`} />
+                  <span className="text-sm font-bold text-white truncate">{stage.label}</span>
                 </div>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${stageColors[stage.color].badge}`}>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 ${stageColors[stage.color].badge}`}>
                   {stage.count}
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1">{stage.description}</p>
+              <p className="text-[10px] text-zinc-500 mt-1 leading-tight">{stage.description}</p>
             </div>
 
             {/* Column items */}
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            <div className="space-y-2 flex-1 overflow-y-auto" style={{ maxHeight: "calc(100vh - 320px)" }}>
               {loading ? (
                 <div className="py-6 text-center text-zinc-500 text-xs">
                   <RefreshCw className="h-4 w-4 animate-spin inline mr-1" /> Carregando…
@@ -173,13 +173,13 @@ export default function FluxoAtendimentoPage() {
               ) : stage.items.length === 0 ? (
                 <div className="py-6 text-center text-zinc-600 text-xs">Vazio</div>
               ) : (
-                stage.items.slice(0, 30).map(p => (
+                stage.items.slice(0, 50).map(p => (
                   <ProspectCard key={p.id} prospect={p} />
                 ))
               )}
-              {stage.items.length > 30 && (
+              {stage.items.length > 50 && (
                 <div className="text-center text-[10px] text-zinc-500 pt-1">
-                  +{stage.items.length - 30} restantes
+                  +{stage.items.length - 50} restantes
                 </div>
               )}
             </div>
@@ -254,19 +254,19 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
       <div className="flex items-start justify-between gap-2 mb-1">
         <a
           href={`/admin/leads-crm?prospect_id=${prospect.id}`}
-          className="text-xs font-bold text-white hover:text-emerald-300 truncate flex-1"
+          className="text-xs font-bold text-white hover:text-emerald-300 truncate flex-1 min-w-0"
           title="Abrir no CRM"
         >
           {prospect.name}
         </a>
         {prospect.has_website ? (
-          <Globe className="h-3 w-3 text-blue-400 shrink-0" />
+          <Globe className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
         ) : (
           <span className="text-[10px] text-zinc-500 shrink-0">🚫 site</span>
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-[10px] text-zinc-500 mb-2">
+      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-zinc-500 mb-1.5">
         <span>{prospect.niche}</span>
         <span>·</span>
         <span>{prospect.city.split(",")[0]}</span>
@@ -279,33 +279,34 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
         ) : (
           <span className="text-amber-300">Nunca contactado</span>
         )}
-        {prospect.contacted_count > 0 && <span>· #{prospect.contacted_count}</span>}
+        {prospect.contacted_count > 0 && <span className="shrink-0">· #{prospect.contacted_count}</span>}
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Botões em coluna (vertical) pra não apertar em mobile */}
+      <div className="flex flex-col gap-1.5">
         {waLink && !marked && (
           <a
             href={waLink}
             target="_blank"
             rel="noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+            className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
           >
-            <MessageCircle className="h-3 w-3" /> WhatsApp
+            <MessageCircle className="h-3 w-3" /> Abrir WhatsApp
           </a>
         )}
         {!marked && (
           <button
             onClick={markAsSent}
             disabled={marking}
-            className="flex-1 inline-flex items-center justify-center gap-1 rounded-md bg-blue-500/15 px-2 py-1.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/25 transition disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-blue-500/15 px-2 py-1.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/25 transition disabled:opacity-50"
           >
             {marking ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-            {marking ? "…" : "Marcar enviado"}
+            {marking ? "Marcando…" : "Marcar como enviado"}
           </button>
         )}
         {marked && (
-          <div className="flex-1 inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1.5 text-[10px] font-bold text-emerald-300">
-            <CheckCircle2 className="h-3 w-3" /> Enviado
+          <div className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1.5 text-[10px] font-bold text-emerald-300">
+            <CheckCircle2 className="h-3 w-3" /> ✓ Enviado
           </div>
         )}
       </div>
