@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       ];
 
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
+      const crmUrl = `${siteUrl}/admin/leads-crm`;
 
       leads.slice(0, 20).forEach((lead, i) => {
         const days = Math.floor((Date.now() - new Date(lead.last_contact_at).getTime()) / (1000 * 60 * 60 * 24));
@@ -80,7 +81,6 @@ export async function POST(req: NextRequest) {
         // Mensagem de follow-up personalizada
         const followUpMsg = `Oi ${lead.name}! Tudo bem?\n\nEnviei um site demo pra vocês alguns dias atrás. Como sei que a rotina é corrida, estou voltando pra garantir que você viu.\n\nSe não faz sentido agora, sem problema — me avisa. Mas se fizer sentido, é só responder este WhatsApp.`;
         const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(followUpMsg)}`;
-        const crmUrl = `${siteUrl}/admin/leads-crm`;
 
         lines.push(`<b>${i + 1}. ${emoji} ${escapeHtml(lead.name)}</b>`);
         lines.push(`📅 Há ${days} dias | ${lead.contacted_count || 1}x contactado | ${lead.niche || "?"} | ${lead.city || "?"}`);
