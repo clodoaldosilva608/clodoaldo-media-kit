@@ -2635,3 +2635,30 @@ Stage Summary:
 - ✅ Código pronto no GitHub (Vercel auto-redeploy em ~30s).
 - ⏳ Usuário precisa rodar 1 SQL no Supabase SQL Editor (link direto no header do arquivo .sql).
 - Após rodar o SQL, todas as 5 páginas P1 estarão totalmente funcionais.
+
+---
+Task ID: Metodo-Gabriel-Miranda-MVP
+Agent: main (GLM)
+Task: Implementar método Gabriel Miranda — 5 gap críticos do MVP
+
+Work Log:
+- Vídeo: 'Me COPIE e venda Sites para negócios locais toda semana' por Gabriel Miranda (45K views)
+- Google Doc 'outreach' com 2 roteiros (tem site vs sem site) + BANT + Pricing
+- Auditoria prévia confirmou que detector hasWebsite, preview-generator, objections.ts já existem
+- Implementado:
+  1. Cron auto-prospect refatorado com prompt Gemini diferenciado por hasWebsite
+  2. Botão 'Gerar Demo' + 'Copiar link' + 'Verificar site' no modal do lead
+  3. BANT checklist (4 checkboxes) com score automático + sugestão de qualificação
+  4. Dashboard /admin/vendas-semana com funil, receitas, distribuições
+  5. API /api/admin/check-site detecta: ok/broken/slow/ssl_invalid/no_site
+- Migration SQL criada (scripts/migration-bant-demo.sql) — adiciona 8 colunas em crm_leads
+- Commit 2a45925 pushed to main. Vercel auto-redeploy em ~30s.
+
+Stage Summary:
+- ✅ Cron agora usa 2 roteiros diferentes (tem site vs sem site) + link demo
+- ✅ Modal do lead tem 2 novas seções: 'Site Demo + Status' + 'BANT'
+- ✅ BANT qualificado (≥3) sugere mover lead para 'Qualificado' automaticamente
+- ✅ Dashboard mostra funil completo demo → BANT → proposta → venda
+- ✅ Site check com SSL + timeout + content-length validation
+- ⏳ Usuário precisa rodar migration SQL no Supabase SQL Editor
+- ⏳ Demos só aparecem no dashboard se lead tiver sido gerado via cron ou botão 'Gerar Demo'
