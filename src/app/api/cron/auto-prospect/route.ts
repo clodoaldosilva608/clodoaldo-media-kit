@@ -82,12 +82,15 @@ export async function POST(req: NextRequest) {
     // 3. Generate personalized messages via Gemini — roteiros diferenciados tem site vs sem site
     const messages = await generateMessagesGemini(leads, niche, city);
 
+    // 3.5 Save leads to clodoaldo_prospects (meucorre DB) so they get IDs for demo URLs
+    const savedLeads = await saveLeadsToDatabase(leads, niche, city);
+
     // 4. Build wa.me links + demo preview links
-    const leadsWithLinks = leads.map((lead, i) => {
+    const leadsWithLinks = savedLeads.map((lead, i) => {
       const num = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
       const waNum = num.startsWith("55") ? num : (num.length === 10 || num.length === 11 ? "55" + num : num);
       const msg = messages[i] || generateLocalMessage(lead, niche, city);
-      // Demo link (preview generator já existe em /api/preview?lead=<id>)
+      // Demo link — lead.id agora existe porque salvamos no banco
       const demoUrl = lead.id ? `${siteUrl}/api/preview?lead=${lead.id}&style=dark` : null;
       const waLink = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}` : null;
       return { ...lead, message: msg, waLink, waNum, demoUrl };
@@ -133,6 +136,60 @@ export async function POST(req: NextRequest) {
       parseMode: "HTML",
     });
     return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+// =====================================================
+// Save leads to clodoaldo_prospects (meucorre DB)
+// =====================================================
+async function saveLeadsToDatabase(leads: Lead[], niche: string, city: string): Promise<Array<Lead & { id?: string }>> {
+  try {
+    const pool = getMeucorrePool();
+    const saved: Array<Lead & { id?: string }> = [];
+
+    for (const lead of leads) {
+      try {
+        // Check if lead already exists (by name + city) to avoid duplicates
+        const existing = await pool.query(
+          "SELECT id FROM clodoaldo_prospects WHERE name = $1 AND city = $2 LIMIT 1",
+          [lead.name, city]
+        );
+
+        let leadId: string;
+        if (existing.rows.length > 0) {
+          // Update existing
+          leadId = existing.rows[0].id;
+          await pool.query(
+            `UPDATE clodoaldo_prospects
+             SET niche = $1, has_website = $2, rating = $3, phone = $4, whatsapp = $5,
+                 formatted_address = $6, updated_at = now()
+             WHERE id = $7`,
+            [niche, lead.hasWebsite, lead.rating, lead.phone, lead.whatsapp,
+             lead.formatted_address, leadId]
+          );
+        } else {
+          // Insert new
+          const insert = await pool.query(
+            `INSERT INTO clodoaldo_prospects
+              (name, niche, city, has_website, rating, phone, whatsapp,
+               formatted_address, source, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'auto_prospect', now(), now())
+             RETURNING id`,
+            [lead.name, niche, city, lead.hasWebsite, lead.rating,
+             lead.phone, lead.whatsapp, lead.formatted_address]
+          );
+          leadId = insert.rows[0].id;
+        }
+        saved.push({ ...lead, id: leadId });
+      } catch (e: any) {
+        console.error(`[auto-prospect] save error for ${lead.name}:`, e.message);
+        saved.push(lead); // push without ID
+      }
+    }
+    return saved;
+  } catch (e: any) {
+    console.error("[auto-prospect] DB pool error:", e.message);
+    return leads; // return original leads without IDs
   }
 }
 
