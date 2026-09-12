@@ -258,7 +258,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [demoCopied, setDemoCopied] = useState(false);
   const [checkingSite, setCheckingSite] = useState(false);
 
-  const demoUrl = lead.demo_url || (typeof window !== "undefined" ? `${window.location.origin}/api/preview?lead=${lead.id}&style=dark` : `/api/preview?lead=${lead.id}&style=dark`);
+  const dynamicDemoUrl = typeof window !== "undefined" ? `${window.location.origin}/api/preview?lead=${lead.id}&style=dark` : `/api/preview?lead=${lead.id}&style=dark`;
+  // Always prefer dynamic URL (in case domain changed since demo_url was saved)
+  const demoUrl = dynamicDemoUrl;
   const bantScore = [bant.budget, bant.authority, bant.need, bant.timing].filter(Boolean).length;
   const bantQualified = bantScore >= 3;
 
