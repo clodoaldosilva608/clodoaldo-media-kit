@@ -5,9 +5,12 @@ import { usePathname } from "next/navigation";
 
 /**
  * PageViewTracker — registra page_view no banco analytics_events
- * a cada navegação. Não depende de pixel externo nem cookie consent.
+ * a cada navegação. Também trackeia view_item em /produtos/[slug].
  *
- * Leve: 1 POST request por page view, sem PII.
+ * Eventos:
+ * - page_view: toda navegação
+ * - view_item: quando abre /produtos/[slug]
+ * - whatsapp_click / initiate_checkout: disparados via window.trackEvent()
  */
 export function PageViewTracker() {
   const pathname = usePathname();
@@ -18,29 +21,47 @@ export function PageViewTracker() {
     // Skip API routes
     if (pathname?.startsWith("/api/")) return;
 
-    const track = async () => {
+    const track = async (event: string, props: Record<string, any> = {}) => {
       try {
         await fetch("/api/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "page_view",
-            path: pathname,
-            props: {
-              referrer: typeof document !== "undefined" ? document.referrer : null,
-            },
-          }),
-          // Use keepalive so the request isn't cancelled on page unload
+          body: JSON.stringify({ event, path: pathname, props }),
           keepalive: true,
         });
-      } catch {
-        // Silent fail — tracking is non-critical
-      }
+      } catch {}
     };
 
-    // Small delay to not block initial render
-    const t = setTimeout(track, 100);
-    return () => clearTimeout(t);
+    // page_view em toda navegação
+    track("page_view", { referrer: typeof document !== "undefined" ? document.referrer : null });
+
+    // view_item em páginas de produto
+    if (pathname?.startsWith("/produtos/")) {
+      const slug = pathname.split("/")[2];
+      if (slug) track("view_item", { offer_slug: slug });
+    }
+
+    // Expõe trackEvent globalmente pra botões usarem
+    if (typeof window !== "undefined") {
+      (window as any).trackEvent = (event: string, props: Record<string, any> = {}) => {
+        track(event, props);
+        // Também dispara pra GA4 e Meta Pixel se configurados
+        if (typeof (window as any).gtag === "function") {
+          (window as any).gtag("event", event, props);
+        }
+        if (typeof (window as any).fbq === "function") {
+          const metaMap: Record<string, string> = {
+            page_view: "PageView",
+            view_item: "ViewContent",
+            initiate_checkout: "InitiateCheckout",
+            lead: "Lead",
+            purchase: "Purchase",
+            whatsapp_click: "Contact",
+          };
+          (window as any).fbq("track", metaMap[event] || "CustomEvent", props);
+        }
+      };
+    }
   }, [pathname]);
 
   return null;

@@ -6,7 +6,7 @@ import { Widget, Badge, Button, Input, Select, Textarea, EmptyState } from "@/co
 import {
   RefreshCw, Trash2, ChevronRight, Phone, Mail, MessageCircle,
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
-  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText,
+  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText, FileText,
 } from "lucide-react";
 import { getScriptsForLead, getLongFormScript, type ScriptVars, type Script } from "@/lib/whatsapp-scripts";
 
@@ -388,7 +388,6 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
       const resp = await fetch(`/api/admin/check-site?lead_id=${lead.id}`);
       const json = await resp.json();
       if (json.site_status) {
-        // Update local lead state
         lead.site_status = json.site_status;
         lead.site_checked_at = new Date().toISOString();
       }
@@ -397,6 +396,30 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
       alert("Erro: " + e.message);
     }
     setCheckingSite(false);
+  }
+
+  function generateProposta() {
+    // Abre proposta em nova aba (HTML imprimível como PDF)
+    const w = window.open("", "_blank");
+    if (!w) {
+      alert("Pop-up bloqueado. Permita pop-ups para gerar a proposta.");
+      return;
+    }
+    w.document.write("<html><body style='font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'><p>Gerando proposta...</p></body></html>");
+    fetch("/api/admin/proposta-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: lead.id }),
+    })
+      .then(r => r.text())
+      .then(html => {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+      })
+      .catch(e => {
+        w.document.write(`<p>Erro: ${e.message}</p>`);
+      });
   }
 
   async function saveChanges() {
@@ -424,6 +447,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
         <div className="flex items-center justify-between border-b border-white/5 px-5 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold text-white">{lead.name}</h3>
+            <LeadScoreBadge lead={lead} />
             {pendingTasks > 0 && (
               <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">{pendingTasks} tarefa(s) pendente(s)</span>
             )}
@@ -562,6 +586,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
               <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
                 {waLink && <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</a>}
                 {lead.email && <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 ring-1 ring-blue-500/20 hover:bg-blue-500/25"><Mail className="h-3.5 w-3.5" /> Email</a>}
+                <button onClick={() => generateProposta()} className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-semibold text-violet-300 ring-1 ring-violet-500/20 hover:bg-violet-500/25">
+                  <FileText className="h-3.5 w-3.5" /> Gerar Proposta
+                </button>
                 <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-300 ring-1 ring-rose-500/20 hover:bg-rose-500/25 ml-auto"><Trash2 className="h-3.5 w-3.5" /> Excluir</button>
               </div>
             </>
@@ -1059,6 +1086,45 @@ function historyLabel(eventType: string): string {
     bant_qualified: "BANT qualificado",
   };
   return m[eventType] || eventType;
+}
+
+// =====================================================
+// LEAD SCORE BADGE — pontuação 0-100
+// =====================================================
+function LeadScoreBadge({ lead }: { lead: Lead }) {
+  const [score, setScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Calcula score localmente (sem API pra não delay)
+    let s = 0;
+    if (lead.whatsapp) s += 20;
+    if (lead.site_status === "no_site" || lead.site_status === "broken") s += 20;
+    else if (!lead.site_status || lead.site_status === "unknown") s += 10;
+    const bantCount = [lead.bant_budget, lead.bant_authority, lead.bant_need, lead.bant_timing].filter(Boolean).length;
+    if (bantCount >= 3) s += 20;
+    else if (bantCount > 0) s += bantCount * 5;
+    if (lead.demo_generated_at) s += 10;
+    if (lead.estimated_value_cents > 0) s += 10;
+    const stageBonus: Record<string, number> = { "qualificado": 5, "proposta": 10, "negociacao": 15 };
+    s += stageBonus[lead.stage] || 0;
+    if (lead.source === "parceiros") s += 5;
+    setScore(Math.min(s, 100));
+  }, [lead]);
+
+  if (score === null) return null;
+  const level = score >= 70 ? "quente" : score >= 40 ? "morno" : "frio";
+  const config = {
+    quente: { bg: "bg-rose-500/15 text-rose-300", emoji: "🔥" },
+    morno: { bg: "bg-amber-500/15 text-amber-300", emoji: "🌡️" },
+    frio: { bg: "bg-blue-500/15 text-blue-300", emoji: "❄️" },
+  };
+  const c = config[level];
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${c.bg}`} title={`Score: ${score}/100`}>
+      {c.emoji} {score}
+    </span>
+  );
 }
 
 function Field({ label, value }: { label: string; value: string }) {

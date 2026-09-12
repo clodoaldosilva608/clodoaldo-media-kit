@@ -5,11 +5,17 @@ import { getSupabaseServer } from "@/lib/supabase-server";
  * POST /api/track
  *
  * Endpoint público pra rastrear eventos de analytics no banco analytics_events.
- * Não requer pixel externo (GA4/Meta) nem consentimento de cookies —
- * só registra: event_name, path, user_agent (pra device type), timestamp.
- * Não armazena PII (email, IP completo, etc).
+ * Registra: event_name, path, device type, browser (sem PII).
  *
- * Body: { event: "page_view" | "click" | ..., path: "/", props: {...} }
+ * Eventos suportados:
+ * - page_view: toda navegação
+ * - view_item: quando abre página de produto
+ * - initiate_checkout: quando clica em "Pagar com PIX"
+ * - lead: quando envia formulário
+ * - purchase: quando paga (webhook confirma)
+ * - whatsapp_click: quando clica em botão WhatsApp
+ *
+ * Body: { event: string, path: string, props: {...} }
  */
 export async function POST(req: NextRequest) {
   try {

@@ -218,13 +218,13 @@ function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix
         {/* Actions */}
         <div className="flex flex-col gap-2 mt-auto">
           <button
-            onClick={onPix}
+            onClick={() => { if (typeof window !== "undefined" && (window as any).trackEvent) (window as any).trackEvent("initiate_checkout", { offer_slug: product.whatsapp_sku }); onPix(); }}
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition"
           >
             <QrCode className="h-4 w-4" /> Pagar com PIX
           </button>
           <a
-            href={whatsappLink}
+            onClick={() => { if (typeof window !== "undefined" && (window as any).trackEvent) (window as any).trackEvent("whatsapp_click", { offer_slug: product.whatsapp_sku }); }} href={whatsappLink}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-bold text-emerald-600 hover:bg-emerald-500/20 transition dark:text-emerald-400"
