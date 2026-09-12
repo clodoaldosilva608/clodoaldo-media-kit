@@ -40,6 +40,39 @@ export async function GET(req: NextRequest) {
     }
 
     if (!leadData) {
+      // Fallback: tentar buscar em crm_leads (Supabase principal)
+      // Lead pode ter sido criado manualmente no CRM em vez de vir da prospecção
+      try {
+        const sb: any = getSupabaseServer();
+        const { data: crmLead, error } = await sb.from("crm_leads")
+          .select("id, name, company, whatsapp, source, project_idea, intent")
+          .eq("id", leadId)
+          .maybeSingle();
+        if (!error && crmLead) {
+          // Mapeia campos do CRM para o formato esperado pelo preview-generator
+          leadData = {
+            name: crmLead.name,
+            niche: crmLead.intent || "marca",
+            category: crmLead.intent || "marca",
+            formatted_address: "",
+            city: "Recife",
+            phone: crmLead.whatsapp || null,
+            whatsapp: crmLead.whatsapp || null,
+            website: null,
+            instagram: null,
+            facebook: null,
+            rating: null,
+            user_ratings_total: null,
+            lat: undefined,
+            lng: undefined,
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!leadData) {
       const notFoundHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview não encontrado</title></head><body style="background:#1b1b1b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center"><h1>Preview não encontrado</h1><p>O lead pode ter sido removido ou o link é inválido.</p><p style="margin-top:20px"><a href="https://clodoaldo-media-kit.vercel.app" style="color:#FE7B02">← Voltar ao site</a></p></div></body></html>`;
       return new NextResponse(notFoundHtml, {
         status: 404,
