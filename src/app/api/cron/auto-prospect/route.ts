@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
     const searchResp = await fetch(`${siteUrl}/api/admin/prospect/search`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Pass CRON_SECRET so middleware bypasses admin auth for internal server-to-server call
+        "Authorization": `Bearer ${cronSecret}`,
+      },
       body: JSON.stringify({ niche, location: city, radius: 5000, limit: 10 }),
     });
     const searchData = await searchResp.json();

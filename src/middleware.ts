@@ -67,6 +67,18 @@ export async function middleware(req: NextRequest) {
     const cookieToken = req.cookies.get("sb-access-token")?.value ||
       req.cookies.get("sb-jckkbsluvbejioyrlcfo-auth-token")?.value;
 
+    // ── CRON SECRET bypass: internal calls from /api/cron/* to /api/admin/* ──
+    // O cron auto-prospect chama /api/admin/prospect/search internamente.
+    // Essas chamadas server-to-server usam CRON_SECRET no header Authorization.
+    if (isAdminApi && authHeader?.startsWith("Bearer ")) {
+      const candidate = authHeader.slice(7);
+      const cronSecret = process.env.CRON_SECRET;
+      if (cronSecret && candidate === cronSecret) {
+        // Bypass auth — request is from internal cron
+        return NextResponse.next();
+      }
+    }
+
     let token: string | null = null;
     if (authHeader?.startsWith("Bearer ")) {
       token = authHeader.slice(7);
