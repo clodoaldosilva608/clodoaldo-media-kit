@@ -75,13 +75,13 @@ Critérios de temperatura:
 A suggested_reply deve ser uma mensagem NATURAL, como se o Clodoaldo estivesse digitando no WhatsApp. NÃO use linguagem corporativa. Seja direto, amigável e específico ao contexto da conversa.`;
 
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
         }),
       }
     );
@@ -94,19 +94,33 @@ A suggested_reply deve ser uma mensagem NATURAL, como se o Clodoaldo estivesse d
     const data = await resp.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
+    console.log("[ai-copilot] Gemini raw response:", text.slice(0, 500));
+
     // Parse JSON da resposta (Gemini pode envolver em ```json)
     let parsed: any = null;
     try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
+      // Remove markdown code blocks se existirem
+      let cleanText = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      // Tenta parse direto
+      try {
+        parsed = JSON.parse(cleanText);
+      } catch {
+        // Tenta extrair JSON de dentro do texto (encontra primeiro { e último })
+        const firstBrace = cleanText.indexOf("{");
+        const lastBrace = cleanText.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          const jsonStr = cleanText.substring(firstBrace, lastBrace + 1);
+          parsed = JSON.parse(jsonStr);
+        }
       }
-    } catch {}
+    } catch (e: any) {
+      console.error("[ai-copilot] JSON parse error:", e.message, "raw:", text.slice(0, 500));
+    }
 
     if (!parsed) {
       return NextResponse.json({
         temperature: "morno",
-        temperature_reason: "Não foi possível classificar",
+        temperature_reason: "Não foi possível classificar. Raw: " + text.slice(0, 500),
         suggested_reply: "Olá! Ainda tem interesse? Posso te enviar uma proposta personalizada.",
         next_action: "Follow-up",
       });
