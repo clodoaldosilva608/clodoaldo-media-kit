@@ -9,6 +9,7 @@ import { LibraryPreview } from "@/components/media-kit/library-preview";
 import { Method } from "@/components/media-kit/method";
 import { Metrics } from "@/components/media-kit/metrics";
 import { Pricing } from "@/components/media-kit/pricing";
+import { ProductsCatalog } from "@/components/media-kit/products-catalog";
 import { Services } from "@/components/media-kit/services";
 import { ShareButton } from "@/components/media-kit/share-button";
 import { WhyMe } from "@/components/media-kit/why-me";
@@ -106,6 +107,8 @@ export default function Home() {
         <Cases />
         <YouTubeSection />
         <Pricing />
+        {/* Catálogo de produtos — 9 produtos com PIX + WhatsApp */}
+        <ProductsCatalog />
         {/* Prova social — depoimentos de clientes */}
         <section className="mx-auto max-w-5xl px-5 sm:px-8 py-12 sm:py-16 md:py-24" id="depoimentos">
           <div className="text-center mb-8 sm:mb-10">
