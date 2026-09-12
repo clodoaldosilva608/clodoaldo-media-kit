@@ -6,7 +6,7 @@ import { Widget, Badge, Button, Input, Select, Textarea, EmptyState } from "@/co
 import {
   RefreshCw, Trash2, ChevronRight, Phone, Mail, MessageCircle,
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
-  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText, FileText,
+  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText, FileText, Code2,
 } from "lucide-react";
 import { getScriptsForLead, getLongFormScript, type ScriptVars, type Script } from "@/lib/whatsapp-scripts";
 
@@ -245,7 +245,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [notes, setNotes] = useState(lead.notes || "");
   const [estimatedValue, setEstimatedValue] = useState(String(Math.round(lead.estimated_value_cents / 100)));
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "scripts" | "copilot" | "tasks" | "history">("info");
+  const [tab, setTab] = useState<"info" | "scripts" | "copilot" | "prompt" | "tasks" | "history">("info");
   const [tasks, setTasks] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingExtras, setLoadingExtras] = useState(false);
@@ -464,6 +464,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
             { k: "info", label: "Info", icon: MessageCircle },
             { k: "scripts", label: "Scripts", icon: MessageSquareText },
             { k: "copilot", label: "IA", icon: Sparkles },
+            { k: "prompt", label: "Prompt Site", icon: Code2 },
             { k: "tasks", label: `Tarefas (${pendingTasks})`, icon: ListChecks },
             { k: "history", label: "Histórico", icon: History },
           ].map(t => (
@@ -605,6 +606,10 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
 
           {tab === "copilot" && (
             <AiCopilotTab lead={lead} leadContext={leadContext} />
+          )}
+
+          {tab === "prompt" && (
+            <SitePromptTab lead={lead} leadContext={leadContext} />
           )}
 
           {tab === "tasks" && (
@@ -1068,6 +1073,162 @@ function AiCopilotTab({ lead, leadContext }: { lead: Lead; leadContext: any }) {
         💡 <strong>Como usar:</strong> Cole as últimas 2-4 mensagens trocadas com o lead (na ordem que aconteceram).
         A IA usa o contexto + nicho + produtos do catálogo pra sugerir a melhor resposta. Custo: R$ 0 (Gemini free tier).
       </div>
+    </div>
+  );
+}
+
+// =====================================================
+// SITE PROMPT TAB — gera prompt + compartilha pra plataformas AI
+// =====================================================
+function SitePromptTab({ lead, leadContext }: { lead: Lead; leadContext: any }) {
+  const [prompt, setPrompt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [openedPlatform, setOpenedPlatform] = useState<string | null>(null);
+
+  async function generatePrompt() {
+    setLoading(true);
+    setError(null);
+    setPrompt(null);
+    try {
+      const resp = await fetch("/api/admin/generate-site-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: lead.id }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Falha");
+      setPrompt(json.prompt);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyPrompt() {
+    if (!prompt) return;
+    navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function openPlatform(platform: any) {
+    if (!prompt) return;
+    setOpenedPlatform(platform.name);
+
+    if (platform.method === "url_param") {
+      // URL com prompt pré-preenchido — abre direto
+      window.open(platform.url, "_blank");
+    } else {
+      // Clipboard — copia e abre plataforma
+      navigator.clipboard.writeText(prompt).then(() => {
+        window.open(platform.url, "_blank");
+      });
+    }
+
+    setTimeout(() => setOpenedPlatform(null), 3000);
+  }
+
+  const platforms = [
+    { name: "ChatGPT", icon: "🤖", color: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30", method: "url_param", url: null, desc: "Pré-preenchido" },
+    { name: "Claude", icon: "🧠", color: "bg-amber-500/15 text-amber-300 border-amber-500/30", method: "url_param", url: null, desc: "Pré-preenchido" },
+    { name: "v0.dev", icon: "⚡", color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30", method: "url_param", url: null, desc: "Vercel v0" },
+    { name: "Bolt.new", icon: "🔧", color: "bg-blue-500/15 text-blue-300 border-blue-500/30", method: "url_param", url: null, desc: "StackBlitz" },
+    { name: "Lovable", icon: "💜", color: "bg-violet-500/15 text-violet-300 border-violet-500/30", method: "clipboard", url: "https://lovable.dev", desc: "Copia + abre" },
+    { name: "Manus", icon: "🤝", color: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", method: "clipboard", url: "https://manus.im", desc: "Copia + abre" },
+    { name: "Arena", icon: "🏟️", color: "bg-rose-500/15 text-rose-300 border-rose-500/30", method: "clipboard", url: "https://arena.ai", desc: "Copia + abre" },
+    { name: "chatz.ai", icon: "💬", color: "bg-teal-500/15 text-teal-300 border-teal-500/30", method: "clipboard", url: "https://chatz.ai", desc: "Copia + abre" },
+    { name: "Replit", icon: "🔁", color: "bg-orange-500/15 text-orange-300 border-orange-500/30", method: "clipboard", url: "https://replit.com", desc: "Copia + abre" },
+  ];
+
+  // Gerar URLs com prompt quando disponível
+  const platformUrls: Record<string, string> = {};
+  if (prompt) {
+    platformUrls["ChatGPT"] = `https://chat.openai.com/?q=${encodeURIComponent(prompt)}`;
+    platformUrls["Claude"] = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+    platformUrls["v0.dev"] = `https://v0.dev/?prompt=${encodeURIComponent(prompt)}`;
+    platformUrls["Bolt.new"] = `https://bolt.new/?prompt=${encodeURIComponent(prompt)}`;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Code2 className="h-4 w-4 text-blue-400" />
+          <span className="text-sm font-bold text-blue-300">Prompt do Site</span>
+        </div>
+        <p className="text-[11px] text-zinc-400">
+          Gera um prompt completo de criação de site baseado nos dados do lead. Compartilha direto pra plataformas AI — algumas com prompt pré-preenchido, outras copiam pra área de transferência.
+        </p>
+      </div>
+
+      {/* Generate button */}
+      {!prompt && (
+        <Button variant="primary" onClick={generatePrompt} disabled={loading} className="w-full">
+          {loading ? <><RefreshCw className="h-4 w-4 animate-spin" /> Gerando prompt…</> : <><Code2 className="h-4 w-4" /> Gerar prompt do site</>}
+        </Button>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">⚠ {error}</div>
+      )}
+
+      {/* Platforms grid */}
+      {prompt && (
+        <>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+              🚀 Compartilhar para plataforma AI
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {platforms.map((p) => (
+                <button
+                  key={p.name}
+                  onClick={() => openPlatform({ ...p, url: platformUrls[p.name] || p.url })}
+                  className={`flex flex-col items-center gap-1 rounded-xl border p-3 transition hover:scale-105 ${p.color}`}
+                >
+                  <span className="text-2xl">{p.icon}</span>
+                  <span className="text-xs font-bold">{p.name}</span>
+                  <span className="text-[9px] opacity-70">{p.desc}</span>
+                  {openedPlatform === p.name && (
+                    <span className="text-[9px] text-emerald-400 font-bold">✓ Aberto!</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Copy button */}
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={copyPrompt} className="flex-1">
+              {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar prompt</>}
+            </Button>
+            <Button variant="outline" size="sm" onClick={generateProposta} className="flex-1">
+              <FileText className="h-3.5 w-3.5" /> Gerar Proposta PDF
+            </Button>
+          </div>
+
+          {/* Prompt preview */}
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+              📝 Prompt gerado ({prompt.length} chars)
+            </div>
+            <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-[11px] text-zinc-300 font-mono leading-relaxed max-h-[300px] overflow-y-auto">{prompt}</pre>
+          </div>
+
+          {/* Tip */}
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] text-amber-200/80">
+            💡 <strong>Como funciona:</strong>
+            <br/>
+            <strong>URL params</strong> (ChatGPT, Claude, v0, Bolt): prompt vai pré-preenchido no chat. É só apertar Enter.
+            <br/>
+            <strong>Clipboard</strong> (Lovable, Manus, etc): prompt é copiado pra área de transferência. Quando a plataforma abrir, cole com Ctrl+V. Se não estiver logado, faça login primeiro e depois cole.
+          </div>
+        </>
+      )}
     </div>
   );
 }
