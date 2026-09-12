@@ -243,7 +243,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [notes, setNotes] = useState(lead.notes || "");
   const [estimatedValue, setEstimatedValue] = useState(String(Math.round(lead.estimated_value_cents / 100)));
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "scripts" | "tasks" | "history">("info");
+  const [tab, setTab] = useState<"info" | "scripts" | "copilot" | "tasks" | "history">("info");
   const [tasks, setTasks] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingExtras, setLoadingExtras] = useState(false);
@@ -436,6 +436,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
           {[
             { k: "info", label: "Informações", icon: MessageCircle },
             { k: "scripts", label: "Scripts WhatsApp", icon: MessageSquareText },
+            { k: "copilot", label: "IA Copiloto", icon: Sparkles },
             { k: "tasks", label: `Tarefas (${pendingTasks})`, icon: ListChecks },
             { k: "history", label: "Histórico", icon: History },
           ].map(t => (
@@ -569,6 +570,10 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
               loadingContext={loadingContext}
               demoUrl={demoUrl}
             />
+          )}
+
+          {tab === "copilot" && (
+            <AiCopilotTab lead={lead} leadContext={leadContext} />
           )}
 
           {tab === "tasks" && (
@@ -851,6 +856,186 @@ function ScriptCard({ script, onCopy, onOpenWa, copied, hasWhatsapp, highlight }
             <MessageCircle className="h-3.5 w-3.5" /> Abrir no WhatsApp
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// =====================================================
+// AI COPILOT TAB — Gemini analisa conversa + sugere próxima resposta
+// =====================================================
+function AiCopilotTab({ lead, leadContext }: { lead: Lead; leadContext: any }) {
+  const [messages, setMessages] = useState<Array<{ from: "lead" | "me"; text: string }>>([
+    { from: "me", text: "" },
+    { from: "lead", text: "" },
+  ]);
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function updateMessage(idx: number, text: string) {
+    const updated = [...messages];
+    updated[idx] = { ...updated[idx], text };
+    setMessages(updated);
+  }
+
+  function addMessagePair() {
+    setMessages([...messages, { from: "me", text: "" }, { from: "lead", text: "" }]);
+  }
+
+  async function analyze() {
+    const validMsgs = messages.filter(m => m.text.trim());
+    if (validMsgs.length === 0) {
+      setError("Digite pelo menos uma mensagem da conversa.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const resp = await fetch("/api/admin/ai-copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_name: lead.name,
+          niche: leadContext?.niche || lead.intent || "negócio local",
+          city: leadContext?.city || "Recife, PE",
+          has_website: leadContext?.hasWebsite ?? false,
+          conversation: validMsgs,
+          products_summary: "Site R$1.700, SEO R$490, Google Meu Negócio R$290, Cardápio Digital R$990, Artes R$39/mês, Pacote Recorrência R$497/mês",
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Falha");
+      setResult(json);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copyReply() {
+    if (!result?.suggested_reply) return;
+    navigator.clipboard.writeText(result.suggested_reply);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function openWhatsApp() {
+    if (!result?.suggested_reply || !lead.whatsapp) return;
+    const num = lead.whatsapp.replace(/\D/g, "");
+    const waNum = num.startsWith("55") ? num : `55${num}`;
+    window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(result.suggested_reply)}`, "_blank");
+  }
+
+  const tempConfig: Record<string, { color: string; bg: string; label: string; emoji: string }> = {
+    quente: { color: "text-rose-300", bg: "bg-rose-500/15 border-rose-500/30", label: "QUENTE", emoji: "🔥" },
+    morno: { color: "text-amber-300", bg: "bg-amber-500/15 border-amber-500/30", label: "MORNO", emoji: "🌡️" },
+    frio: { color: "text-blue-300", bg: "bg-blue-500/15 border-blue-500/30", label: "FRIO", emoji: "❄️" },
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="h-4 w-4 text-violet-400" />
+          <span className="text-sm font-bold text-violet-300">IA Copiloto</span>
+        </div>
+        <p className="text-[11px] text-zinc-400">
+          Cole as mensagens da conversa com o lead. A IA analisa, classifica a temperatura (quente/morno/frio) e sugere a próxima resposta ideal.
+        </p>
+      </div>
+
+      {/* Conversation input */}
+      <div className="space-y-2">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Conversa com o lead</div>
+        {messages.map((msg, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold ${msg.from === "lead" ? "text-amber-300" : "text-emerald-300"}`}>
+                {msg.from === "lead" ? "← Lead disse:" : "→ Você enviou:"}
+              </span>
+            </div>
+            <Textarea
+              value={msg.text}
+              onChange={(e) => updateMessage(i, e.target.value)}
+              rows={2}
+              placeholder={msg.from === "lead" ? "O que o lead respondeu..." : "O que você enviou..."}
+              className="text-xs"
+            />
+          </div>
+        ))}
+        <button onClick={addMessagePair} className="text-[10px] text-emerald-400 hover:text-emerald-300 underline">
+          + Adicionar mais mensagens
+        </button>
+      </div>
+
+      {/* Analyze button */}
+      <Button variant="primary" onClick={analyze} disabled={loading} className="w-full">
+        {loading ? <><RefreshCw className="h-4 w-4 animate-spin" /> Analisando com IA…</> : <><Sparkles className="h-4 w-4" /> Analisar conversa</>}
+      </Button>
+
+      {error && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">⚠ {error}</div>
+      )}
+
+      {/* Result */}
+      {result && (
+        <div className="space-y-3">
+          {/* Temperature badge */}
+          {result.temperature && (
+            <div className={`rounded-xl border p-3 ${tempConfig[result.temperature]?.bg || ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{tempConfig[result.temperature]?.emoji}</span>
+                  <div>
+                    <div className={`text-sm font-bold ${tempConfig[result.temperature]?.color}`}>
+                      {tempConfig[result.temperature]?.label}
+                    </div>
+                    {result.temperature_reason && (
+                      <div className="text-[11px] text-zinc-400 mt-0.5">{result.temperature_reason}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Suggested reply */}
+          {result.suggested_reply && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2">💬 Resposta sugerida pela IA</div>
+              <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-xs text-zinc-200 font-sans leading-relaxed">{result.suggested_reply}</pre>
+              <div className="flex gap-2 mt-2">
+                <Button variant="outline" size="sm" onClick={copyReply}>
+                  {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar</>}
+                </Button>
+                {lead.whatsapp && (
+                  <Button variant="primary" size="sm" onClick={openWhatsApp}>
+                    <MessageCircle className="h-3.5 w-3.5" /> Enviar no WhatsApp
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Next action */}
+          {result.next_action && (
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 mb-1">🎯 Próxima ação recomendada</div>
+              <div className="text-xs text-zinc-200">{result.next_action}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tip */}
+      <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] text-amber-200/80">
+        💡 <strong>Como usar:</strong> Cole as últimas 2-4 mensagens trocadas com o lead (na ordem que aconteceram).
+        A IA usa o contexto + nicho + produtos do catálogo pra sugerir a melhor resposta. Custo: R$ 0 (Gemini free tier).
       </div>
     </div>
   );

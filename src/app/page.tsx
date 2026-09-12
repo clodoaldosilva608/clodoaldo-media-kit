@@ -10,6 +10,7 @@ import { Method } from "@/components/media-kit/method";
 import { Metrics } from "@/components/media-kit/metrics";
 import { Pricing } from "@/components/media-kit/pricing";
 import { ProductsCatalog } from "@/components/media-kit/products-catalog";
+import { FunilComDono } from "@/components/media-kit/funil-com-dono";
 import { Services } from "@/components/media-kit/services";
 import { ShareButton } from "@/components/media-kit/share-button";
 import { WhyMe } from "@/components/media-kit/why-me";
@@ -102,6 +103,8 @@ export default function Home() {
         <WhyMe />
         <Audience />
         <Services />
+        {/* Funil com Dono — metodologia de growth (3 pilares) */}
+        <FunilComDono />
         <LibraryPreview />
         <Ecosystem />
         <Cases />

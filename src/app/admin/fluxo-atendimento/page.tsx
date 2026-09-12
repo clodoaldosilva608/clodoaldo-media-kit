@@ -275,7 +275,7 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
 
       <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-2">
         {prospect.last_contact_at ? (
-          <span className="text-blue-300">Contactado há {timeAgo(prospect.last_contact_at)}</span>
+          <SpeedBadge lastContactAt={prospect.last_contact_at} />
         ) : (
           <span className="text-amber-300">Nunca contactado</span>
         )}
@@ -311,5 +311,56 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
         )}
       </div>
     </div>
+  );
+}
+
+// =====================================================
+// SPEED BADGE — cronômetro de velocidade + alerta lead esfriando
+// =====================================================
+function SpeedBadge({ lastContactAt }: { lastContactAt: string }) {
+  const diffMs = Date.now() - new Date(lastContactAt).getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  const diffDays = diffHours / 24;
+
+  let label: string;
+  let color: string;
+  let emoji: string;
+
+  if (diffHours < 2) {
+    // Fresco: < 2h
+    label = `Há ${Math.round(diffHours * 60)}min`;
+    color = "text-emerald-300";
+    emoji = "⚡";
+  } else if (diffHours < 24) {
+    // Recente: < 24h
+    label = `Há ${Math.floor(diffHours)}h`;
+    color = "text-blue-300";
+    emoji = "🕐";
+  } else if (diffDays < 2) {
+    // Esfriando: 24h - 48h
+    label = `Há ${Math.floor(diffDays)}d`;
+    color = "text-amber-300";
+    emoji = "🌡️";
+  } else if (diffDays < 7) {
+    // Frio: 2-7 dias
+    label = `Há ${Math.floor(diffDays)}d`;
+    color = "text-orange-300";
+    emoji = "⚠️";
+  } else {
+    // Gelado: > 7 dias
+    label = `Há ${Math.floor(diffDays)}d`;
+    color = "text-rose-300";
+    emoji = "❄️";
+  }
+
+  return (
+    <span className={`${color} font-semibold`}>
+      {emoji} {label}
+      {diffDays >= 2 && (
+        <span className="ml-1 rounded bg-rose-500/15 px-1 py-0.5 text-[9px] text-rose-300 font-bold">
+          ESFRIANDO
+        </span>
+      )}
+    </span>
   );
 }
