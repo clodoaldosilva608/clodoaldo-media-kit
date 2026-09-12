@@ -27,7 +27,7 @@ export interface ScriptVars {
 
 export interface Script {
   id: string;
-  variant: "A" | "B" | "C";
+  variant: "A" | "B" | "C" | "L";
   technique: string;
   description: string;
   body: string;
@@ -192,6 +192,69 @@ ${demoUrl}
 Se viu, me fala o que achou — mesmo crítica é feedback. Se não viu ainda, dá uma olhada, leva 30 segundos.`,
     },
   ];
+}
+
+// =====================================================
+// ROTEIRO LONG FORM — Método Gabriel Miranda completo
+// (usa catálogo de produtos dinamicamente)
+// =====================================================
+export function getLongFormScript(vars: ScriptVars, products: Array<{
+  name: string;
+  description: string | null;
+  price_label: string | null;
+  icon: string | null;
+  is_recurring: boolean;
+}>): Script {
+  const { nome, nicho, cidade, demoUrl } = vars;
+  const nichoFmt = formatNicho(nicho);
+
+  // Filtra produtos ativos e formata lista
+  const productList = products
+    .filter(p => p && p.name)
+    .map(p => `${p.icon || "✅"} ${p.name}${p.description ? ` — ${p.description}` : ""}${p.price_label ? ` (${p.price_label})` : ""}`)
+    .join("\n");
+
+  const body = `Assunto: ${nome} — como atrair 30-50 clientes novos por mês (sem depender de indicação)
+
+Olá, ${nome}!
+Meu nome é Clodoaldo Silva, sou especialista em marketing digital local aqui da região.
+
+Vi sua avaliação no Google Maps — parabéns pelo trabalho bem feito!
+
+Cheguei até vocês pesquisando "${nichoFmt} perto de mim" no Google. Notei que vocês ainda NÃO têm um site profissional — e isso está custando clientes todos os meses. Deixa eu explicar o que está acontecendo:
+
+1. 🔍 Pesquisando "${nichoFmt} em ${cidade}", seus concorrentes aparecem em primeiro — e estão ganhando os clientes que poderiam estar vindo até vocês. São 150-400 buscas/mês só na região.
+
+2. 📱 87% das pessoas pesquisam online ANTES de decidir onde comprar. Sem presença digital forte, vocês estão invisíveis para esse público.
+
+3. 📉 A cada mês sem isso = 30-50 clientes novos indo direto pro concorrente. Em 6 meses, são 200+ clientes que poderiam ser de vocês.
+
+Mais que um site, eu ofereço um ecossistema completo para o ${nome} crescer:
+
+${productList}
+
+💰 Custo-benefício que faz sentido: um único site profissional custa menos que 1 mês de aluguel da loja. E diferente do aluguel (que se paga pra sempre), o site é de vocês, trabalha 24/7 por anos.
+
+✅ Sem fidelidade — vocês podem cancelar a recorrência quando quiserem.
+✅ Sem trabalho pra vocês — eu cuido de tudo (design, conteúdo, publicação). Vocês só aprovam o resultado final.
+
+Sei que provavelmente estão ocupados — todo mundo que tem negócio próprio está. Por isso não precisa de reunião interminável: me chama no WhatsApp, a gente conversa por mensagem mesmo, e em 5 minutinhos eu mostro exatamente o que dá pra fazer.
+
+👉 Posso enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" no WhatsApp.
+
+📱 (81) 92005-1068
+🌐 ${demoUrl}
+
+Abraço,
+Clodoaldo Silva`;
+
+  return {
+    id: "long-form",
+    variant: "L",
+    technique: "Storytelling + Value Stack + Reciprocity",
+    description: "Roteiro completo do método Gabriel Miranda — lista todos os produtos do catálogo com preço. Use quando lead mostrar interesse inicial.",
+    body,
+  };
 }
 
 // =====================================================

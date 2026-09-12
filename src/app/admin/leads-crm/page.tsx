@@ -8,7 +8,7 @@ import {
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
   ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText,
 } from "lucide-react";
-import { getScriptsForLead, type ScriptVars, type Script } from "@/lib/whatsapp-scripts";
+import { getScriptsForLead, getLongFormScript, type ScriptVars, type Script } from "@/lib/whatsapp-scripts";
 
 interface Lead {
   id: string;
@@ -700,6 +700,15 @@ function WhatsAppScriptsTab({
   demoUrl: string;
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [products, setProducts] = useState<any[]>([]);
+
+  // Fetch products catalog for Long Form script
+  useEffect(() => {
+    fetch("/api/admin/products")
+      .then(r => r.json())
+      .then(d => setProducts(d.products || []))
+      .catch(() => {});
+  }, []);
 
   if (loadingContext) {
     return (
@@ -721,6 +730,9 @@ function WhatsAppScriptsTab({
   };
 
   const { primary, followup } = getScriptsForLead(scriptVars, hasWebsite ?? null);
+  // Long Form script — uses products catalog dynamically
+  const longForm = products.length > 0 ? getLongFormScript(scriptVars, products) : null;
+
   const tipoLabel = hasWebsite === true ? "TEM SITE" : hasWebsite === false ? "SEM SITE" : "STATUS DESCONHECIDO (sem site)";
   const tipoColor = hasWebsite === true
     ? "border-blue-500/30 bg-blue-500/[0.06] text-blue-300"
@@ -762,10 +774,32 @@ function WhatsAppScriptsTab({
         </div>
       </div>
 
+      {/* Long Form script (método Gabriel Miranda completo) */}
+      {longForm && (
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2">
+            📋 Roteiro Long Form — completo (com catálogo de produtos)
+          </div>
+          <div className="space-y-3">
+            <ScriptCard
+              script={longForm}
+              onCopy={() => copyScript(longForm)}
+              onOpenWa={() => openWhatsApp(longForm)}
+              copied={copiedId === longForm.id}
+              hasWhatsapp={!!lead.whatsapp}
+              highlight
+            />
+          </div>
+          <div className="text-[10px] text-zinc-500 mt-1.5">
+            💡 Lista todos os {products.length} produtos do seu catálogo com preços. Edite em <a href="/admin/produtos" className="underline text-emerald-400">/admin/produtos</a>.
+          </div>
+        </div>
+      )}
+
       {/* Primary scripts — 3 variants */}
       <div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
-          📝 Roteiros principais — 3 variantes (escolha a que preferir)
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2 mt-4">
+          📝 Roteiros curtos — 3 variantes (escolha a que preferir)
         </div>
         <div className="space-y-3">
           {primary.map((s) => (
@@ -788,27 +822,26 @@ function WhatsAppScriptsTab({
 
       {/* Tip */}
       <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] text-amber-200/80">
-        💡 <strong>Técnica:</strong> Cada variante usa uma técnica diferente de neurociência comportamental
-        (loss aversion, reciprocity, pattern interrupt, scarcity). Teste as 3 com leads diferentes
-        e veja qual tem maior taxa de resposta. A variante A costuma converter melhor no primeiro contato.
+        💡 <strong>Estratégia:</strong> Use o <strong>Long Form</strong> quando o lead responder "sim, quero ver mais"
+        (mostra ecossistema completo + preços). Use os <strong>curtos</strong> no primeiro contato (alta conversão, baixo compromisso).
       </div>
     </div>
   );
 }
 
-function ScriptCard({ script, onCopy, onOpenWa, copied, hasWhatsapp }: { script: Script; onCopy: () => void; onOpenWa: () => void; copied: boolean; hasWhatsapp: boolean }) {
+function ScriptCard({ script, onCopy, onOpenWa, copied, hasWhatsapp, highlight }: { script: Script; onCopy: () => void; onOpenWa: () => void; copied: boolean; hasWhatsapp: boolean; highlight?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+    <div className={`rounded-xl border p-3 ${highlight ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-white/5 bg-white/[0.02]"}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-300">Variante {script.variant}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${highlight ? "bg-emerald-500/15 text-emerald-300" : "bg-violet-500/15 text-violet-300"}`}>Variante {script.variant}</span>
             <span className="text-[10px] text-zinc-400">{script.technique}</span>
           </div>
           <div className="text-[10px] text-zinc-500 mt-0.5">{script.description}</div>
         </div>
       </div>
-      <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-xs text-zinc-200 font-sans leading-relaxed">{script.body}</pre>
+      <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-xs text-zinc-200 font-sans leading-relaxed max-h-[500px] overflow-y-auto">{script.body}</pre>
       <div className="flex flex-wrap gap-2 mt-2">
         <Button variant="outline" size="sm" onClick={onCopy}>
           {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar texto</>}
