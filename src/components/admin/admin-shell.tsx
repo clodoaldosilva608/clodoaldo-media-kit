@@ -35,6 +35,7 @@ import {
   Activity,
   Coins,
   History,
+  TrendingUp,
 } from "lucide-react";
 
 interface NavItem {
@@ -55,6 +56,7 @@ const NAV: NavItem[] = [
   { href: "/admin/briefings", label: "Briefings", icon: FileText, group: "vendas" },
   { href: "/admin/offers", label: "Ofertas", icon: Tags, group: "vendas" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, group: "vendas" },
+  { href: "/admin/vendas-semana", label: "Vendas da Semana", icon: TrendingUp, group: "vendas" },
   { href: "/admin/parceiros", label: "Parceiros", icon: Handshake, group: "marketing" },
   { href: "/admin/aprovacoes", label: "Portal de Aprovação", icon: ClipboardCheck, group: "marketing" },
   { href: "/admin/coupons", label: "Cupons", icon: Ticket, group: "marketing" },

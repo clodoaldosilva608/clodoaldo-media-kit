@@ -6,6 +6,7 @@ import { Widget, Badge, Button, Input, Select, Textarea, EmptyState } from "@/co
 import {
   RefreshCw, Trash2, ChevronRight, Phone, Mail, MessageCircle,
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
+  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 
 interface Lead {
@@ -25,6 +26,16 @@ interface Lead {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // BANT + Demo + site_status (método Gabriel Miranda)
+  bant_budget?: boolean;
+  bant_authority?: boolean;
+  bant_need?: boolean;
+  bant_timing?: boolean;
+  bant_notes?: string | null;
+  site_status?: string | null;
+  site_checked_at?: string | null;
+  demo_url?: string | null;
+  demo_generated_at?: string | null;
 }
 
 interface StageStats { count: number; total_value_cents: number; }
@@ -236,6 +247,20 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [history, setHistory] = useState<any[]>([]);
   const [loadingExtras, setLoadingExtras] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", description: "", due_at: "" });
+  // BANT state
+  const [bant, setBant] = useState({
+    budget: lead.bant_budget || false,
+    authority: lead.bant_authority || false,
+    need: lead.bant_need || false,
+    timing: lead.bant_timing || false,
+    notes: lead.bant_notes || "",
+  });
+  const [demoCopied, setDemoCopied] = useState(false);
+  const [checkingSite, setCheckingSite] = useState(false);
+
+  const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
+  const bantScore = [bant.budget, bant.authority, bant.need, bant.timing].filter(Boolean).length;
+  const bantQualified = bantScore >= 3;
 
   const loadExtras = useCallback(async () => {
     setLoadingExtras(true);
@@ -288,6 +313,65 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
     await loadExtras();
   }
 
+  async function saveBant() {
+    await fetch("/api/admin/leads-crm", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: lead.id,
+        bant_budget: bant.budget,
+        bant_authority: bant.authority,
+        bant_need: bant.need,
+        bant_timing: bant.timing,
+        bant_notes: bant.notes,
+      }),
+    });
+    // If BANT qualified and lead is still "novo", suggest moving to "qualificado"
+    if (bantQualified && lead.stage === "novo") {
+      if (confirm("Lead qualificado pelo BANT (3+ critérios)! Deseja mover para 'Qualificado'?")) {
+        onStageChange("qualificado");
+      }
+    }
+  }
+
+  function copyDemoUrl() {
+    navigator.clipboard.writeText(demoUrl);
+    setDemoCopied(true);
+    setTimeout(() => setDemoCopied(false), 2000);
+  }
+
+  async function generateDemo() {
+    await fetch("/api/admin/leads-crm", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: lead.id, demo_url: demoUrl, demo_generated_at: new Date().toISOString() }),
+    });
+    // Log in history
+    await fetch("/api/admin/lead-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: lead.id, event_type: "demo_generated", notes: `Demo gerado: ${demoUrl}`, actor: "admin" }),
+    });
+    window.open(demoUrl, "_blank");
+  }
+
+  async function checkSite() {
+    setCheckingSite(true);
+    try {
+      const resp = await fetch(`/api/admin/check-site?lead_id=${lead.id}`);
+      const json = await resp.json();
+      if (json.site_status) {
+        // Update local lead state
+        lead.site_status = json.site_status;
+        lead.site_checked_at = new Date().toISOString();
+      }
+      alert(`Site check: ${json.site_status}\n${json.detail || ""}`);
+    } catch (e: any) {
+      alert("Erro: " + e.message);
+    }
+    setCheckingSite(false);
+  }
+
   async function saveChanges() {
     setSaving(true);
     try {
@@ -298,6 +382,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
       });
       if (!resp.ok) throw new Error("Falha");
       await addNote();
+      await saveBant();
       onClose();
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   }
@@ -313,6 +398,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
             <h3 className="text-sm font-bold text-white">{lead.name}</h3>
             {pendingTasks > 0 && (
               <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">{pendingTasks} tarefa(s) pendente(s)</span>
+            )}
+            {bantQualified && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">✓ BANT qualificado ({bantScore}/4)</span>
             )}
           </div>
           <button onClick={onClose} className="rounded-lg p-2 text-zinc-400 hover:bg-white/5"><X className="h-5 w-5" /></button>
@@ -335,6 +423,78 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
         <div className="max-h-[calc(90vh-200px)] overflow-y-auto p-5 space-y-4">
           {tab === "info" && (
             <>
+              {/* DEMO + Site Status Section (método Gabriel Miranda) */}
+              <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-violet-300">🎨 Site Demo + Status (método Gabriel Miranda)</div>
+                  {lead.site_status && lead.site_status !== "unknown" && (
+                    <SiteStatusBadge status={lead.site_status} />
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="primary" size="sm" onClick={generateDemo}>
+                    <Sparkle className="h-3.5 w-3.5" /> {lead.demo_url ? "Abrir Demo" : "Gerar Demo"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={copyDemoUrl}>
+                    {demoCopied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar link</>}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={checkSite} disabled={checkingSite}>
+                    {checkingSite ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Verificando…</> : <><Globe className="h-3.5 w-3.5" /> Verificar site</>}
+                  </Button>
+                </div>
+                <div className="text-[10px] text-zinc-500 font-mono break-all bg-black/20 px-2 py-1.5 rounded">{demoUrl}</div>
+                {lead.demo_generated_at && (
+                  <div className="text-[10px] text-zinc-500">Demo gerado em {new Date(lead.demo_generated_at).toLocaleString("pt-BR")}</div>
+                )}
+              </div>
+
+              {/* BANT Checklist (método Gabriel Miranda) */}
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300">🎯 Qualificação BANT</div>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${bantQualified ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}`}>
+                    {bantScore}/4 {bantQualified ? "✓ Qualificado" : "— Pendente"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <BantCheckbox
+                    label="Budget"
+                    description="Tem orçamento? (R$1.400-2.000 + R$200-500/mês)"
+                    checked={bant.budget}
+                    onChange={(v) => setBant({ ...bant, budget: v })}
+                  />
+                  <BantCheckbox
+                    label="Authority"
+                    description="É o decisor? (dono / sócio / gerente)"
+                    checked={bant.authority}
+                    onChange={(v) => setBant({ ...bant, authority: v })}
+                  />
+                  <BantCheckbox
+                    label="Need"
+                    description="Tem necessidade real? (site quebrado / sem site / concorrência)"
+                    checked={bant.need}
+                    onChange={(v) => setBant({ ...bant, need: v })}
+                  />
+                  <BantCheckbox
+                    label="Timing"
+                    description="Está no timing? (decisão em 30 dias)"
+                    checked={bant.timing}
+                    onChange={(v) => setBant({ ...bant, timing: v })}
+                  />
+                </div>
+                <Textarea
+                  value={bant.notes}
+                  onChange={(e) => setBant({ ...bant, notes: e.target.value })}
+                  rows={2}
+                  placeholder="Notas BANT — evidências coletadas na conversa..."
+                />
+                {!bantQualified && bantScore > 0 && (
+                  <div className="text-[10px] text-amber-300 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> Faltam {3 - bantScore} critério(s) para qualificar (mínimo 3)
+                  </div>
+                )}
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-3">
                 {lead.email && <Field label="Email" value={lead.email} />}
                 {lead.whatsapp && <Field label="WhatsApp" value={lead.whatsapp} />}
@@ -455,6 +615,41 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   );
 }
 
+function BantCheckbox({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (v: boolean) => void; }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`flex items-start gap-2 rounded-lg border p-2.5 text-left transition ${checked ? "border-emerald-500/40 bg-emerald-500/[0.06]" : "border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"}`}
+    >
+      <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${checked ? "bg-emerald-500/30 border-emerald-500/40 text-emerald-300" : "border-white/20"}`}>
+        {checked && <Check className="h-3 w-3" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-xs font-bold ${checked ? "text-emerald-300" : "text-white"}`}>{label}</div>
+        <div className="text-[10px] text-zinc-500 mt-0.5">{description}</div>
+      </div>
+    </button>
+  );
+}
+
+function SiteStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { color: string; label: string; icon: any }> = {
+    ok: { color: "bg-emerald-500/15 text-emerald-300", label: "Site OK", icon: ShieldCheck },
+    broken: { color: "bg-rose-500/15 text-rose-300", label: "Site quebrado", icon: AlertTriangle },
+    slow: { color: "bg-amber-500/15 text-amber-300", label: "Site lento", icon: Clock },
+    ssl_invalid: { color: "bg-rose-500/15 text-rose-300", label: "SSL inválido", icon: AlertTriangle },
+    no_site: { color: "bg-zinc-500/15 text-zinc-300", label: "Sem site", icon: Globe },
+    unknown: { color: "bg-zinc-500/15 text-zinc-400", label: "Não verificado", icon: Globe },
+  };
+  const c = config[status] || config.unknown;
+  const Icon = c.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.color}`}>
+      <Icon className="h-3 w-3" /> {c.label}
+    </span>
+  );
+}
+
 function historyLabel(eventType: string): string {
   const m: Record<string, string> = {
     stage_change: "Mudança de estágio",
@@ -464,6 +659,9 @@ function historyLabel(eventType: string): string {
     call: "Ligação",
     meeting: "Reunião",
     created: "Lead criado",
+    demo_generated: "Demo gerado",
+    site_checked: "Site verificado",
+    bant_qualified: "BANT qualificado",
   };
   return m[eventType] || eventType;
 }

@@ -33,11 +33,23 @@ const patchSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   email: z.string().email().max(254).optional().nullable(),
   whatsapp: z.string().max(30).optional().nullable(),
+  // BANT (método Gabriel Miranda)
+  bant_budget: z.boolean().optional(),
+  bant_authority: z.boolean().optional(),
+  bant_need: z.boolean().optional(),
+  bant_timing: z.boolean().optional(),
+  bant_notes: z.string().max(2000).optional().nullable(),
+  // Site status
+  site_status: z.string().max(30).optional().nullable(),
+  site_checked_at: z.string().optional().nullable(),
+  // Demo
+  demo_url: z.string().max(500).optional().nullable(),
+  demo_generated_at: z.string().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = getSupabaseServer();
+    const supabase: any = getSupabaseServer();
     const url = req.nextUrl;
     const stage = url.searchParams.get("stage");
     const source = url.searchParams.get("source");
@@ -81,7 +93,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid", details: parsed.error.flatten() }, { status: 400 });
-    const supabase = getSupabaseServer();
+    const supabase: any = getSupabaseServer();
     const { data, error } = await supabase.from("crm_leads").insert(parsed.data).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await supabase.from("crm_lead_events").insert({ lead_id: data.id, event_type: "stage_change", to_stage: data.stage, description: `Lead criado no estágio "${data.stage}"` });
@@ -96,7 +108,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Invalid", details: parsed.error.flatten() }, { status: 400 });
-    const supabase = getSupabaseServer();
+    const supabase: any = getSupabaseServer();
     const { id, ...updates } = parsed.data;
     const { data: current } = await supabase.from("crm_leads").select("stage").eq("id", id).maybeSingle();
     const { data, error } = await supabase.from("crm_leads").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", id).select().single();
@@ -114,7 +126,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    const supabase = getSupabaseServer();
+    const supabase: any = getSupabaseServer();
     const { error } = await supabase.from("crm_leads").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
