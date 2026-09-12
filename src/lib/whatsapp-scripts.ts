@@ -136,7 +136,7 @@ Quer dar uma olhada? 30 segundos:
 
 ${demoUrl}
 
-(clodoaldo.vercel.app — veja cases de outros ${nichoFmt}s da região)`,
+(clodoaldo-media-kit.vercel.app — veja cases de outros ${nichoFmt}s da região)`,
     },
     {
       id: "sem-site-C",
