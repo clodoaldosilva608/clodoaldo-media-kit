@@ -422,7 +422,7 @@ Sei que provavelmente está ocupado(a) — todo mundo que tem negócio próprio 
 👉 Posso te enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" aqui no WhatsApp.
 
 📱 (81) 92005-1068
-🌐 clodoaldo.vercel.app
+🌐 clodoaldo-media-kit.vercel.app
 
 Abraço,
 Clodoaldo Silva`;
@@ -481,7 +481,7 @@ Sei que provavelmente estão ocupados — todo mundo que tem negócio próprio e
 👉 Posso enviar um preview gratuito do site que eu criaria pra vocês? É só responder "sim" no WhatsApp.
 
 📱 (81) 92005-1068
-🌐 https://clodoaldo.vercel.app
+🌐 https://clodoaldo-media-kit.vercel.app
 
 Abraço,
 Clodoaldo Silva`;
@@ -525,25 +525,25 @@ Clodoaldo Silva`;
       const blob = new Blob([genPreview(lead)], {type:"text/html"});
       window.open(URL.createObjectURL(blob), "_blank");
     } else {
-      window.open(`https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
+      window.open(`https://clodoaldo-media-kit.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
     }
     setStyleSelectorLead(null);
   }
 
   function openPreviewLinkWithStyle(lead:Lead, styleId:string) {
     const id = lead.id || lead.place_id || "";
-    window.open(`https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
+    window.open(`https://clodoaldo-media-kit.vercel.app/api/preview?lead=${id}&style=${styleId}`, "_blank");
     setStyleSelectorLead(null);
   }
 
   function getPreviewLink(lead:Lead):string {
     const id = lead.id || lead.place_id || "";
-    return `https://clodoaldo.vercel.app/api/preview?lead=${id}`;
+    return `https://clodoaldo-media-kit.vercel.app/api/preview?lead=${id}`;
   }
 
   function getPreviewLinkWithStyle(lead:Lead, styleId:string):string {
     const id = lead.id || lead.place_id || "";
-    return `https://clodoaldo.vercel.app/api/preview?lead=${id}&style=${styleId}`;
+    return `https://clodoaldo-media-kit.vercel.app/api/preview?lead=${id}&style=${styleId}`;
   }
 
   function copyPreviewLink(lead:Lead) {
@@ -2964,15 +2964,15 @@ function SharePreviewModal({
   }, [onClose]);
 
   const leadId = lead.id || lead.place_id || "";
-  const previewUrl = `https://clodoaldo.vercel.app/api/preview?lead=${encodeURIComponent(leadId)}&style=${encodeURIComponent(styleId)}`;
+  const previewUrl = `https://clodoaldo-media-kit.vercel.app/api/preview?lead=${encodeURIComponent(leadId)}&style=${encodeURIComponent(styleId)}`;
 
-  const waMessage = `Olá! Tudo bem? 👋\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um PREVIEW GRATUITO do site profissional que faria para o ${lead.name} — já com o nome, avaliação e endereço de vocês preenchidos! 🎨\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só me chamar aqui no WhatsApp! 🙌\n\n📱 (81) 92005-1068\n🌐 clodoaldo.vercel.app`;
+  const waMessage = `Olá! Tudo bem? 👋\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um PREVIEW GRATUITO do site profissional que faria para o ${lead.name} — já com o nome, avaliação e endereço de vocês preenchidos! 🎨\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só me chamar aqui no WhatsApp! 🙌\n\n📱 (81) 92005-1068\n🌐 clodoaldo-media-kit.vercel.app`;
 
   const waRaw = (lead.whatsapp || lead.phone || "").replace(/\D/g, "");
   const waNum = waRaw.startsWith("55") ? waRaw : (waRaw.length === 10 || waRaw.length === 11 ? "55" + waRaw : waRaw);
 
   const emailSubject = `Preview gratuito do site para ${lead.name} 🎨`;
-  const emailBody = `Olá, equipe ${lead.name}!\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um preview gratuito do site profissional que faria para vocês — já com o nome, avaliação e endereço preenchidos!\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só responder este email ou me chamar no WhatsApp: (81) 92005-1068.\n\nAbraço,\nClodoaldo Silva\n🌐 clodoaldo.vercel.app`;
+  const emailBody = `Olá, equipe ${lead.name}!\n\nSou o Clodoaldo Silva, especialista em marketing digital local.\n\nCriei um preview gratuito do site profissional que faria para vocês — já com o nome, avaliação e endereço preenchidos!\n\n👉 Confira aqui: ${previewUrl}\n\nÉ só clicar no link para ver como ficaria. Caso tenha interesse, é só responder este email ou me chamar no WhatsApp: (81) 92005-1068.\n\nAbraço,\nClodoaldo Silva\n🌐 clodoaldo-media-kit.vercel.app`;
 
   const shareOptions = [
     { id: "wa-lead", label: "WhatsApp do lead", desc: "Mensagem pronta", emoji: "💬", color: "emerald", href: waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(waMessage)}` : null },

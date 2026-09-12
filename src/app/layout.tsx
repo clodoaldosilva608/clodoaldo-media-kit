@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     "ecossistema digital",
   ],
   authors: [{ name: "Clodoaldo Silva" }],
-  alternates: { canonical: "https://clodoaldo.vercel.app" },
+  alternates: { canonical: "https://clodoaldo-media-kit.vercel.app" },
   openGraph: {
     title: "Clodoaldo Silva — Criador e Desenvolvedor Digital",
     description:
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     siteName: "Clodoaldo Silva",
     type: "website",
     locale: "pt_BR",
-    url: "https://clodoaldo.vercel.app",
+    url: "https://clodoaldo-media-kit.vercel.app",
     images: ["/assets/og-clodoaldo-silva-v2.jpg"],
   },
   twitter: {

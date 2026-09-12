@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
     const today = new Date().toLocaleDateString("pt-BR");
 
     // 2. Search Google Maps for leads
-    const searchResp = await fetch("https://clodoaldo.vercel.app/api/admin/prospect/search", {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
+    const searchResp = await fetch(`${siteUrl}/api/admin/prospect/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ niche, location: city, radius: 5000, limit: 10 }),
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       const waNum = num.startsWith("55") ? num : (num.length === 10 || num.length === 11 ? "55" + num : num);
       const msg = messages[i] || generateLocalMessage(lead, niche, city);
       // Demo link (preview generator já existe em /api/preview?lead=<id>)
-      const demoUrl = lead.id ? `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark` : null;
+      const demoUrl = lead.id ? `${siteUrl}/api/preview?lead=${lead.id}&style=dark` : null;
       const waLink = waNum ? `https://wa.me/${waNum}?text=${encodeURIComponent(msg)}` : null;
       return { ...lead, message: msg, waLink, waNum, demoUrl };
     });
@@ -275,7 +276,7 @@ function buildEmailHtml(leads: any[], niche: string, city: string, date: string)
         <p style="font-size:14px;color:#666;margin-bottom:16px;">Clique em "WhatsApp" para enviar a mensagem pronta. Clique em "Ver Demo" para mostrar o site que você já criou para o lead.</p>
         ${cards}
       </div>
-      <div style="text-align:center;padding:16px;font-size:11px;color:#999;">Prospecção automática • clodoaldo.vercel.app</div>
+      <div style="text-align:center;padding:16px;font-size:11px;color:#999;">Prospecção automática • clodoaldo-media-kit.vercel.app</div>
     </div>
   </body></html>`;
 }

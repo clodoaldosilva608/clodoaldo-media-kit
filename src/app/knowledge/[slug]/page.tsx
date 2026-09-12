@@ -55,11 +55,11 @@ export async function generateMetadata({
   return {
     title: `${item.title} | Knowledge Hub`,
     description: item.description,
-    alternates: { canonical: `https://clodoaldo.vercel.app/knowledge/${slug}` },
+    alternates: { canonical: `https://clodoaldo-media-kit.vercel.app/knowledge/${slug}` },
     openGraph: {
       title: item.title,
       description: item.description,
-      url: `https://clodoaldo.vercel.app/knowledge/${slug}`,
+      url: `https://clodoaldo-media-kit.vercel.app/knowledge/${slug}`,
       type: "article",
       images: item.cover_url ? [item.cover_url] : undefined,
     },

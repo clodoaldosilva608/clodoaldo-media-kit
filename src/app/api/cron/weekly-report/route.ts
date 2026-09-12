@@ -318,7 +318,7 @@ function buildEmailHtml(stats: any, period: any): string {
 
       <!-- CTA -->
       <div style="margin-top:32px;text-align:center;">
-        <a href="https://clodoaldo.vercel.app/admin/parceiros" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Ver detalhes no admin →</a>
+        <a href="https://clodoaldo-media-kit.vercel.app/admin/parceiros" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Ver detalhes no admin →</a>
       </div>
     </div>
 
@@ -382,7 +382,7 @@ function buildTelegramText(stats: any, period: any): string {
   }
 
   lines.push(``);
-  lines.push(`👉 <a href="https://clodoaldo.vercel.app/admin/parceiros">Ver detalhes no admin</a>`);
+  lines.push(`👉 <a href="https://clodoaldo-media-kit.vercel.app/admin/parceiros">Ver detalhes no admin</a>`);
 
   return lines.join("\n");
 }

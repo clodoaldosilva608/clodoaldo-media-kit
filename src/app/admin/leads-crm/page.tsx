@@ -258,7 +258,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [demoCopied, setDemoCopied] = useState(false);
   const [checkingSite, setCheckingSite] = useState(false);
 
-  const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
+  const demoUrl = lead.demo_url || (typeof window !== "undefined" ? `${window.location.origin}/api/preview?lead=${lead.id}&style=dark` : `/api/preview?lead=${lead.id}&style=dark`);
   const bantScore = [bant.budget, bant.authority, bant.need, bant.timing].filter(Boolean).length;
   const bantQualified = bantScore >= 3;
 

@@ -26,11 +26,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${service.name} — Serviço | Clodoaldo Silva`,
     description: service.description,
-    alternates: { canonical: `https://clodoaldo.vercel.app/servicos/${slug}` },
+    alternates: { canonical: `https://clodoaldo-media-kit.vercel.app/servicos/${slug}` },
     openGraph: {
       title: `${service.name} — Clodoaldo Silva`,
       description: service.description,
-      url: `https://clodoaldo.vercel.app/servicos/${slug}`,
+      url: `https://clodoaldo-media-kit.vercel.app/servicos/${slug}`,
     },
   };
 }
@@ -46,7 +46,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
     "@type": "Service",
     name: service.name,
     description: service.description,
-    provider: { "@type": "Person", name: "Clodoaldo Silva", url: "https://clodoaldo.vercel.app" },
+    provider: { "@type": "Person", name: "Clodoaldo Silva", url: "https://clodoaldo-media-kit.vercel.app" },
     areaServed: "BR",
     offers: { "@type": "Offer", price: service.priceCents / 100, priceCurrency: "BRL", availability: "https://schema.org/InStock" },
   };
