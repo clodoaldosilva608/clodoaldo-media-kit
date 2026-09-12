@@ -2726,3 +2726,33 @@ Stage Summary:
 - ✅ Personalização automática com dados do lead (cruzamento CRM + clodoaldo_prospects)
 - ✅ Botão 'Abrir no WhatsApp' abre wa.me com mensagem pré-preenchida
 - ✅ Botão 'Copiar texto' pra colar manualmente em outros canais
+
+---
+Task ID: Catalogo-Produtos-Long-Form
+Agent: main (GLM)
+Task: Catálogo de produtos + roteiro Long Form com lista dinâmica de produtos
+
+Work Log:
+- Migration products_catalog.sql aplicada pelo usuário no Supabase.
+- 9 produtos do modelo Gabriel Miranda seedados com sucesso.
+- Validação via agent-browser confirmou:
+  - /admin/produtos carrega com 9 produtos
+  - Sidebar tem "Catálogo de Produtos"
+  - Botão "Exportar p/ WhatsApp" visível
+  - Modal do lead → aba "Scripts WhatsApp" → 6 scripts renderizam:
+    - 1 Long Form (em destaque verde, no topo)
+    - 3 curtos (Loss Aversion, Reciprocity, Pattern Interrupt)
+    - 2 follow-up
+  - Long Form completo com:
+    - Nome do lead + nicho + cidade personalizados
+    - 3 dores (🔍 📱 📉)
+    - 9 produtos do catálogo com preços
+    - CTAs finais
+    - Link do demo
+  - Botões Copiar texto + Abrir no WhatsApp em todos os scripts
+
+Stage Summary:
+- ✅ Catálogo de produtos 100% funcional (CRUD + export CSV WhatsApp)
+- ✅ Roteiro Long Form exatamente como usuário pediu
+- ✅ Lista de produtos dinâmica (atualiza sozinho quando editar no admin)
+- ✅ Personalização automática com dados do lead
