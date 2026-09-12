@@ -416,9 +416,10 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const pendingTasks = tasks.filter(t => !t.done).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d14] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative h-[95vh] sm:h-auto sm:max-h-[90vh] w-full sm:max-w-3xl overflow-hidden rounded-t-2xl sm:rounded-2xl border border-white/10 bg-[#0d0d14] shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header — fixed at top of modal */}
+        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold text-white">{lead.name}</h3>
             {pendingTasks > 0 && (
@@ -431,23 +432,24 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
           <button onClick={onClose} className="rounded-lg p-2 text-zinc-400 hover:bg-white/5"><X className="h-5 w-5" /></button>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-white/5 px-5 pt-2 flex gap-1 overflow-x-auto">
+        {/* Tabs — scrollable on mobile */}
+        <div className="border-b border-white/5 px-3 sm:px-5 pt-2 flex gap-0.5 sm:gap-1 overflow-x-auto shrink-0 scrollbar-thin">
           {[
-            { k: "info", label: "Informações", icon: MessageCircle },
-            { k: "scripts", label: "Scripts WhatsApp", icon: MessageSquareText },
-            { k: "copilot", label: "IA Copiloto", icon: Sparkles },
+            { k: "info", label: "Info", icon: MessageCircle },
+            { k: "scripts", label: "Scripts", icon: MessageSquareText },
+            { k: "copilot", label: "IA", icon: Sparkles },
             { k: "tasks", label: `Tarefas (${pendingTasks})`, icon: ListChecks },
             { k: "history", label: "Histórico", icon: History },
           ].map(t => (
             <button key={t.k} onClick={() => setTab(t.k as any)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition whitespace-nowrap ${tab === t.k ? "border-emerald-500 text-emerald-300" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-semibold border-b-2 transition whitespace-nowrap ${tab === t.k ? "border-emerald-500 text-emerald-300" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
               <t.icon className="h-3.5 w-3.5" /> {t.label}
             </button>
           ))}
         </div>
 
-        <div className="max-h-[calc(90vh-200px)] overflow-y-auto p-5 space-y-4">
+        {/* Content — scrollable */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {tab === "info" && (
             <>
               {/* DEMO + Site Status Section (método Gabriel Miranda) */}
@@ -646,7 +648,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
           )}
         </div>
 
-        <div className="border-t border-white/5 px-5 py-3 flex justify-end gap-2">
+        <div className="border-t border-white/5 px-4 sm:px-5 py-3 flex justify-end gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" size="sm" onClick={saveChanges} disabled={saving}>{saving ? "Salvando..." : "Salvar alterações"}</Button>
         </div>

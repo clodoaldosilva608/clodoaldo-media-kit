@@ -211,7 +211,7 @@ export function AdminShell({ children, title }: { children: React.ReactNode; tit
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-white/5 bg-[#0a0a0f]/90 px-4 py-3 backdrop-blur-xl lg:px-6">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-white/5 bg-[#0a0a0f]/95 px-4 py-3 backdrop-blur-xl lg:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
