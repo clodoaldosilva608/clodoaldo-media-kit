@@ -2662,3 +2662,35 @@ Stage Summary:
 - ✅ Site check com SSL + timeout + content-length validation
 - ⏳ Usuário precisa rodar migration SQL no Supabase SQL Editor
 - ⏳ Demos só aparecem no dashboard se lead tiver sido gerado via cron ou botão 'Gerar Demo'
+
+---
+Task ID: Metodo-Gabriel-Miranda-Validacao
+Agent: main (GLM)
+Task: Validar implementação do método Gabriel Miranda no ar
+
+Work Log:
+- Testado com lead de exemplo "Barbearia Teste Silva" criado no CRM.
+- Login + navegação validados via agent-browser.
+- 3 ciclos de deploy para corrigir bugs encontrados em runtime:
+  1. Deploy 1: demoUrl hardcoded pra clodoaldo.vercel.app (blocked) → fix: usar window.location.origin
+  2. Deploy 2: URLs hardcoded em outros arquivos (cron, email-templates, styles) → fix: replace global
+  3. Deploy 3: /api/preview só buscava em clodoaldo_prospects (meucorre) → fix: fallback pra crm_leads
+- Após 3 deploys, todas as funcionalidades validadas:
+  - ✅ Modal do lead mostra seções "🎨 Site Demo + Status" e "🎯 BANT"
+  - ✅ Botão "Gerar Demo" abre preview em nova aba (URL dinâmica)
+  - ✅ Preview HTML renderiza com nome do lead, nicho, seções, WhatsApp
+  - ✅ BANT checkboxes funcionam (marquei 3/4)
+  - ✅ Salvar BANT oferece mover lead pra "Qualificado" automaticamente
+  - ✅ Dashboard /admin/vendas-semana mostra métricas:
+    - demos_gerados: 1
+    - bant_qualificados: 1
+    - lead stage: "qualificado" (auto-movido)
+    - demo_url salva corretamente
+    - bant_score: 3
+  - ✅ Distributions: por_status_site (unknown: 1), por_origem (manual: 1)
+
+Stage Summary:
+- ✅ Todas as 5 funcionalidades do MVP funcionando em produção.
+- ✅ Lead de teste "Barbearia Teste Silva" qualificado automaticamente.
+- ✅ Dashboard reflete dados em tempo real.
+- ⏳ Amanhã 09:00 BRT: cron auto-prospect vai rodar com roteiros diferenciados + links demo.
