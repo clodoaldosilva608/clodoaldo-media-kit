@@ -2824,3 +2824,59 @@ Stage Summary:
 - ✅ Botão voltar pra trocar de banco
 - ✅ Comprovante WhatsApp inclui nome do banco escolhido
 - 💡 Pra adicionar mais bancos: /admin/settings → widget Chaves PIX → label com nome do banco
+
+---
+Task ID: Analise-Pronto-Para-Atender-Leads
+Agent: main (GLM)
+Task: Análise profunda + Apify + fluxo kanban + tracking de envio
+
+Work Log:
+- Análise do banco clodoaldo_prospects: 154 leads, schema completo com
+  status/send_status/last_contact_at/contacted_count/replied/etc
+- 140 leads prontos pra contactar (status=new + send_status=pending + WhatsApp)
+- 3 leads já responderam (replied=true)
+- Tabelas auxiliares: clodoaldo_envios (auditoria), clodoaldo_respostas
+
+- Apify testado e validado:
+  - Plan FREE: US$5/mês crédito, 5 concurrent runs, 7 dias retention
+  - Actor compass/crawler-google-places funcionando
+  - Formato correto: searchStringsArray (não searchStrings), language='pt-BR'
+  - Run demora ~15-30s, traz: title, phone, website, rating, address, placeId
+  - Test: 5 barbearias em Olinda → 5 leads reais com WhatsApp
+  - APIFY_TOKEN configurado em ambos projetos Vercel
+
+- Cron auto-prospect atualizado:
+  - Tenta Apify PRIMEIRO (mais completo)
+  - Fallback automático pra Google Maps API + OSM se Apify falhar
+  - searchApifyGoogleMaps() função nova com poll de status (5s, max 90s)
+  - Mapeia items do dataset pra formato Lead
+  - Validado: 15 imobiliárias em Paulista → 15 leads salvos no banco
+
+- Página /admin/fluxo-atendimento (kanban) criada:
+  - 6 colunas: Pendentes / Contactados / Responderam / Reunião / Fechados / Perdidos
+  - KPIs: total, pendentes, contactados, responderam, fechados, reply rate
+  - Alerta quando > 20 leads pendentes
+  - Cada card mostra: nome, nicho, cidade, rating, último contato, count
+  - Botões por card: 'WhatsApp' (wa.me) + 'Marcar enviado'
+  - Click no nome → abre no CRM
+  - Tutorial no rodapé
+
+- API /api/admin/prospects/mark-sent criada:
+  - Atualiza clodoaldo_prospects: status='contacted', send_status='sent',
+    last_contact_at=now(), contacted_count+=1, send_at=now()
+  - Insere auditoria em clodoaldo_envios
+  - Garante que cron NÃO vai reenviar pra lead já contactado
+
+- API /api/admin/prospects/list criada:
+  - Lista 500 prospects ordenados: pendentes primeiro
+  - Retorna campos de tracking (status, send_status, contacted_count, replied)
+
+- Bug fix: admin-shell.tsx tinha ListChecks não importado → trocou pra ListOrdered
+
+Stage Summary:
+- ✅ Sistema PRONTO pra contactar leads sem duplicação
+- ✅ Apify integrado (free, US$5/mês crédito)
+- ✅ Fluxo kanban completo (6 estágios)
+- ✅ Tracking de envio (status, send_status, contacted_count)
+- ✅ Cron não reenvia pra leads já contactados
+- ✅ 169 leads no banco, 154 prontos pra contactar
