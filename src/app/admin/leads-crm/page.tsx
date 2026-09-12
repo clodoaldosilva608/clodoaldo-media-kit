@@ -1206,9 +1206,6 @@ function SitePromptTab({ lead, leadContext }: { lead: Lead; leadContext: any }) 
             <Button variant="outline" size="sm" onClick={copyPrompt} className="flex-1">
               {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar prompt</>}
             </Button>
-            <Button variant="outline" size="sm" onClick={generateProposta} className="flex-1">
-              <FileText className="h-3.5 w-3.5" /> Gerar Proposta PDF
-            </Button>
           </div>
 
           {/* Prompt preview */}
