@@ -6,8 +6,9 @@ import { Widget, Badge, Button, Input, Select, Textarea, EmptyState } from "@/co
 import {
   RefreshCw, Trash2, ChevronRight, Phone, Mail, MessageCircle,
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
-  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle,
+  ExternalLink, Copy, Sparkle, AlertCircle, Globe, ShieldCheck, AlertTriangle, MessageSquareText,
 } from "lucide-react";
+import { getScriptsForLead, type ScriptVars, type Script } from "@/lib/whatsapp-scripts";
 
 interface Lead {
   id: string;
@@ -242,7 +243,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   const [notes, setNotes] = useState(lead.notes || "");
   const [estimatedValue, setEstimatedValue] = useState(String(Math.round(lead.estimated_value_cents / 100)));
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "tasks" | "history">("info");
+  const [tab, setTab] = useState<"info" | "scripts" | "tasks" | "history">("info");
   const [tasks, setTasks] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingExtras, setLoadingExtras] = useState(false);
@@ -257,6 +258,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
   });
   const [demoCopied, setDemoCopied] = useState(false);
   const [checkingSite, setCheckingSite] = useState(false);
+  // Lead context (niche, city, hasWebsite) fetched from clodoaldo_prospects
+  const [leadContext, setLeadContext] = useState<{ niche: string; city: string; hasWebsite: boolean | null; demoUrl: string } | null>(null);
+  const [loadingContext, setLoadingContext] = useState(true);
 
   const dynamicDemoUrl = typeof window !== "undefined" ? `${window.location.origin}/api/preview?lead=${lead.id}&style=dark` : `/api/preview?lead=${lead.id}&style=dark`;
   // Always prefer dynamic URL (in case domain changed since demo_url was saved)
@@ -276,6 +280,25 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
     } catch {}
     setLoadingExtras(false);
   }, [lead.id]);
+
+  // Fetch lead context (niche + city + hasWebsite) from clodoaldo_prospects
+  useEffect(() => {
+    setLoadingContext(true);
+    fetch(`/api/admin/lead-context?lead_id=${lead.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.error) {
+          setLeadContext({
+            niche: d.niche || "negócio local",
+            city: d.city || "Recife, PE",
+            hasWebsite: d.hasWebsite,
+            demoUrl: d.demoUrl || demoUrl,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingContext(false));
+  }, [lead.id, demoUrl]);
 
   useEffect(() => { loadExtras(); }, [loadExtras]);
 
@@ -409,14 +432,15 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-white/5 px-5 pt-2 flex gap-1">
+        <div className="border-b border-white/5 px-5 pt-2 flex gap-1 overflow-x-auto">
           {[
             { k: "info", label: "Informações", icon: MessageCircle },
+            { k: "scripts", label: "Scripts WhatsApp", icon: MessageSquareText },
             { k: "tasks", label: `Tarefas (${pendingTasks})`, icon: ListChecks },
             { k: "history", label: "Histórico", icon: History },
           ].map(t => (
             <button key={t.k} onClick={() => setTab(t.k as any)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition ${tab === t.k ? "border-emerald-500 text-emerald-300" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition whitespace-nowrap ${tab === t.k ? "border-emerald-500 text-emerald-300" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
               <t.icon className="h-3.5 w-3.5" /> {t.label}
             </button>
           ))}
@@ -538,6 +562,15 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
             </>
           )}
 
+          {tab === "scripts" && (
+            <WhatsAppScriptsTab
+              lead={lead}
+              leadContext={leadContext}
+              loadingContext={loadingContext}
+              demoUrl={demoUrl}
+            />
+          )}
+
           {tab === "tasks" && (
             <>
               <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 space-y-2">
@@ -649,6 +682,144 @@ function SiteStatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${c.color}`}>
       <Icon className="h-3 w-3" /> {c.label}
     </span>
+  );
+}
+
+// =====================================================
+// WHATSAPP SCRIPTS TAB — Roteiros prontos para enviar (método Gabriel Miranda + neurociência)
+// =====================================================
+function WhatsAppScriptsTab({
+  lead,
+  leadContext,
+  loadingContext,
+  demoUrl,
+}: {
+  lead: Lead;
+  leadContext: { niche: string; city: string; hasWebsite: boolean | null; demoUrl: string } | null;
+  loadingContext: boolean;
+  demoUrl: string;
+}) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  if (loadingContext) {
+    return (
+      <div className="py-12 text-center text-zinc-500 text-xs">
+        <RefreshCw className="h-4 w-4 animate-spin inline mr-1" /> Carregando contexto do lead…
+      </div>
+    );
+  }
+
+  const niche = leadContext?.niche || "negócio local";
+  const city = leadContext?.city || "Recife, PE";
+  const hasWebsite = leadContext?.hasWebsite;
+  const scriptVars: ScriptVars = {
+    nome: lead.name,
+    nicho: niche,
+    cidade: city,
+    demoUrl: leadContext?.demoUrl || demoUrl,
+    whatsapp: lead.whatsapp || undefined,
+  };
+
+  const { primary, followup } = getScriptsForLead(scriptVars, hasWebsite ?? null);
+  const tipoLabel = hasWebsite === true ? "TEM SITE" : hasWebsite === false ? "SEM SITE" : "STATUS DESCONHECIDO (sem site)";
+  const tipoColor = hasWebsite === true
+    ? "border-blue-500/30 bg-blue-500/[0.06] text-blue-300"
+    : "border-rose-500/30 bg-rose-500/[0.06] text-rose-300";
+
+  function copyScript(s: Script) {
+    navigator.clipboard.writeText(s.body);
+    setCopiedId(s.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  function openWhatsApp(s: Script) {
+    if (!lead.whatsapp) {
+      alert("Lead não tem WhatsApp cadastrado.");
+      return;
+    }
+    const num = lead.whatsapp.replace(/\D/g, "");
+    const waNum = num.startsWith("55") ? num : (num.length === 10 || num.length === 11 ? "55" + num : num);
+    const url = `https://wa.me/${waNum}?text=${encodeURIComponent(s.body)}`;
+    window.open(url, "_blank");
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Context info */}
+      <div className={`rounded-xl border p-3 ${tipoColor}`}>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider">
+            {tipoLabel}
+          </div>
+          <div className="text-[10px] text-zinc-400">
+            Nicho: <strong className="text-zinc-200">{niche}</strong> · Cidade: <strong className="text-zinc-200">{city}</strong>
+          </div>
+        </div>
+        <div className="mt-1.5 text-[11px] text-zinc-400">
+          {hasWebsite === true
+            ? "💬 Roteiros focam em 'coisas quebradas no site' + demo já corrigido"
+            : "💬 Roteiros focam em 'não encontrei site' + demo já criado"}
+        </div>
+      </div>
+
+      {/* Primary scripts — 3 variants */}
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">
+          📝 Roteiros principais — 3 variantes (escolha a que preferir)
+        </div>
+        <div className="space-y-3">
+          {primary.map((s) => (
+            <ScriptCard key={s.id} script={s} onCopy={() => copyScript(s)} onOpenWa={() => openWhatsApp(s)} copied={copiedId === s.id} hasWhatsapp={!!lead.whatsapp} />
+          ))}
+        </div>
+      </div>
+
+      {/* Follow-up scripts */}
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2 mt-4">
+          🔄 Roteiros de follow-up (3-7 dias sem resposta)
+        </div>
+        <div className="space-y-3">
+          {followup.map((s) => (
+            <ScriptCard key={s.id} script={s} onCopy={() => copyScript(s)} onOpenWa={() => openWhatsApp(s)} copied={copiedId === s.id} hasWhatsapp={!!lead.whatsapp} />
+          ))}
+        </div>
+      </div>
+
+      {/* Tip */}
+      <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] text-amber-200/80">
+        💡 <strong>Técnica:</strong> Cada variante usa uma técnica diferente de neurociência comportamental
+        (loss aversion, reciprocity, pattern interrupt, scarcity). Teste as 3 com leads diferentes
+        e veja qual tem maior taxa de resposta. A variante A costuma converter melhor no primeiro contato.
+      </div>
+    </div>
+  );
+}
+
+function ScriptCard({ script, onCopy, onOpenWa, copied, hasWhatsapp }: { script: Script; onCopy: () => void; onOpenWa: () => void; copied: boolean; hasWhatsapp: boolean }) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-300">Variante {script.variant}</span>
+            <span className="text-[10px] text-zinc-400">{script.technique}</span>
+          </div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">{script.description}</div>
+        </div>
+      </div>
+      <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-xs text-zinc-200 font-sans leading-relaxed">{script.body}</pre>
+      <div className="flex flex-wrap gap-2 mt-2">
+        <Button variant="outline" size="sm" onClick={onCopy}>
+          {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar texto</>}
+        </Button>
+        {hasWhatsapp && (
+          <Button variant="primary" size="sm" onClick={onOpenWa}>
+            <MessageCircle className="h-3.5 w-3.5" /> Abrir no WhatsApp
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
