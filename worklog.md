@@ -2756,3 +2756,42 @@ Stage Summary:
 - ✅ Roteiro Long Form exatamente como usuário pediu
 - ✅ Lista de produtos dinâmica (atualiza sozinho quando editar no admin)
 - ✅ Personalização automática com dados do lead
+
+---
+Task ID: Landing-Catalogo-PIX-WhatsApp
+Agent: main (GLM)
+Task: Adicionar catálogo de produtos na landing page com botões PIX + WhatsApp
+
+Work Log:
+- 9 imagens de produtos analisadas via VLM (z-ai vision) pra identificar qual é qual
+- Mapeadas pra slugs: site-profissional, seo-local, google-meu-negocio,
+  integracao-whatsapp, cardapio-digital-qr, edicao-cardapio,
+  artes-redes-sociais, pacote-recorrencia-mensal, produtos-digitais-sob-medida
+- Imagens copiadas para /public/assets/produtos/<slug>.jpg
+- Migration SQL rodada pelo usuário: adiciona coluna image_path + update paths
+- Componente ProductsCatalog criado (src/components/media-kit/products-catalog.tsx):
+  - Grid responsivo (1/2/3 colunas)
+  - 9 cards com imagem + nome + categoria + descrição + preço
+  - Badge 'assinatura' pra produtos recorrentes
+  - Botão 'Pagar com PIX' abre modal com:
+    * Chave PIX (C6 Bank aleatória)
+    * Valor do produto
+    * Botão copiar chave
+    * Passo-a-passo (banco → colar → confirmar → enviar comprovante)
+    * Botão 'Enviar comprovante no WhatsApp' (msg pré-preenchida)
+  - Botão 'Falar no WhatsApp' (msg pré-preenchida por produto)
+  - CTA final: 'Não sabe qual escolher? fala comigo no WhatsApp'
+- API pública GET /api/public/products (sem auth, só campos públicos)
+- Página atualizada: <ProductsCatalog /> adicionado após <Pricing />
+- Validação no ar:
+  - API retorna 9 produtos com image_path ✓
+  - 9 imagens de produtos carregam
+  - 9 botões 'Pagar com PIX' visíveis
+  - 11 botões 'Falar no WhatsApp' (9 cards + 2 CTAs)
+  - Modal PIX abre corretamente com chave + valor + botão comprovante
+
+Stage Summary:
+- ✅ Landing page tem nova seção 'Catálogo de produtos' em /#catalogo
+- ✅ 9 produtos com imagens, preços, botões PIX + WhatsApp
+- ✅ Modal PIX funcional com chave C6 Bank
+- ✅ API pública /api/public/products sem auth
