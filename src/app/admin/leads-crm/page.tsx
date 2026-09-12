@@ -37,6 +37,7 @@ interface Lead {
   site_checked_at?: string | null;
   demo_url?: string | null;
   demo_generated_at?: string | null;
+  prospect_id?: string | null;
 }
 
 interface StageStats { count: number; total_value_cents: number; }
@@ -164,6 +165,7 @@ export default function AdminLeadsCRMPage() {
               <option value="contact_form">Formulário</option>
               <option value="whatsapp">WhatsApp</option>
               <option value="proposta_calculadora">Calculadora</option>
+              <option value="parceiros">Parceiros</option>
               <option value="manual">Manual</option>
             </Select>
           </div>
