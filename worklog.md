@@ -2795,3 +2795,32 @@ Stage Summary:
 - ✅ 9 produtos com imagens, preços, botões PIX + WhatsApp
 - ✅ Modal PIX funcional com chave C6 Bank
 - ✅ API pública /api/public/products sem auth
+
+---
+Task ID: Pix-Modal-2-Passos
+Agent: main (GLM)
+Task: Modal PIX com seleção de banco (2 passos)
+
+Work Log:
+- Criada API GET /api/public/pix-keys (público, sem auth):
+  - Busca chaves PIX configuradas no admin (app_settings.pix_keys)
+  - Extrai nome do banco do label (regex: 'C6 Bank - Chave Aleatória' → bank: 'C6 Bank')
+  - Mascaras valor na listagem (mostra só início + fim)
+  - Retorna: id, label, type, typeLabel, value, bank, merchantName, merchantCity
+- Componente ProductsCatalog atualizado com modal de 2 passos:
+  - Passo 1 'choose-bank': lista de bancos clicáveis com emoji + label + chave mascarada
+  - Passo 2 'show-key': card do banco + chave completa + copiar + passo-a-passo + comprovante
+  - Botão 'voltar' (ArrowLeft) no header pra retornar pra lista de bancos
+  - Emojis por banco: Nubank 💜, C6 🏛️, Itaú 🟠, Bradesco 🔴, BB 🟡, Caixa 🔵, Inter 🟠,
+    MercadoPago 🟡, PicPay 🟢, PagSeguro 🟠, Stone 🟢, etc.
+  - Dica: 'pode pagar de qualquer banco'
+  - Mensagem WhatsApp de comprovante agora inclui banco escolhido
+
+Stage Summary:
+- ✅ Modal PIX agora tem 2 passos (escolher banco → ver chave)
+- ✅ API pública retorna chaves PIX do admin
+- ✅ Emojis por banco pra UX melhor
+- ✅ Chaves mascaradas na listagem (parcialmente visíveis)
+- ✅ Botão voltar pra trocar de banco
+- ✅ Comprovante WhatsApp inclui nome do banco escolhido
+- 💡 Pra adicionar mais bancos: /admin/settings → widget Chaves PIX → label com nome do banco
