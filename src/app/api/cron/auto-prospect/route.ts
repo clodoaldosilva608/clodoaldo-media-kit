@@ -59,17 +59,34 @@ export async function POST(req: NextRequest) {
 
     // 2. Search Google Maps for leads
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
-    const searchResp = await fetch(`${siteUrl}/api/admin/prospect/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Pass CRON_SECRET so middleware bypasses admin auth for internal server-to-server call
-        "Authorization": `Bearer ${cronSecret}`,
-      },
-      body: JSON.stringify({ niche, location: city, radius: 5000, limit: 10 }),
-    });
-    const searchData = await searchResp.json();
-    const leads: Lead[] = searchData.results || [];
+
+    // 2a. Primeiro tenta Apify (mais completo — traz placeId, instagram, facebook, email)
+    let leads: Lead[] = [];
+    let leadSource = "google_maps_osm";
+    try {
+      const apifyLeads = await searchApifyGoogleMaps(niche, city, 15);
+      if (apifyLeads.length > 0) {
+        leads = apifyLeads;
+        leadSource = "apify";
+      }
+    } catch (e: any) {
+      console.warn("[auto-prospect] Apify falhou, usando fallback:", e.message);
+    }
+
+    // 2b. Fallback para Google Maps API + OSM se Apify retornar 0
+    if (leads.length === 0) {
+      const searchResp = await fetch(`${siteUrl}/api/admin/prospect/search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Pass CRON_SECRET so middleware bypasses admin auth for internal server-to-server call
+          "Authorization": `Bearer ${cronSecret}`,
+        },
+        body: JSON.stringify({ niche, location: city, radius: 5000, limit: 10 }),
+      });
+      const searchData = await searchResp.json();
+      leads = searchData.results || [];
+    }
 
     if (leads.length === 0) {
       await sendTelegram({
@@ -137,6 +154,99 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
+}
+
+// =====================================================
+// Apify Google Maps Scraper — busca leads mais completos
+// (traz placeId, instagram, facebook, email, phone, website)
+// =====================================================
+async function searchApifyGoogleMaps(niche: string, city: string, maxResults: number): Promise<Lead[]> {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) {
+    throw new Error("APIFY_TOKEN not configured");
+  }
+
+  // Monta search string: "barbearia em Olinda"
+  const cityShort = city.split(",")[0].trim();
+  const searchString = `${niche} em ${cityShort}`;
+
+  // 1. Start the run (async)
+  const startResp = await fetch(
+    `https://api.apify.com/v2/acts/compass~crawler-google-places/runs?token=${token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        searchStringsArray: [searchString],
+        maxCrawledPlacesPerSearch: maxResults,
+        language: "pt-BR",
+        countryCode: "br",
+        extractContactData: true,
+      }),
+    }
+  );
+  if (!startResp.ok) {
+    const errBody = await startResp.text();
+    throw new Error(`Apify start failed: ${startResp.status} ${errBody.slice(0, 200)}`);
+  }
+  const startData = await startResp.json();
+  const runId = startData?.data?.id;
+  const datasetId = startData?.data?.defaultDatasetId;
+  if (!runId || !datasetId) {
+    throw new Error("Apify did not return runId/datasetId");
+  }
+
+  // 2. Poll for completion (max 90 seconds)
+  for (let i = 0; i < 18; i++) {
+    await new Promise(r => setTimeout(r, 5000));
+    const statusResp = await fetch(
+      `https://api.apify.com/v2/actor-runs/${runId}?token=${token}`
+    );
+    const statusData = await statusResp.json();
+    const status = statusData?.data?.status;
+    if (status === "SUCCEEDED") break;
+    if (status === "FAILED" || status === "ABORTED" || status === "TIMED-OUT") {
+      throw new Error(`Apify run ${status}: ${statusData?.data?.statusMessage || "no message"}`);
+    }
+  }
+
+  // 3. Fetch results from dataset
+  const datasetResp = await fetch(
+    `https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}`
+  );
+  if (!datasetResp.ok) {
+    throw new Error(`Apify dataset fetch failed: ${datasetResp.status}`);
+  }
+  const items = await datasetResp.json();
+  if (!Array.isArray(items)) return [];
+
+  // 4. Map Apify results to our Lead format
+  const leads: Lead[] = items
+    .filter((item: any) => item && item.title)
+    .map((item: any) => {
+      const phone = item.phone || null;
+      const whatsapp = phone ? phone.replace(/\D/g, "") : null;
+      // WhatsApp number: needs to start with 55 (Brazil country code)
+      const waNormalized = whatsapp
+        ? (whatsapp.startsWith("55") ? whatsapp
+           : (whatsapp.length === 10 || whatsapp.length === 11 ? `55${whatsapp}` : whatsapp))
+        : null;
+
+      return {
+        name: item.title,
+        phone,
+        whatsapp: waNormalized,
+        formatted_address: item.address || "",
+        city: cityShort,
+        niche,
+        hasWebsite: !!item.website,
+        website: item.website || null,
+        rating: item.totalScore ?? null,
+        place_id: item.placeId || null,
+      };
+    });
+
+  return leads;
 }
 
 // =====================================================
