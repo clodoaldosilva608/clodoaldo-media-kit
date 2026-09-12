@@ -85,28 +85,27 @@ export async function GET(req: NextRequest) {
     });
 
     // === SYNC: importar leads de clodoaldo_prospects (parceiros) que ainda não estão no CRM ===
+    // Limitado a 30 por requisição pra evitar timeout no Vercel serverless
     try {
       const { getMeucorrePool } = await import("@/lib/meucorre-db");
       const pool = getMeucorrePool();
       const client = await pool.connect();
       try {
         // Busca prospects que têm WhatsApp mas ainda não foram importados pro CRM
+        // Limite de 30 pra não estourar o timeout (30s no Vercel)
         const prospectsResult = await client.query(
           `SELECT id, name, phone, whatsapp, email, city, niche, has_website,
                   website, formatted_address, rating, status, source, created_at
            FROM clodoaldo_prospects
            WHERE (whatsapp IS NOT NULL AND whatsapp != '')
-             AND id NOT IN (
-               SELECT COALESCE(prospect_id::uuid, '00000000-0000-0000-0000-000000000000')
-               FROM crm_leads WHERE prospect_id IS NOT NULL
-             )
            ORDER BY created_at DESC
-           LIMIT 200`
+           LIMIT 30`
         );
 
         // Importa cada prospect pro CRM (insere em crm_leads)
         if (prospectsResult.rows.length > 0) {
           const existingNames = new Set((data || []).map((l: any) => l.name?.toLowerCase()));
+          let imported = 0;
           for (const prospect of prospectsResult.rows) {
             // Evita duplicar por nome
             if (existingNames.has(prospect.name?.toLowerCase())) continue;
@@ -126,26 +125,26 @@ export async function GET(req: NextRequest) {
               notes: `Importado de Parceiros. Nicho: ${prospect.niche || "?"}, Cidade: ${prospect.city || "?"}, Tem site: ${prospect.has_website ? "Sim" : "Não"}, Rating: ${prospect.rating || "—"}`,
               prospect_id: prospect.id,
             });
-            if (insertError) {
-              console.error("[leads-crm] sync insert error:", insertError.message);
-            }
+            if (!insertError) imported++;
           }
 
-          // Re-busca dados atualizados após sync
-          const { data: refreshed } = await supabase.from("crm_leads")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(limit);
-          if (refreshed) {
-            const { data: allLeads2 } = await supabase.from("crm_leads").select("stage, estimated_value_cents");
-            STAGES.forEach((s) => {
-              const items = (allLeads2 || []).filter((l: any) => l.stage === s);
-              stats[s] = {
-                count: items.length,
-                total_value_cents: items.reduce((sum: number, l: any) => sum + (l.estimated_value_cents || 0), 0),
-              };
-            });
-            return NextResponse.json({ data: refreshed, stats });
+          // Só re-busca se importou algum lead novo
+          if (imported > 0) {
+            const { data: refreshed } = await supabase.from("crm_leads")
+              .select("*")
+              .order("created_at", { ascending: false })
+              .limit(limit);
+            if (refreshed) {
+              const { data: allLeads2 } = await supabase.from("crm_leads").select("stage, estimated_value_cents");
+              STAGES.forEach((s) => {
+                const items = (allLeads2 || []).filter((l: any) => l.stage === s);
+                stats[s] = {
+                  count: items.length,
+                  total_value_cents: items.reduce((sum: number, l: any) => sum + (l.estimated_value_cents || 0), 0),
+                };
+              });
+              return NextResponse.json({ data: refreshed, stats });
+            }
           }
         }
       } finally {
