@@ -37,6 +37,7 @@ import {
   History,
   TrendingUp,
   Package,
+  Phone,
 } from "lucide-react";
 
 interface NavItem {
@@ -66,6 +67,7 @@ const NAV: NavItem[] = [
   { href: "/admin/countdown", label: "Contagem Regressiva", icon: Timer, group: "marketing" },
   { href: "/admin/pixels", label: "Pixels & Ads", icon: Code2, group: "marketing" },
   { href: "/admin/whatsapp", label: "WhatsApp", icon: MessageCircle, group: "marketing" },
+  { href: "/admin/whatsapp-setup", label: "WA Business Setup", icon: Phone, group: "marketing" },
   { href: "/admin/affiliates", label: "Afiliados", icon: UserPlus, group: "marketing" },
   { href: "/admin/email", label: "E-mail Marketing", icon: Mail, group: "marketing" },
   { href: "/admin/subscriptions", label: "Assinaturas", icon: CreditCard, group: "marketing" },

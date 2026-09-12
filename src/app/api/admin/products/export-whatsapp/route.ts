@@ -20,15 +20,17 @@ export async function GET() {
 
     const products = data || [];
     // WhatsApp Business CSV format: Name, Description, Price (number), SKU, URL (optional)
+    // IMPORTANT: use semicolon as separator (Brazilian Excel/Sheets default) and dot for decimals
+    // to avoid breaking on commas in price like "1.700,00"
     const rows: string[] = [
-      "Name,Description,Price,SKU",
+      "Name;Description;Price;SKU",
     ];
     for (const p of products) {
-      const name = escapeCsv(p.name);
-      const desc = escapeCsv(`${p.icon || ""} ${p.description || ""}`.trim());
-      const price = (p.price_cents / 100).toFixed(2).replace(".", ",");
-      const sku = escapeCsv(p.whatsapp_sku || "");
-      rows.push(`${name},${desc},${price},${sku}`);
+      const name = escapeCsv(p.name, ";");
+      const desc = escapeCsv(`${p.icon || ""} ${p.description || ""}`.trim(), ";");
+      const price = (p.price_cents / 100).toFixed(2); // dot decimal (e.g. 1700.00)
+      const sku = escapeCsv(p.whatsapp_sku || "", ";");
+      rows.push(`${name};${desc};${price};${sku}`);
     }
     const csv = rows.join("\n");
 
@@ -44,9 +46,10 @@ export async function GET() {
   }
 }
 
-function escapeCsv(s: string): string {
+function escapeCsv(s: string, sep: string = ","): string {
   if (!s) return "";
-  const needsQuote = /[",\n]/.test(s);
+  // Quote if contains separator, quote, or newline
+  const needsQuote = new RegExp(`[${sep}"\\n]`).test(s);
   const escaped = s.replace(/"/g, '""');
   return needsQuote ? `"${escaped}"` : escaped;
 }
