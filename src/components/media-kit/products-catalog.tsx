@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, QrCode, Loader2, Copy, Check } from "lucide-react";
+import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, Building2, ArrowLeft } from "lucide-react";
 
 /**
  * Products Catalog — Seção da landing page que mostra os 9 produtos
  * do método Gabriel Miranda, com botão "Pagar com PIX" e "Falar no WhatsApp".
  *
- * Busca produtos do /api/public/products (público, sem auth).
+ * Modal PIX tem 2 passos:
+ *   1. Lista de bancos disponíveis (cards clicáveis)
+ *   2. Chave PIX do banco escolhido + valor + botão copiar + comprovante WhatsApp
  */
 interface Product {
   id: string;
@@ -22,6 +24,17 @@ interface Product {
   whatsapp_sku: string | null;
 }
 
+interface PixKey {
+  id: string;
+  label: string;
+  type: string;
+  typeLabel: string;
+  value: string;
+  bank: string | null;
+  merchantName: string;
+  merchantCity: string;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   site: "Site Profissional",
   seo: "SEO",
@@ -34,11 +47,42 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const WHATSAPP_PHONE = "5581920051068";
 
+// Emoji por banco (fallback pra bancos não identificados)
+const BANK_EMOJIS: Record<string, string> = {
+  "nubank": "💜",
+  "c6": "🏛️",
+  "c6 bank": "🏛️",
+  "itau": "🟠",
+  "itáu": "🟠",
+  "bradesco": "🔴",
+  "santander": "🔴",
+  "bb": "🟡",
+  "banco do brasil": "🟡",
+  "caixa": "🔵",
+  "inter": "🟠",
+  "ninter": "🟠",
+  "banco inter": "🟠",
+  "mercadopago": "🟡",
+  "mercado pago": "🟡",
+  "mercadolivre": "🟡",
+  "picpay": "🟢",
+  "pagseguro": "🟠",
+  "stone": "🟢",
+  "safra": "🔵",
+  "original": "🔵",
+  "xpinvestimentos": "⚫",
+};
+
+function getBankEmoji(bank: string | null): string {
+  if (!bank) return "🏦";
+  const key = bank.toLowerCase().trim();
+  return BANK_EMOJIS[key] || "🏦";
+}
+
 export function ProductsCatalog() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [pixModal, setPixModal] = useState<Product | null>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/public/products")
@@ -55,12 +99,6 @@ export function ProductsCatalog() {
 
   function openPix(p: Product) {
     setPixModal(p);
-  }
-
-  function copyPixKey() {
-    navigator.clipboard.writeText("6cf7994f-57e3-4ab3-9185-06d95b3291d6");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   if (loading) {
@@ -122,9 +160,9 @@ export function ProductsCatalog() {
         </a>
       </div>
 
-      {/* PIX Modal */}
+      {/* PIX Modal (2 passos) */}
       {pixModal && (
-        <PixModal product={pixModal} onClose={() => setPixModal(null)} onCopyPix={copyPixKey} copied={copied} />
+        <PixModal product={pixModal} onClose={() => setPixModal(null)} />
       )}
     </section>
   );
@@ -199,15 +237,38 @@ function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix
   );
 }
 
-function PixModal({ product, onClose, onCopyPix, copied }: {
-  product: Product;
-  onClose: () => void;
-  onCopyPix: () => void;
-  copied: boolean;
-}) {
-  const pixKey = "6cf7994f-57e3-4ab3-9185-06d95b3291d6"; // C6 Bank aleatória (configurada no admin)
+function PixModal({ product, onClose }: { product: Product; onClose: () => void }) {
+  const [step, setStep] = useState<"choose-bank" | "show-key">("choose-bank");
+  const [pixKeys, setPixKeys] = useState<PixKey[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState(true);
+  const [selectedKey, setSelectedKey] = useState<PixKey | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const amount = product.price_cents / 100;
   const amountFormatted = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  useEffect(() => {
+    fetch("/api/public/pix-keys")
+      .then(r => r.json())
+      .then(d => {
+        setPixKeys(d.keys || []);
+        setLoadingKeys(false);
+      })
+      .catch(() => setLoadingKeys(false));
+  }, []);
+
+  function chooseBank(key: PixKey) {
+    setSelectedKey(key);
+    setStep("show-key");
+    setCopied(false);
+  }
+
+  function copyPixKey() {
+    if (!selectedKey) return;
+    navigator.clipboard.writeText(selectedKey.value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div
@@ -220,52 +281,149 @@ function PixModal({ product, onClose, onCopyPix, copied }: {
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-5 text-white">
-          <h3 className="font-display text-lg font-bold">💰 Pagamento via PIX</h3>
-          <p className="text-xs opacity-90 mt-1">{product.name}</p>
-          <div className="text-2xl font-bold mt-2">{amountFormatted}</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg font-bold">💰 Pagamento via PIX</h3>
+              <p className="text-xs opacity-90 mt-1">{product.name}</p>
+              <div className="text-2xl font-bold mt-2">{amountFormatted}</div>
+            </div>
+            {step === "show-key" && (
+              <button
+                onClick={() => setStep("choose-bank")}
+                className="rounded-lg bg-white/20 px-3 py-2 text-xs font-bold hover:bg-white/30 transition"
+                title="Voltar pra lista de bancos"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="p-5 space-y-4">
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-              Chave PIX (C6 Bank — aleatória)
+        {/* Body — Passo 1: Escolher banco */}
+        {step === "choose-bank" && (
+          <div className="p-5">
+            <div className="mb-4">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Passo 1 de 2
+              </div>
+              <div className="font-bold text-base">Escolha o banco pra pagar</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecione o banco onde você vai fazer o PIX. Cada banco tem uma chave diferente.
+              </p>
             </div>
-            <div className="font-mono text-xs break-all">{pixKey}</div>
-            <button
-              onClick={onCopyPix}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+
+            {loadingKeys ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                <p className="text-xs text-muted-foreground mt-2">Carregando bancos…</p>
+              </div>
+            ) : pixKeys.length === 0 ? (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                Nenhuma chave PIX configurada. Por favor, fale comigo no WhatsApp pra combinar pagamento.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {pixKeys.map((key) => (
+                  <button
+                    key={key.id}
+                    onClick={() => chooseBank(key)}
+                    className="flex items-center gap-3 w-full rounded-xl border border-zinc-200 bg-white p-3 text-left transition hover:border-emerald-500/40 hover:bg-emerald-500/5 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xl">
+                      {getBankEmoji(key.bank)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm">
+                        {key.bank || key.label}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        {key.typeLabel}: <code className="font-mono">{maskKey(key.value, key.type)}</code>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {pixKeys.length > 0 && (
+              <div className="mt-4 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] p-3 text-[11px] text-blue-600 dark:text-blue-300">
+                💡 <strong>Dica:</strong> você pode pagar de qualquer banco, não precisa ter conta no banco que escolher. As chaves são diferentes apenas pra organização.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Body — Passo 2: Chave PIX do banco escolhido */}
+        {step === "show-key" && selectedKey && (
+          <div className="p-5 space-y-4">
+            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
+                {getBankEmoji(selectedKey.bank)}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-sm">{selectedKey.bank || selectedKey.label}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Tipo: {selectedKey.typeLabel} · {selectedKey.merchantName} · {selectedKey.merchantCity}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Chave PIX ({selectedKey.typeLabel})
+              </div>
+              <div className="font-mono text-xs break-all">{selectedKey.value}</div>
+              <button
+                onClick={copyPixKey}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              >
+                {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar chave</>}
+              </button>
+            </div>
+
+            <ol className="text-xs space-y-1.5 text-muted-foreground list-decimal list-inside">
+              <li>Abra o app do seu banco</li>
+              <li>Escolha pagar via PIX — <strong className="text-foreground">{selectedKey.typeLabel}</strong></li>
+              <li>Cole a chave acima e confira o valor: <strong className="text-foreground">{amountFormatted}</strong></li>
+              <li>Após pagar, me chame no WhatsApp abaixo pra eu confirmar e liberar o acesso</li>
+            </ol>
+
+            <a
+              href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`Olá Clodoaldo! Acabei de pagar via PIX o produto: ${product.name} (${amountFormatted}). Banco escolhido: ${selectedKey.bank || selectedKey.label}. Segue o comprovante em anexo. Pode confirmar recebimento?`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-600 transition"
             >
-              {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar chave</>}
+              <MessageCircle className="h-4 w-4" /> Enviar comprovante no WhatsApp
+            </a>
+
+            <button
+              onClick={onClose}
+              className="w-full text-xs text-muted-foreground hover:text-foreground transition"
+            >
+              Fechar
             </button>
           </div>
-
-          <ol className="text-xs space-y-1.5 text-muted-foreground list-decimal list-inside">
-            <li>Abra o app do seu banco</li>
-            <li>Escolha pagar via PIX — chave aleatória</li>
-            <li>Cole a chave acima e confira o valor: <strong className="text-foreground">{amountFormatted}</strong></li>
-            <li>Após pagar, me chame no WhatsApp abaixo pra eu confirmar e liberar o acesso</li>
-          </ol>
-
-          <a
-            href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(`Olá Clodoaldo! Acabei de pagar via PIX o produto: ${product.name} (${amountFormatted}). Segue o comprovante em anexo. Pode confirmar recebimento?`)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-600 transition"
-          >
-            <MessageCircle className="h-4 w-4" /> Enviar comprovante no WhatsApp
-          </a>
-
-          <button
-            onClick={onClose}
-            className="w-full text-xs text-muted-foreground hover:text-foreground transition"
-          >
-            Fechar
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
+}
+
+/** Mascara chave PIX parcial (ex: 6cf7994f-57e3-...-d6) — mostra só início e fim */
+function maskKey(value: string, type: string): string {
+  if (!value) return "";
+  // Pra brcode (PIX Copia e Cola), mostra só primeiros 20 chars
+  if (type === "brcode") return value.slice(0, 20) + "…";
+  if (value.length <= 12) return value;
+  // Pra email, mostra início@fim
+  if (type === "email" && value.includes("@")) {
+    const [user, domain] = value.split("@");
+    return user.slice(0, 3) + "…@" + domain;
+  }
+  // Pra phone, CPF, aleatória — mostra primeiros 4 + últimos 4
+  return value.slice(0, 4) + "…" + value.slice(-4);
 }
 
 function formatBRL(cents: number): string {
