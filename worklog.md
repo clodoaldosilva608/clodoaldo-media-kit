@@ -2694,3 +2694,35 @@ Stage Summary:
 - ✅ Lead de teste "Barbearia Teste Silva" qualificado automaticamente.
 - ✅ Dashboard reflete dados em tempo real.
 - ⏳ Amanhã 09:00 BRT: cron auto-prospect vai rodar com roteiros diferenciados + links demo.
+
+---
+Task ID: Scripts-WhatsApp-Neurociencia
+Agent: main (GLM)
+Task: Adicionar aba 'Scripts WhatsApp' no modal do lead com roteiros neurociência
+
+Work Log:
+- Criada API /api/admin/lead-context que cruza crm_leads (Supabase main) com
+  clodoaldo_prospects (meucorre DB) por nome → retorna niche + city + hasWebsite
+- Criada lib src/lib/whatsapp-scripts.ts com 5 roteiros:
+  - 3 variantes 'tem site' (Loss Aversion, Reciprocity+Authority, Pattern Interrupt+Scarcity)
+  - 3 variantes 'sem site' (Loss Aversion+Concreteness, Reciprocity+Social Proof, Pattern Interrupt+Scarcity)
+  - 2 variantes de follow-up (Loss Aversion+Soft, Reciprocity+Curiosity)
+- Adicionada aba 'Scripts WhatsApp' no modal do lead (4ª aba)
+- Cada script mostra:
+  - Badge 'Variante A/B/C' + técnica de neurociência usada
+  - Descrição da técnica
+  - Texto personalizado com nome + nicho + cidade + demo URL
+  - Botão 'Copiar texto' (clipboard)
+  - Botão 'Abrir no WhatsApp' (wa.me com msg pré-preenchida)
+- Validação via agent-browser confirmou:
+  - Aba aparece entre Informações e Tarefas
+  - 5 scripts renderizam corretamente
+  - Personalização funciona (nome, nicho, cidade, demo URL)
+  - Botões Copiar + Abrir no WhatsApp visíveis
+
+Stage Summary:
+- ✅ Ao expandir um lead no CRM, aba 'Scripts WhatsApp' mostra 5 roteiros prontos
+- ✅ Roteiros usam técnicas de neurociência comportamental (loss aversion, reciprocity, scarcity, etc.)
+- ✅ Personalização automática com dados do lead (cruzamento CRM + clodoaldo_prospects)
+- ✅ Botão 'Abrir no WhatsApp' abre wa.me com mensagem pré-preenchida
+- ✅ Botão 'Copiar texto' pra colar manualmente em outros canais
