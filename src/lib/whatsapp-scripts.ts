@@ -275,3 +275,231 @@ export function getScriptsForLead(vars: ScriptVars, hasWebsite: boolean | null):
     followup: getFollowUpScripts(vars),
   };
 }
+
+// =====================================================
+// Geração DINÂMICA via Gemini + voice_profile
+// =====================================================
+// Usado quando o Clodoaldo já treinou o perfil de voz em /admin/voz.
+// Fallback automático pros roteiros estáticos (acima) se:
+//   - voice_profile não existir
+//   - Gemini falhar
+//   - tempo de resposta > 8s
+// =====================================================
+
+export interface VoiceProfile {
+  greeting_style?: string;
+  closing_style?: string;
+  tone?: string;
+  formality_level?: string;
+  emoji_usage?: string;
+  sentence_length?: string;
+  rhythm?: string;
+  vocabulary_tics?: string;
+  punctuation_style?: string;
+  preferred_contact_cta?: string;
+  avoid_patterns?: string;
+  summary?: string;
+  example_generated?: string;
+  _meta?: { sample_count: number; created_at: string; model: string };
+}
+
+/**
+ * Busca o voice_profile salvo no app_settings.
+ * Server-only (usa service role).
+ */
+export async function loadVoiceProfile(sb: any): Promise<VoiceProfile | null> {
+  if (!sb) return null;
+  try {
+    const { data } = await sb.from("app_settings")
+      .select("value")
+      .eq("key", "voice_profile")
+      .maybeSingle();
+    return data?.value || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Gera roteiro dinâmico via Gemini, usando o voice_profile do Clodoaldo.
+ * Retorna null se algo falhar (caller deve fazer fallback pro estático).
+ *
+ * @param vars Dados do lead (nome, nicho, cidade, demoUrl)
+ * @param hasSite Se tem site
+ * @param voice Perfil de voz treinado
+ * @param variant Qual variante gerar: 'long' | 'loss' | 'reciprocity' | 'pattern'
+ */
+export async function generateDynamicScript(
+  vars: ScriptVars,
+  hasSite: boolean,
+  voice: VoiceProfile,
+  variant: "long" | "loss" | "reciprocity" | "pattern" = "long",
+): Promise<string | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  const variantSpec: Record<string, { technique: string; instruction: string }> = {
+    long: {
+      technique: "Storytelling + Value Stack + Reciprocity",
+      instruction: `Roteiro completo (~400 palavras). Estrutura:
+        1. Hook personalizado mencionando nome + nicho + cidade
+        2. Reciprocity: "já criei seu site demo, tá pronto" + link ${vars.demoUrl}
+        3. Loss aversion: o que está perdendo sem site (clientes indo pro concorrente)
+        4. Value stack: lista os serviços que oferece (sem preço)
+        5. CTA: chama pra conversar sobre investimento, sem pressão`,
+    },
+    loss: {
+      technique: "Loss Aversion + Curiosity Gap",
+      instruction: `Roteiro curto (~80 palavras, 4-5 linhas). Foco:
+        - Pattern interrupt quebra o padrão esperado de "vendedor chato"
+        - Loss aversion: pergunta que gera dor de perder (ex: "sabia que X clientes seus vão pro concorrente todo mês?")
+        - Curiosity gap: gera pergunta que o cérebro PRECISA responder
+        - CTA de baixo compromisso ("só dar uma olhada no demo")`,
+    },
+    reciprocity: {
+      technique: "Reciprocity + Social Proof",
+      instruction: `Roteiro curto (~80 palavras). Foco:
+        - Reciprocity: oferece valor primeiro (demo grátis já pronto)
+        - Social proof: menciona que atendeu outras empresas do mesmo nicho
+        - CTA: "tá no ar aqui: ${vars.demoUrl} — dá uma olhada e me diz o que achou"`,
+    },
+    pattern: {
+      technique: "Pattern Interrupt + Direct",
+      instruction: `Roteiro muito curto (~50 palavras, 2-3 linhas). Foco:
+        - Pattern interrupt total (não parece mensagem de vendedor)
+        - Direto ao ponto, sem rodeios
+        - Pergunta curta no final que gera resposta instintiva`,
+    },
+  };
+
+  const spec = variantSpec[variant];
+
+  const prompt = `Você é o Clodoaldo Silva escrevendo uma mensagem de WhatsApp pra um lead. NÃO pareça um robô, não use linguagem corporativa.
+
+PERFIL DE VOZ DO CLODOALDO (siga EXATAMENTE):
+- Cumprimento: ${voice.greeting_style || "natural"}
+- Encerramento: ${voice.closing_style || "natural"}
+- Tom: ${voice.tone || "casual e direto"}
+- Formalidade: ${voice.formality_level || "neutro"}
+- Emojis: ${voice.emoji_usage || "moderado"}
+- Tamanho de frase: ${voice.sentence_length || "curta"}
+- Ritmo: ${voice.rhythm || "direto sem rodeios"}
+- Tics de vocabulário: ${voice.vocabulary_tics || "nenhum"}
+- Pontuação: ${voice.punctuation_style || "natural"}
+- CTA preferido: ${voice.preferred_contact_cta || "me chama no zap"}
+- EVITAR: ${voice.avoid_patterns || "linguagem corporativa"}
+- Resumo do estilo: ${voice.summary || "casual e direto"}
+
+Exemplo de mensagem no estilo dele: "${voice.example_generated || ""}"
+
+CONTEXTO DO LEAD:
+- Nome: ${vars.nome}
+- Nicho: ${vars.nicho}
+- Cidade: ${vars.cidade}
+- Demo pronto: ${vars.demoUrl}
+- Tem site: ${hasSite ? "Sim" : "Não"}
+
+TAREFA: Escreva ${spec.technique}.
+${spec.instruction}
+
+Regras:
+1. Escreva APENAS a mensagem (sem comentários, sem explicar)
+2. Use o nome do lead (${vars.nome}) no cumprimento
+3. NÃO mencione preços — investimentos são tratados só no WhatsApp
+4. Soe humano, casual, como uma mensagem real de WhatsApp
+5. Máximo 5 linhas pra variantes curtas, ~400 palavras pra long
+6. NÃO use linguagem corporativa tipo "Caro cliente", "Prezado", "Saudações"
+7. Se usar emojis, sejam os que o Clodoaldo usa de fato`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.85, maxOutputTokens: 1200 },
+        }),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!text || text.length < 30) return null;
+
+    // Limpar possíveis artifacts
+    return text
+      .replace(/^```[a-z]*\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .replace(/^["']|["']$/g, "")
+      .trim();
+  } catch (e: any) {
+    console.warn("[generateDynamicScript] Fallback to static:", e.message);
+    return null;
+  }
+}
+
+/**
+ * Helper que tenta gerar dinâmico e faz fallback pra estático.
+ * Retorna um Script (mesmo formato dos estáticos) pra UI usar igual.
+ */
+export async function getScriptWithFallback(
+  vars: ScriptVars,
+  hasSite: boolean,
+  voice: VoiceProfile | null,
+  variant: "long" | "loss" | "reciprocity" | "pattern" = "long",
+): Promise<Script> {
+  // Tentar dinâmico primeiro se voice_profile existe
+  if (voice?.summary) {
+    const dynamic = await generateDynamicScript(vars, hasSite, voice, variant);
+    if (dynamic) {
+      const variantMap: Record<string, string> = {
+        long: "L",
+        loss: "A",
+        reciprocity: "B",
+        pattern: "C",
+      };
+      const techniqueMap: Record<string, string> = {
+        long: "Storytelling + Value Stack + Reciprocity (IA · Voz do Clodoaldo)",
+        loss: "Loss Aversion + Curiosity Gap (IA · Voz do Clodoaldo)",
+        reciprocity: "Reciprocity + Social Proof (IA · Voz do Clodoaldo)",
+        pattern: "Pattern Interrupt + Direct (IA · Voz do Clodoaldo)",
+      };
+      return {
+        id: `dynamic-${variant}`,
+        variant: variantMap[variant] as any,
+        technique: techniqueMap[variant],
+        description: "Gerado dinamicamente pelo Gemini no seu estilo treinado. Fallback automático se falhar.",
+        body: dynamic,
+      };
+    }
+  }
+
+  // Fallback pro estático
+  if (variant === "long") {
+    // Long form dinâmico sem products — usa sem-site scripts primeiro (mais robusto)
+    const fallbackScripts = hasSite ? getTemSiteScripts(vars) : getSemSiteScripts(vars);
+    // Reescreve como long form usando a primeira variante + followup
+    const followup = getFollowUpScripts(vars)[0];
+    return {
+      id: "long-form-fallback",
+      variant: "L",
+      technique: "Storytelling + Value Stack + Reciprocity",
+      description: "Roteiro estático (fallback — voice_profile indisponível ou Gemini falhou).",
+      body: `${fallbackScripts[0].body}\n\n---\n\n${followup.body}`,
+    };
+  }
+  const scripts = hasSite
+    ? getTemSiteScripts(vars)
+    : getSemSiteScripts(vars);
+  const idx = variant === "loss" ? 0 : variant === "reciprocity" ? 1 : 2;
+  return scripts[idx] || scripts[0];
+}
+

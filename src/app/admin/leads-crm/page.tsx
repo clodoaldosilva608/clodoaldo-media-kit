@@ -742,6 +742,10 @@ function WhatsAppScriptsTab({
 }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [dynamicScript, setDynamicScript] = useState<Script | null>(null);
+  const [dynamicLoading, setDynamicLoading] = useState(false);
+  const [dynamicVariant, setDynamicVariant] = useState<"long" | "loss" | "reciprocity" | "pattern">("long");
+  const [dynamicError, setDynamicError] = useState<string | null>(null);
 
   // Fetch products catalog for Long Form script
   useEffect(() => {
@@ -796,6 +800,34 @@ function WhatsAppScriptsTab({
     window.open(url, "_blank");
   }
 
+  async function generateDynamic() {
+    setDynamicLoading(true);
+    setDynamicError(null);
+    setDynamicScript(null);
+    try {
+      const r = await fetch("/api/admin/dynamic-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          nome: lead.name,
+          nicho: niche,
+          cidade: city,
+          demo_url: leadContext?.demoUrl || demoUrl,
+          has_site: hasWebsite ?? false,
+          variant: dynamicVariant,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Falha");
+      setDynamicScript(j);
+    } catch (e: any) {
+      setDynamicError(e.message);
+    } finally {
+      setDynamicLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Context info */}
@@ -813,6 +845,71 @@ function WhatsAppScriptsTab({
             ? "💬 Roteiros focam em 'coisas quebradas no site' + demo já corrigido"
             : "💬 Roteiros focam em 'não encontrei site' + demo já criado"}
         </div>
+      </div>
+
+      {/* Gerador dinâmico IA (Voz do Clodoaldo) */}
+      <div className="rounded-xl border border-violet-500/30 bg-violet-500/[0.06] p-3">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-300" />
+            <span className="text-sm font-bold text-violet-200">Roteiro IA · Voz do Clodoaldo</span>
+          </div>
+          <select
+            value={dynamicVariant}
+            onChange={(e) => setDynamicVariant(e.target.value as any)}
+            className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-200 focus:border-violet-500/50 focus:outline-none"
+          >
+            <option value="long">Long Form (completo)</option>
+            <option value="loss">Loss Aversion (curto)</option>
+            <option value="reciprocity">Reciprocity (curto)</option>
+            <option value="pattern">Pattern Interrupt (muito curto)</option>
+          </select>
+        </div>
+        <p className="text-[11px] text-zinc-400 mb-2">
+          Gera roteiro dinâmico via Gemini no <strong className="text-zinc-300">seu estilo pessoal</strong> (treinado em <code className="rounded bg-black/30 px-1">/admin/voz</code>).
+          Fallback automático pra estático se necessário.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={generateDynamic} disabled={dynamicLoading}>
+            {dynamicLoading ? (
+              <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5" /> Gerar roteiro dinâmico</>
+            )}
+          </Button>
+        </div>
+
+        {dynamicError && (
+          <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-2 text-[11px] text-rose-200">
+            {dynamicError}
+          </div>
+        )}
+
+        {dynamicScript && (
+          <div className="mt-3 rounded-lg border border-violet-500/30 bg-black/30 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                {dynamicScript.technique}
+              </div>
+              {dynamicScript.dynamic && (
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+                  IA · Voz ativa
+                </span>
+              )}
+            </div>
+            <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/5 p-3 text-xs text-zinc-200 font-sans leading-relaxed">{dynamicScript.body}</pre>
+            <div className="flex gap-2 mt-2">
+              <Button variant="outline" size="sm" onClick={() => copyScript(dynamicScript)}>
+                {copiedId === dynamicScript.id ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar</>}
+              </Button>
+              {lead.whatsapp && (
+                <Button variant="primary" size="sm" onClick={() => openWhatsApp(dynamicScript)}>
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Long Form script (método Gabriel Miranda completo) */}

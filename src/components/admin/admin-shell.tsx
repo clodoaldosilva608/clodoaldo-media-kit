@@ -38,6 +38,7 @@ import {
   TrendingUp,
   Package,
   Phone,
+  Mic,
 } from "lucide-react";
 
 interface NavItem {
@@ -54,6 +55,7 @@ const NAV: NavItem[] = [
   { href: "/admin/recuperacao", label: "Recuperação", icon: RotateCcw, group: "vendas" },
   { href: "/admin/leads-crm", label: "Leads CRM", icon: Users2, group: "vendas" },
   { href: "/admin/fluxo-atendimento", label: "Fluxo de Atendimento", icon: ListOrdered, group: "vendas" },
+  { href: "/admin/voz", label: "Voz do Clodoaldo", icon: Mic, group: "vendas" },
   { href: "/admin/queue", label: "Fila de Espera", icon: ListOrdered, group: "vendas" },
   { href: "/admin/leads", label: "Leads", icon: Users, group: "vendas" },
   { href: "/admin/briefings", label: "Briefings", icon: FileText, group: "vendas" },
