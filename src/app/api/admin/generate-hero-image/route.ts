@@ -69,7 +69,7 @@ REGRAS:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: describePrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
         }),
       }
     );
@@ -82,9 +82,8 @@ REGRAS:
       .replace(/^["']|["']$/g, "")
       .trim();
 
-    // Verificar se o prompt está completo (mínimo 80 chars e termina com palavra completa)
-    if (!imagePrompt || imagePrompt.length < 80) {
-      // Retry com prompt ainda mais direto
+    // Verificar se o prompt está completo (mínimo 100 chars)
+    if (!imagePrompt || imagePrompt.length < 100) {
       const retryPrompt = `Write a 60-word image generation prompt in English for a "${nicho}" hero banner. Style: ${styleHint}. Include specific objects from this niche. Start directly with the description. End with a complete sentence.`;
       const retryResp = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
@@ -93,22 +92,31 @@ REGRAS:
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: retryPrompt }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 800 },
+            generationConfig: { temperature: 0.5, maxOutputTokens: 2000 },
           }),
         }
       );
       if (retryResp.ok) {
         const retryData = await retryResp.json();
-        imagePrompt = (retryData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
+        const retryText = (retryData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
           .replace(/```/g, "")
           .replace(/^["']|["']$/g, "")
           .trim();
+        if (retryText.length > imagePrompt.length) imagePrompt = retryText;
       }
     }
 
-    if (!imagePrompt || imagePrompt.length < 60) {
-      // Fallback final: prompt hardcoded baseado no nicho
-      imagePrompt = `Professional ${nicho} business hero image, specific ${nicho} equipment and furniture, ${styleHint}, cinematic lighting, 4k photography`;
+    // Fallback inteligente em INGLÊS por nicho
+    const fallbackMap: Record<string, string> = {
+      barbearia: "Vintage leather barber chair, large ornate mirror, scissors and straight razor on wooden counter, warm tungsten lighting, dark moody barbershop atmosphere, brass accents, professional photography, 4k, hero banner",
+      restaurante: "Elegant restaurant interior, set dining table with white linen, crystal wine glasses, candle lighting, gourmet dish on plate, warm ambient lighting, sophisticated atmosphere, professional photography, 4k, hero banner",
+      academia: "Modern gym interior, dumbbells rack, weight machines, dramatic lighting, dark atmosphere with neon accents, polished concrete floor, athletic equipment, professional photography, 4k, hero banner",
+      pizzaria: "Artisanal pizza fresh from wood-fired oven, melted mozzarella, basil leaves, rustic wooden board, warm golden lighting, italian restaurant atmosphere, professional food photography, 4k, hero banner",
+      "salao de beleza": "Modern beauty salon interior, styling chairs with large mirrors, hair products on shelf, soft pink lighting, elegant atmosphere, professional photography, 4k, hero banner",
+      default: `Professional ${nicho} business interior, specific ${nicho} equipment and furniture, cinematic lighting, 4k professional photography, hero banner`,
+    };
+    if (!imagePrompt || imagePrompt.length < 100) {
+      imagePrompt = fallbackMap[nicho] || fallbackMap.default;
     }
 
     // 2) Gerar a imagem via Pollinations.ai (API pública, sem auth)
