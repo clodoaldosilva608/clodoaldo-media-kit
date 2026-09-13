@@ -505,6 +505,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
                 )}
               </div>
 
+              {/* Enriquecimento IA (Clay-style) */}
+              <LeadEnrichmentCard leadId={lead.id} />
+
               {/* BANT Checklist (método Gabriel Miranda) */}
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1472,6 +1475,129 @@ function Field({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
       <div className="text-[10px] font-bold uppercase text-zinc-500">{label}</div>
       <div className="mt-1 text-sm text-white break-all">{value}</div>
+    </div>
+  );
+}
+
+// =====================================================
+// LeadEnrichmentCard — dados enriquecidos via crawler IA
+// =====================================================
+function LeadEnrichmentCard({ leadId }: { leadId: string }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [enriching, setEnriching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/admin/lead-enrichment?lead_id=${leadId}`)
+      .then(r => r.json())
+      .then(d => setData(d))
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [leadId]);
+
+  async function enrichNow() {
+    setEnriching(true);
+    setError(null);
+    try {
+      const r = await fetch(`/api/admin/lead-enrichment?lead_id=${leadId}`, { method: "POST" });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Falha");
+      // Recarregar dados
+      const r2 = await fetch(`/api/admin/lead-enrichment?lead_id=${leadId}`);
+      const d2 = await r2.json();
+      setData(d2);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-4">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-1">🧠 Enriquecimento IA</div>
+        <div className="text-xs text-zinc-500"><RefreshCw className="inline h-3 w-3 animate-spin mr-1" /> Carregando dados enriquecidos…</div>
+      </div>
+    );
+  }
+
+  if (!data?.enriched) {
+    return (
+      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">🧠 Enriquecimento IA (Clay-style)</div>
+          <Button variant="outline" size="sm" onClick={enrichNow} disabled={enriching}>
+            {enriching ? <><RefreshCw className="h-3 w-3 animate-spin" /> Enriquecendo…</> : <><Sparkles className="h-3 w-3" /> Enriquecer agora</>}
+          </Button>
+        </div>
+        <p className="text-[11px] text-zinc-400">
+          {data?.reason || "Sem dados enriquecidos ainda."} Crawler IA busca no site do lead: nome do dono, e-mail de contato, Instagram.
+        </p>
+        {error && <div className="text-[11px] text-rose-300">{error}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/[0.06] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300">🧠 Dados enriquecidos (IA Crawler)</div>
+        <Button variant="outline" size="sm" onClick={enrichNow} disabled={enriching}>
+          {enriching ? <><RefreshCw className="h-3 w-3 animate-spin" /> Re-enriquecendo…</> : <><RefreshCw className="h-3 w-3" /> Re-rodar</>}
+        </Button>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">👤 Dono / Fundador</div>
+          <div className="mt-1 text-sm text-white">{data.owner_name || <span className="text-zinc-600 italic">não encontrado</span>}</div>
+        </div>
+        <div>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">📧 E-mail principal</div>
+          <div className="mt-1 text-sm text-white break-all">
+            {data.owner_email ? (
+              <a href={`mailto:${data.owner_email}`} className="text-cyan-300 hover:underline">{data.owner_email}</a>
+            ) : <span className="text-zinc-600 italic">não encontrado</span>}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">📸 Instagram</div>
+          <div className="mt-1 text-sm text-white">
+            {data.instagram_handle ? (
+              <a href={`https://instagram.com/${data.instagram_handle}`} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">@{data.instagram_handle}</a>
+            ) : <span className="text-zinc-600 italic">não encontrado</span>}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-bold uppercase text-zinc-500">🌐 Website crawleado</div>
+          <div className="mt-1 text-sm text-white break-all">
+            {data.website ? (
+              <a href={data.website} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline">{data.website}</a>
+            ) : <span className="text-zinc-600 italic">—</span>}
+          </div>
+        </div>
+      </div>
+
+      {data.enrichment_data?.found_emails?.length > 0 && (
+        <details className="rounded-lg border border-white/5 bg-black/30 p-2">
+          <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+            Outros e-mails encontrados ({data.enrichment_data.found_emails.length})
+          </summary>
+          <div className="mt-1 space-y-1">
+            {data.enrichment_data.found_emails.map((e: string, i: number) => (
+              <div key={i} className="text-[11px] text-zinc-400 font-mono">{e}</div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {data.enriched_at && (
+        <div className="text-[10px] text-zinc-500">Enriquecido em {new Date(data.enriched_at).toLocaleString("pt-BR")}</div>
+      )}
+
+      {error && <div className="text-[11px] text-rose-300">{error}</div>}
     </div>
   );
 }
