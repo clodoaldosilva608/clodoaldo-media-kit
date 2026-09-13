@@ -27,8 +27,8 @@ export default function AgendarPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verifica se Cal.com está configurado
-    fetch("/api/admin/calendar")
+    // Verifica se Cal.com está configurado (endpoint público, sem auth)
+    fetch("/api/public/calendar")
       .then(r => r.json())
       .then(d => {
         setCalcomUrl(d.calcom_url || null);
