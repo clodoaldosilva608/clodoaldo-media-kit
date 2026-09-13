@@ -36,18 +36,32 @@ export function BibliotecaClient({ item }: BibliotecaClientProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(true);
-          setStatus("idle");
-          setError("");
-        }}
-        className="inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground shadow-glow"
-      >
-        {item.ctaLabel}
-        <ArrowRight size={16} />
-      </button>
+      <div className="flex flex-col gap-2">
+        {/* Botão principal: preencher dados e baixar */}
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setStatus("idle");
+            setError("");
+          }}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground shadow-glow"
+        >
+          {item.ctaLabel}
+          <ArrowRight size={16} />
+        </button>
+        {/* Botão secundário: visualizar direto (sem formulário) */}
+        {item.pdfUrl && (
+          <a
+            href={item.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-2.5 min-h-10 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          >
+            <BookOpen size={14} /> Ver agora
+          </a>
+        )}
+      </div>
 
       {open && (
         <div className="fixed inset-0 z-[70] bg-background/75 backdrop-blur-sm px-4 py-8 overflow-y-auto">

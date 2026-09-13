@@ -20,14 +20,8 @@ export const metadata: Metadata = {
 };
 
 // Slugs publicados no Knowledge Hub — o card vira link para o leitor de capítulos.
+// E-books gratuitos NÃO estão aqui — usam BibliotecaClient (form + download direto).
 const HUB_SLUGS = new Set<ServiceSlug>([
-  "ebook-guia-briefing-viral",
-  "ebook-networking-marcas",
-  "ebook-30-ganchos-reels",
-  "ebook-manual-edicao-premium",
-  "ebook-storytelling-magnetico",
-  "ebook-ia-criadores",
-  "pack-prompts-premium",
   "pack-imagens-premium",
 ]);
 
@@ -87,23 +81,7 @@ export default function BibliotecaPage() {
                 key={ebook.slug}
                 item={ebook}
                 action={
-                  HUB_SLUGS.has(ebook.slug) ? (
-                    <div className="flex flex-col gap-2 items-end">
-                      <Link
-                        href={`/knowledge/${ebook.slug}?buy=1`}
-                        className="inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground shadow-glow"
-                      >
-                        Comprar {ebook.priceLabel}
-                        <ArrowRight size={16} />
-                      </Link>
-                      <Link
-                        href={`/knowledge/${ebook.slug}`}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        Ver detalhes no Hub
-                      </Link>
-                    </div>
-                  ) : (
+                  <div className="flex flex-col gap-2">
                     <Link
                       href={`/checkout/${ebook.slug}`}
                       className="inline-flex items-center gap-2 rounded-full bg-gradient-orange px-5 py-3 min-h-11 text-sm font-semibold text-primary-foreground shadow-glow"
@@ -111,7 +89,17 @@ export default function BibliotecaPage() {
                       {ebook.ctaLabel}
                       <ArrowRight size={16} />
                     </Link>
-                  )
+                    {ebook.pdfUrl && (
+                      <a
+                        href={ebook.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-5 py-2.5 min-h-10 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                      >
+                        <BookOpen size={14} /> Ver preview
+                      </a>
+                    )}
+                  </div>
                 }
               />
             ))}
