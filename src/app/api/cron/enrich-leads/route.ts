@@ -31,6 +31,8 @@ interface LeadToEnrich {
   city: string;
   website: string | null;
   formatted_address: string | null;
+  instagram?: string | null;
+  email?: string | null;
 }
 
 interface EnrichmentResult {
@@ -53,14 +55,17 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
-    // Buscar leads com site, sem enriquecimento, com website não-nulo
+    // Buscar leads sem enriquecimento (com site OU instagram OU place_id)
     const { rows: leads } = await pool.query<LeadToEnrich>(`
-      SELECT id, name, niche, city, website, formatted_address
+      SELECT id, name, niche, city, website, formatted_address, instagram, email
       FROM clodoaldo_prospects
-      WHERE has_website = true
-        AND website IS NOT NULL
-        AND website != ''
-        AND enriched_at IS NULL
+      WHERE enriched_at IS NULL
+        AND (
+          (website IS NOT NULL AND website != '')
+          OR has_website = true
+          OR (instagram IS NOT NULL AND instagram != '')
+          OR place_id IS NOT NULL
+        )
       ORDER BY created_at DESC
       LIMIT $1
     `, [MAX_LEADS_PER_RUN]);
@@ -134,7 +139,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function enrichLead(lead: LeadToEnrich): Promise<EnrichmentResult> {
-  const website = normalizeUrl(lead.website!);
+  const website = lead.website ? normalizeUrl(lead.website) : null;
   const result: EnrichmentResult = {
     owner_name: null,
     owner_email: null,
@@ -142,6 +147,22 @@ async function enrichLead(lead: LeadToEnrich): Promise<EnrichmentResult> {
     extra_emails: [],
     raw_data: { website, crawled_pages: [] as string[], found_emails: [] as string[] },
   };
+
+  // Pré-preencher com dados já existentes no prospect (Apify trouxe)
+  if (lead.instagram) {
+    const handle = lead.instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//, "").replace(/\/$/, "").trim();
+    if (handle && !["p", "reel", "explore"].includes(handle.toLowerCase())) {
+      result.instagram_handle = handle;
+    }
+  }
+  if (lead.email) {
+    result.owner_email = lead.email.toLowerCase();
+  }
+
+  if (!website) {
+    // Sem site pra crawlear — retorna só com dados existentes
+    return result;
+  }
 
   // URLs pra tentar crawlear (home + páginas comuns de contato/sobre)
   const pagesToCrawl = [
@@ -154,6 +175,7 @@ async function enrichLead(lead: LeadToEnrich): Promise<EnrichmentResult> {
   ];
 
   const allEmails = new Set<string>();
+  if (lead.email) allEmails.add(lead.email.toLowerCase());
   const crawledPages: string[] = [];
 
   for (const url of pagesToCrawl) {
@@ -176,7 +198,7 @@ async function enrichLead(lead: LeadToEnrich): Promise<EnrichmentResult> {
         allEmails.add(lower);
       }
 
-      // Extrair Instagram
+      // Extrair Instagram (se ainda não tiver)
       if (!result.instagram_handle) {
         const igMatch = html.match(/instagram\.com\/([a-zA-Z0-9_.]+)\/?/i);
         if (igMatch && igMatch[1] && !["p", "reel", "explore", "accounts", "stories"].includes(igMatch[1].toLowerCase())) {
