@@ -934,6 +934,7 @@ function AiCopilotTab({ lead, leadContext }: { lead: Lead; leadContext: any }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          lead_id: lead.id,
           lead_name: lead.name,
           niche: leadContext?.niche || lead.intent || "negócio local",
           city: leadContext?.city || "Recife, PE",
@@ -979,9 +980,15 @@ function AiCopilotTab({ lead, leadContext }: { lead: Lead; leadContext: any }) {
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="h-4 w-4 text-violet-400" />
           <span className="text-sm font-bold text-violet-300">IA Copiloto</span>
+          {result?.memory_info?.loaded && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+              🧠 Memória carregada · {result.memory_info.conversation_count}ª conversa
+            </span>
+          )}
         </div>
         <p className="text-[11px] text-zinc-400">
           Cole as mensagens da conversa com o lead. A IA analisa, classifica a temperatura (quente/morno/frio) e sugere a próxima resposta ideal.
+          {result?.memory_info?.saved && <span className="text-emerald-300/80"> Memória desta conversa foi salva automaticamente.</span>}
         </p>
       </div>
 

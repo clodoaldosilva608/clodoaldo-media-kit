@@ -56,24 +56,71 @@ export default function FluxoAtendimentoPage() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [liveChanges, setLiveChanges] = useState<number>(0);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
-      // Fetch direto do meucorre via API
       const resp = await fetch("/api/admin/prospects/list");
       const json = await resp.json();
       if (!resp.ok) throw new Error(json.error || `Erro ${resp.status}`);
-      setProspects(json.prospects || []);
+
+      const newProspects: Prospect[] = json.prospects || [];
+
+      // Detectar mudanças comparando com estado anterior
+      setProspects(prev => {
+        if (prev.length === 0) return newProspects;
+        const prevMap = new Map(prev.map(p => [p.id, p]));
+        let changes = 0;
+        const events: string[] = [];
+        for (const np of newProspects) {
+          const old = prevMap.get(np.id);
+          if (!old) {
+            changes++;
+            events.push(`🆕 Novo lead: ${np.name}`);
+          } else if (old.status !== np.status || old.send_status !== np.send_status) {
+            changes++;
+            const stageLabel = STAGES.find(s => {
+              if (s.key === "pending") return np.status === "new" && np.send_status === "pending";
+              if (s.key === "contacted") return np.send_status === "sent" && !np.replied;
+              if (s.key === "replied") return np.replied && np.status !== "fechado" && np.status !== "perdido";
+              if (s.key === "meeting") return np.status === "meeting";
+              if (s.key === "closed") return np.status === "fechado";
+              if (s.key === "lost") return np.status === "perdido";
+              return false;
+            });
+            events.push(`📦 ${np.name} → ${stageLabel?.label || np.status}`);
+          } else if (old.replied !== np.replied && np.replied) {
+            changes++;
+            events.push(`💬 ${np.name} respondeu!`);
+          }
+        }
+        if (changes > 0) {
+          setLiveChanges(c => c + changes);
+          setToast(events[0] + (events.length > 1 ? ` (+${events.length - 1} outras)` : ""));
+          setTimeout(() => setToast(null), 5000);
+        }
+        return newProspects;
+      });
+
+      setLastUpdate(new Date());
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Polling a cada 10s (efeito "AO VIVO" sem depender de config Realtime)
+  useEffect(() => {
+    const interval = setInterval(() => load(true), 10000);
+    return () => clearInterval(interval);
+  }, [load]);
 
   // Group by stage
   const grouped = STAGES.map(stage => {
@@ -103,13 +150,45 @@ export default function FluxoAtendimentoPage() {
 
   return (
     <AdminShell title="Fluxo de Atendimento">
+      {/* Toast de mudança em tempo real */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/95 backdrop-blur px-4 py-3 shadow-2xl shadow-emerald-500/20 max-w-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold text-emerald-200">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+              </span>
+              {toast}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-zinc-400">
-          Visão kanban do funil: pendentes → contactados → responderam → reunião → fechados. Mostra quem já foi contactado pra não duplicar.
-        </p>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
-        </Button>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-zinc-400">
+            Visão kanban do funil: pendentes → contactados → responderam → reunião → fechados. Mostra quem já foi contactado pra não duplicar.
+          </p>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-500/30">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            </span>
+            AO VIVO
+            {liveChanges > 0 && <span className="ml-1 rounded-full bg-emerald-500/30 px-1.5 text-emerald-200">{liveChanges}</span>}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {lastUpdate && (
+            <span className="text-[10px] text-zinc-500 hidden sm:inline">
+              Atualizado {lastUpdate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* KPIs */}
