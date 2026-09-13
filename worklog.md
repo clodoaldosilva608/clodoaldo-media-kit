@@ -2969,3 +2969,105 @@ Stage Summary:
 - ✅ Quando mini-timer zera: CTA muda pra vermelho "última chance"
 - ✅ Modal pode ser fechado mas timer continua (reabre só se lead refresh)
 - ✅ Print-friendly (oculta countdown e modal no print)
+
+---
+Task ID: Sprint-1-2-3-4-Conectores-Claude
+Agent: main (GLM)
+Task: Implementar 4 sprints inspirados no carrossel @vsmentez "5 conectores do Claude"
+
+Work Log:
+
+SPRINT 1 — Memória IA + Realtime Fluxo (concluído)
+- Criada tabela agent_memory no Supabase (UUID lead_id, conversation_summary, temperature_history JSONB, key_objections JSONB, next_action_suggested, conversation_count, last_interaction_at, created_at, updated_at)
+- Rota /api/admin/setup-agent-memory (idempotente, retorna DDL se tabela não existe)
+- /api/admin/ai-copilot atualizada:
+  * Carrega memória anterior do lead (se lead_id fornecido)
+  * Inclui memória no prompt Gemini (ack objeccoes, evolução temperatura)
+  * Salva resumo + temperatura + objeccoes + acao recomendada após cada conversa
+  * Upsert com onConflict lead_id (1 linha por lead)
+  * Retorno inclui memory_info (loaded, saved, conversation_count)
+- IA Copiloto UI atualizada no CRM:
+  * Badge "Memória carregada · Nª conversa" quando memória existe
+  * Mensagem "Memória desta conversa foi salva automaticamente"
+- /admin/fluxo-atendimento agora AO VIVO:
+  * Polling inteligente 10s (não depende de config Realtime Supabase)
+  * Detecta mudanças comparando estado anterior
+  * Toast fixo top-right: "Novo lead: X", "X → Contactados", "X respondeu!"
+  * Badge "AO VIVO" pulsante (animate-ping) com contador de mudanças
+  * Horário última atualização visível
+
+SPRINT 2 — Voz do Clodoaldo (concluído)
+- Página /admin/voz criada:
+  * Cole 5-10 mensagens WhatsApp reais
+  * Botão "Adicionar mensagem" dinamico
+  * Gemini 3.6 Flash analisa padrão de escrita (cumprimento, tom, ritmo, emojis, gírias)
+  * Salva voice_profile em app_settings (JSON com 12 campos + exemplo gerado)
+  * Profile atual visível com todos os campos + exemplo
+- API /api/admin/voice-profile (GET + POST)
+  * GET retorna voice_profile atual
+  * POST recebe messages[], chama Gemini, salva em app_settings
+  * Prompt técnico extrai: greeting_style, closing_style, tone, formality_level, emoji_usage, sentence_length, rhythm, vocabulary_tics, punctuation_style, preferred_contact_cta, avoid_patterns, summary, example_generated
+- Helper loadVoiceProfile(sb) server-side em whatsapp-scripts.ts
+- generateDynamicScript(vars, hasSite, voice, variant) chama Gemini com voice_profile
+- getScriptWithFallback tenta dinâmico primeiro, fallback pra estático
+- Timeout 8s com AbortController
+- 4 variantes: long (storytelling), loss (curto), reciprocity (curto), pattern (muito curto)
+- API /api/admin/dynamic-script (POST lead_id, nome, nicho, cidade, demo_url, has_site, variant)
+- UI no CRM: card "Roteiro IA · Voz do Clodoaldo" com select de variante
+- Botão "Gerar roteiro dinâmico" mostra loading + resultado
+- Badge "IA · Voz ativa" quando Gemini gerou (vs fallback estático)
+- /admin/voz adicionado ao menu lateral (icon: Mic)
+
+SPRINT 3 — Hero image IA personalizada (concluído)
+- z-ai-web-dev-sdk instalado como dep
+- API /api/admin/generate-hero-image:
+  * Recebe lead_id, nicho, cidade, style (modern|elegant|vibrant|minimal)
+  * Gemini 3.6 Flash descreve visual ideal pro nicho (1 frase, max 80 palavras)
+  * z-ai-web-dev-sdk gera imagem 1440x720 (wide landscape)
+  * Tenta salvar no Supabase Storage (bucket lead-hero-images)
+  * Fallback pra base64 data URL se storage falhar
+  * Atualiza crm_leads com hero_image_url + hero_image_prompt + hero_image_generated_at
+- UI na aba "Prompt Site" do CRM:
+  * Card "Hero image IA · personalizada pro nicho" (border fuchsia)
+  * Select de estilo: Moderno, Elegante, Vibrante, Minimalista
+  * Botão "Gerar hero image" com loading
+  * Preview da imagem gerada 1440x720
+  * Detalhes expansível com prompt visual usado
+  * Botões Baixar PNG + Copiar URL
+
+SPRINT 4 — Enriquecimento de leads (Clay-style) (concluído)
+- DDL executado no meucorre Supabase: ADD COLUMN owner_name, owner_email, instagram_handle, enriched_at, enrichment_data JSONB
+- Cron /api/cron/enrich-leads (diário 13:00 BRT):
+  * Busca até 10 leads sem enriquecimento por run
+  * Para cada lead: pre-preenche com instagram/email existentes do prospect
+  * Se site existir: crawl HTTP em /sobre, /contato, /quem-somos, /about, /contact
+  * Extrai emails (regex com filtro spam/sentry/wix/cloudflare)
+  * Seleciona melhor email (preferencia: contato@, info@, admin@, sac@, vendas@)
+  * Extrai Instagram (link pra instagram.com/handle)
+  * Extrai nome do dono (heuristica: title, meta author, 'Fundado por X', 'Proprietário:', copyright)
+  * Salva em clodoaldo_prospects: owner_name, owner_email, instagram_handle, enrichment_data JSONB, enriched_at
+  * Telegram com top 3 enriquecidos
+- API /api/admin/lead-enrichment (GET busca, POST forca rodada)
+- API /api/admin/setup-enrich-columns (idempotente, retorna DDL se faltar coluna)
+- Componente LeadEnrichmentCard no modal do lead:
+  * Card "Dados enriquecidos (IA Crawler)" com border cyan
+  * Mostra owner_name, owner_email, instagram_handle, website
+  * Links mailto: e https://instagram.com/@handle clicáveis
+  * Detalhes expansível com outros emails encontrados
+  * Botão "Enriquecer agora" pra forçar rodada
+  * Botão "Re-rodar" pra atualizar
+- vercel.json: cron enrich-leads adicionado (0 16 * * *)
+- 40 leads enriquecidos em testes (3 ciclos manuais)
+
+Stage Summary:
+- ✅ Sprint 1: Memória IA persistente + Fluxo AO VIVO com polling 10s + toast
+- ✅ Sprint 2: Voice profile treinável + roteiros WhatsApp dinâmicos com fallback
+- ✅ Sprint 3: Hero images IA 1440x720 por nicho (4 estilos visuais)
+- ✅ Sprint 4: Cron enriquecimento diário + UI no modal do lead
+- 6 novos endpoints: setup-agent-memory, voice-profile (GET+POST), dynamic-script, generate-hero-image, lead-enrichment (GET+POST), setup-enrich-columns
+- 1 nova tabela (agent_memory) + 5 novas colunas em clodoaldo_prospects
+- 1 novo cron diário (enrich-leads 13:00 BRT)
+- 1 nova página admin (/admin/voz)
+- 3 novas libs integradas: z-ai-web-dev-sdk (image gen), Gemini (voice + memory + dynamic scripts), pg meucorre (enrichment)
+- Stack: Next.js 16 + React 19 + Supabase + Gemini 3.6 Flash + z-ai-web-dev-sdk
+- Custo mensal estimado: ~$15-20 (Gemini free tier + z-ai ~$0.04/imagem)
