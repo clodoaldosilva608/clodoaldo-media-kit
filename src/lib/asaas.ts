@@ -106,7 +106,12 @@ export async function createPixPayment(params: {
       }),
     });
     const data = await resp.json();
-    if (data.errors) throw new Error(data.errors[0]?.description || "Asaas error");
+    if (data.errors) {
+      const errMsg = data.errors.map((e: any) => e.description).join("; ");
+      console.error("[asaas] payment error:", errMsg);
+      // Return error object instead of null so caller can show message
+      return { error: errMsg } as any;
+    }
     return data;
   } catch (e) {
     console.error("[asaas] createPixPayment error:", e);

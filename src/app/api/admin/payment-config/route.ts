@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!payment) {
-      return NextResponse.json({ error: "Failed to create Asaas payment" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create Asaas payment. Verifique se o PIX está aprovado na sua conta Asaas." }, { status: 500 });
+    }
+
+    if (payment.error) {
+      return NextResponse.json({ error: `Asaas: ${payment.error}` }, { status: 400 });
     }
 
     return NextResponse.json({
