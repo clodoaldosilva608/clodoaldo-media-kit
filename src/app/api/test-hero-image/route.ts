@@ -118,27 +118,47 @@ REGRAS:
     const encodedPrompt = encodeURIComponent(fullPrompt).slice(0, 1800);
     const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&model=flux&seed=${Date.now() % 1000000}`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    // Retry em caso de 429 (rate limit do Pollinations)
     let buffer: Buffer;
-    try {
-      const imgResp = await fetch(pollinationsUrl, {
-        signal: controller.signal,
-        headers: { "User-Agent": "ClodoaldoHeroImage/1.0" },
-      });
-      clearTimeout(timeout);
-      if (!imgResp.ok) {
-        return NextResponse.json({
-          error: `Pollinations HTTP ${imgResp.status}`,
-          pollinations_url: pollinationsUrl,
-        }, { status: 502 });
+    let lastErr: any = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+      try {
+        const retryUrl = attempt === 0
+          ? pollinationsUrl
+          : `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&model=flux&seed=${Math.floor(Math.random() * 1000000)}`;
+
+        const imgResp = await fetch(retryUrl, {
+          signal: controller.signal,
+          headers: { "User-Agent": "ClodoaldoHeroImage/1.0" },
+        });
+        clearTimeout(timeout);
+
+        if (imgResp.status === 429) {
+          lastErr = new Error(`Pollinations 429 (rate limit) attempt ${attempt + 1}`);
+          await new Promise(r => setTimeout(r, 4000));
+          continue;
+        }
+        if (!imgResp.ok) {
+          lastErr = new Error(`Pollinations HTTP ${imgResp.status}`);
+          continue;
+        }
+        const arrayBuffer = await imgResp.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+        lastErr = null;
+        break;
+      } catch (e: any) {
+        clearTimeout(timeout);
+        lastErr = e;
+        if (e.name === 'AbortError') await new Promise(r => setTimeout(r, 2000));
       }
-      const arrayBuffer = await imgResp.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
-    } catch (e: any) {
-      clearTimeout(timeout);
+    }
+
+    if (lastErr || !buffer!) {
       return NextResponse.json({
-        error: `Image fetch failed: ${e.message}`,
+        error: `Image generation failed: ${lastErr?.message || 'no buffer'}`,
       }, { status: 502 });
     }
 
