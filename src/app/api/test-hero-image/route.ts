@@ -105,7 +105,18 @@ REGRAS:
       academia: "Modern gym interior, dumbbells rack, weight machines, dramatic lighting, dark atmosphere with neon accents, polished concrete floor, athletic equipment, professional photography, 4k, hero banner",
       pizzaria: "Artisanal pizza fresh from wood-fired oven, melted mozzarella, basil leaves, rustic wooden board, warm golden lighting, italian restaurant atmosphere, professional food photography, 4k, hero banner",
       "salao de beleza": "Modern beauty salon interior, styling chairs with large mirrors, hair products on shelf, soft pink lighting, elegant atmosphere, professional photography, 4k, hero banner",
-      default: `Professional ${nicho} business interior, specific ${nicho} equipment and furniture, cinematic lighting, 4k professional photography, hero banner`,
+      "clinica estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
+      "clinica-estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
+      "pet shop": "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
+      petshop: "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
+      cafeteria: "Cozy coffee shop interior, espresso machine, wooden counter with pastries, hanging Edison bulbs, barista preparing latte, warm atmosphere, artisanal coffee, professional photography, 4k, hero banner",
+      hamburgueria: "Modern burger restaurant interior, gourmet burgers on wooden board, milkshake glasses, neon signs, industrial decor, fries basket, appetizing food photography, 4k, hero banner",
+      imobiliaria: "Modern real estate office interior, architectural models on table, large windows with city view, blueprints on wall, sophisticated furniture, professional atmosphere, 4k photography, hero banner",
+      contabilidade: "Modern accounting office interior, organized desk with financial documents, computer with charts, calculator, professional books on shelf, neutral tones, business atmosphere, 4k photography, hero banner",
+      "consultorio odontologico": "Modern dental office interior, dental chair with overhead light, dental equipment, clean white atmosphere, sterilization area, professional medical photography, 4k, hero banner",
+      farmacia: "Modern pharmacy interior, medicine shelves, white counter with pharmacist, health products display, clean medical atmosphere, professional lighting, 4k photography, hero banner",
+      "loja de roupas": "Boutique clothing store interior, racks with fashionable clothes, full-length mirrors, mannequins, soft dressing room lighting, modern retail design, professional photography, 4k, hero banner",
+      default: `Professional ${nicho} business interior, ${nicho} specific equipment and furniture, cinematic lighting, 4k professional photography, hero banner`,
     };
     if (!imagePrompt || imagePrompt.length < 100) {
       imagePrompt = fallbackMap[nicho] || fallbackMap.default;
