@@ -2880,3 +2880,46 @@ Stage Summary:
 - ✅ Tracking de envio (status, send_status, contacted_count)
 - ✅ Cron não reenvia pra leads já contactados
 - ✅ 169 leads no banco, 154 prontos pra contactar
+
+---
+Task ID: Proposta-Persuasiva-Sem-Valores
+Agent: main (GLM)
+Task: Reescrever proposta PDF pra copy extremamente persuasiva SEM mostrar valores, CTA pra WhatsApp
+
+Work Log:
+- Lido arquivo atual /api/public/proposta/route.ts e /api/admin/proposta-pdf/route.ts (eram idênticos, lista produtos + preços)
+- Identificado que CRM em /admin/leads-crm chama POST /api/public/proposta (rota pública)
+- Reescrita completa da proposta como CARTA DE VENDAS (não tabela de preços):
+  - HEADER premium dark com gradient verde, badge "Proposta Exclusiva"
+  - Card de personalização com nome do lead, nicho e cidade
+  - LETTER OPENING (storytelling): "Olá ${firstName}, já comecei o trabalho pra você" + reciprocity (demo já entregue)
+  - DEMO BOX: reciprocity com link do preview já pronto
+  - LOSS AVERSION (caixa vermelha): 4 dores + calculadora de perda (-30 a -50 clientes/mês, projeção 6 e 12 meses)
+  - INLINE CTA WhatsApp após loss aversion
+  - FUTURE PACE (caixa verde): "Daqui 90 dias" - imagine o cenário com site no ar
+  - VALUE STACK: lista dos produtos incluídos (cards numerados, sem preço, só valor percebido)
+  - AUTHORITY: por que eu + 3 stats (+75 empresas, +8 anos, 100% sem fidelidade)
+  - RISK REVERSAL: grid 2x3 com 6 garantias (sem fidelidade, site seu, suporte direto, sem trabalho, ajusto até ficar perfeito, condições que cabem)
+  - SCARCITY: validade 7 dias + custo invisível de esperar
+  - MAIN CTA BOX (dark premium): "Vamos definir seu investimento no WhatsApp?" - explica que investimento NÃO é fixo, montado junto com o lead (PIX, cartão, parcelamento)
+  - P.S. final: gancho emocional ("se leu até aqui, algo ressoou") + matemática simples + CTA final
+  - FOOTER com contatos
+- Personalização dinâmica: firstName (primeiro nome), nicheText (nicho do notes/intent), cidade (city/notes)
+- Design: responsivo mobile, print-friendly (sem sombras no print), cores consistentes com a marca (dark #0a0a0f + verde #10b981)
+- WhatsApp link com mensagem pré-preenchida: "Olá Clodoaldo! Acabei de ler a proposta... Quero entender melhor o investimento"
+- Removidos TODOS os preços, parcelas, total formatado, installment, monthlyEquivalent, productRows com preço
+- Sincronizado /api/admin/proposta-pdf com a mesma copy (cp direto)
+- Commit + push GitHub + deploy Vercel (clodoaldo.vercel.app)
+- Smoke test:
+  - POST /api/public/proposta {lead_id inválido} → 404 {"error":"lead not found"} ✓
+  - POST /api/admin/proposta-pdf {lead_id inválido} → 401 {"error":"Não autorizado"} ✓
+
+Stage Summary:
+- ✅ Proposta reescrita como carta de vendas (não tabela de preços)
+- ✅ ZERO valores visíveis em toda a proposta
+- ✅ Copy baseada em 7 gatilhos de neurociência: reciprocity, loss aversion, future pace, value stack, authority, risk reversal, scarcity
+- ✅ 3 CTAs WhatsApp ao longo da proposta (após loss aversion, CTA principal, P.S. final)
+- ✅ CTA principal trabalha o frame "investimento não é fixo, montamos juntos"
+- ✅ Personalização por firstName, nicho e cidade
+- ✅ Deploy Vercel completo em https://clodoaldo.vercel.app
+- ✅ Botão "Gerar Proposta" no CRM continua funcionando (mesma rota /api/public/proposta)
