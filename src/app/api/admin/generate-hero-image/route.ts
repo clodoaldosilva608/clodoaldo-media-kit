@@ -78,35 +78,49 @@ Responda APENAS com a descrição visual (sem prefixo, sem explicações).`;
       return NextResponse.json({ error: "Gemini retornou prompt vazio" }, { status: 502 });
     }
 
-    // 2) z-ai-web-dev-sdk gera a imagem
-    //    Instanciamos direto sem depender do arquivo .z-ai-config
-    //    (que não existe no Vercel). Credenciais vêm de env vars.
-    const ZAIModule: any = await import("z-ai-web-dev-sdk");
-    const ZAI = ZAIModule.default || ZAIModule;
-
-    const zaiConfig: any = {
-      baseUrl: process.env.Z_AI_BASE_URL || "https://internal-api.z.ai/v1",
-      apiKey: process.env.Z_AI_API_KEY || "Z.ai",
-    };
-    // Token e userId opcionais (se existirem no env)
-    if (process.env.Z_AI_TOKEN) zaiConfig.token = process.env.Z_AI_TOKEN;
-    if (process.env.Z_AI_USER_ID) zaiConfig.userId = process.env.Z_AI_USER_ID;
-    if (process.env.Z_AI_CHAT_ID) zaiConfig.chatId = process.env.Z_AI_CHAT_ID;
-
-    const zai = new ZAI(zaiConfig);
+    // 2) Gerar a imagem via Pollinations.ai (API pública, sem auth)
+    //    Anteriormente usávamos z-ai-web-dev-sdk, mas o endpoint interno
+    //    (internal-api.z.ai) não é acessível da Vercel e o token era
+    //    por chat-session (expira). Pollinations é gratuito e robusto.
     const size = "1440x720"; // wide landscape, ideal pra hero
+    const width = 1440;
+    const height = 720;
 
-    const imgResp = await zai.images.generations.create({
-      prompt: imagePrompt + ", professional photography, high quality, 4k, sharp focus",
-      size,
-    });
+    // Pollinations URL format: https://image.pollinations.ai/prompt/{encoded_prompt}?width=W&height=H&nologo=true&model=flux
+    const fullPrompt = `${imagePrompt}, professional photography, high quality, 4k, sharp focus, hero banner`;
+    const encodedPrompt = encodeURIComponent(fullPrompt).slice(0, 1800);
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&model=flux&seed=${Date.now() % 1000000}`;
 
-    const base64 = imgResp?.data?.[0]?.base64;
-    if (!base64) {
-      return NextResponse.json({ error: "Image generation returned empty" }, { status: 502 });
+    // Fetch a imagem como buffer
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    let buffer: Buffer;
+    try {
+      const imgResp = await fetch(pollinationsUrl, {
+        signal: controller.signal,
+        headers: { "User-Agent": "ClodoaldoHeroImage/1.0" },
+      });
+      clearTimeout(timeout);
+      if (!imgResp.ok) {
+        return NextResponse.json({
+          error: `Pollinations HTTP ${imgResp.status}`,
+          url: pollinationsUrl,
+        }, { status: 502 });
+      }
+      const arrayBuffer = await imgResp.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    } catch (e: any) {
+      clearTimeout(timeout);
+      return NextResponse.json({
+        error: `Image fetch failed: ${e.message}`,
+      }, { status: 502 });
     }
 
-    const buffer = Buffer.from(base64, "base64");
+    if (!buffer || buffer.length < 1000) {
+      return NextResponse.json({ error: "Imagem retornou vazia ou muito pequena" }, { status: 502 });
+    }
+
+    const base64 = buffer.toString("base64");
 
     // 3) Salvar no Supabase Storage
     const sb: any = getSupabaseServer();
