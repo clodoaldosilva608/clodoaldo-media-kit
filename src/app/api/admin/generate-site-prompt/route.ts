@@ -176,12 +176,12 @@ function buildBasePrompt(
 • Tipo: ${nicheUpper}
 • Cidade: ${city}
 • Endereço: ${address || "Não disponível — use um endereço genérico de " + city}
-• ${hasWebsite ? `Site atual: ${website || "não disponível"} (substituir por site premium novo)` : "Não possui site — criar do zero"}
-• ${rating ? `Avaliação Google: ${rating} estrelas` : "Sem avaliação no Google"}
+• ${hasWebsite ? "Site atual: " + (website || "não disponível") + " (substituir por site premium novo)" : "Não possui site — criar do zero"}
+• ${rating ? "Avaliação Google: " + rating + " estrelas" : "Sem avaliação no Google"}
 • WhatsApp: +${waNum.slice(0, 2)} ${waNum.slice(2, 4)} ${waNum.slice(4, 9)}-${waNum.slice(9)}
-• ${instagram ? `Instagram: ${instagram}` : "Instagram: não disponível — criar @${lead.name.toLowerCase().replace(/\s+/g, "")}"}
-• ${facebook ? `Facebook: ${facebook}` : "Facebook: não disponível"}
-• Coordenadas: ${lat && lng ? `${lat}, ${lng}` : "não disponível — usar centro de " + city}
+• ${instagram ? "Instagram: " + instagram : "Instagram: não disponível"}
+• ${facebook ? "Facebook: " + facebook : "Facebook: não disponível"}
+• Coordenadas: ${lat && lng ? lat + ", " + lng : "não disponível — usar centro de " + city}
 • Demo de referência: ${demoUrl}
 
 ═══ DESIGN PREMIUM ═══
