@@ -259,8 +259,8 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
       })
       .catch(() => setLoadingKeys(false));
 
-    // Verifica se Asaas está configurado
-    fetch("/api/admin/payment-config")
+    // Verifica se Asaas está configurado (endpoint público, sem auth)
+    fetch("/api/public/payment-config")
       .then(r => r.json())
       .then(d => setAsaasConfigured(d.asaas_configured || false))
       .catch(() => {});
@@ -282,14 +282,14 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
   async function payWithAsaas() {
     setAsaasLoading(true);
     try {
-      const resp = await fetch("/api/admin/payment-config", {
+      const resp = await fetch("/api/public/asaas-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_sku: product.whatsapp_sku,
           customer_name: "Cliente Site",
           customer_email: "cliente@exemplo.com",
-          customer_cpf: "12345678901",
+          customer_cpf: "11144477735",
         }),
       });
       const json = await resp.json();
