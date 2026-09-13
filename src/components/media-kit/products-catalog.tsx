@@ -293,15 +293,15 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
         }),
       });
       const json = await resp.json();
-      if (json.pix_copy_paste || json.payment_link) {
+      if (json.pix_copy_paste || json.payment_link || json.pix_qr_code) {
         setAsaasPayment(json);
-      } else if (json.setup_instructions) {
-        alert("Asaas não configurado. Use pagamento manual (chave PIX) por enquanto.");
+      } else if (json.error) {
+        setAsaasPayment({ error: json.error });
       } else {
-        alert("Erro ao gerar PIX automático: " + (json.error || "desconhecido"));
+        setAsaasPayment({ error: "Erro desconhecido ao gerar PIX" });
       }
     } catch (e: any) {
-      alert("Erro: " + e.message);
+      setAsaasPayment({ error: e.message });
     }
     setAsaasLoading(false);
   }
@@ -367,6 +367,11 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
             {/* Asaas payment result */}
             {asaasPayment && (
               <div className="space-y-3">
+                {asaasPayment.error ? (
+                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                    ⚠ {asaasPayment.error}
+                  </div>
+                ) : (
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">✅ PIX gerado — {asaasPayment.value ? 'R$ ' + asaasPayment.value : amountFormatted}</div>
                   {asaasPayment.pix_copy_paste && (
@@ -393,6 +398,7 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
                     💡 Pagamento confirmado automaticamente. Você receberá email de confirmação.
                   </div>
                 </div>
+                )}
                 <button onClick={() => setAsaasPayment(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar pra lista de bancos</button>
               </div>
             )}
