@@ -48,7 +48,7 @@ export interface AsaasCustomer {
 /**
  * Cria ou busca um customer no Asaas
  */
-export async function createCustomer(name: string, email: string, phone?: string): Promise<AsaasCustomer | null> {
+export async function createCustomer(name: string, email: string, phone?: string, cpfCnpj?: string): Promise<AsaasCustomer | null> {
   const apiKey = process.env.ASAAS_API_KEY;
   if (!apiKey) return null;
 
@@ -62,11 +62,15 @@ export async function createCustomer(name: string, email: string, phone?: string
       return searchData.data[0];
     }
 
-    // Cria novo
+    // Cria novo (CPF/CNPJ é obrigatório pra cobranças)
+    const body: any = { name, email };
+    if (phone) body.phone = phone;
+    if (cpfCnpj) body.cpfCnpj = cpfCnpj;
+
     const resp = await fetch(`${ASAAS_BASE}/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "access_token": apiKey },
-      body: JSON.stringify({ name, email, phone }),
+      body: JSON.stringify(body),
     });
     const data = await resp.json();
     return data;

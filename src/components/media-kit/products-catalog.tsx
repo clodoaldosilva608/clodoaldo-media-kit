@@ -289,6 +289,7 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
           product_sku: product.whatsapp_sku,
           customer_name: "Cliente Site",
           customer_email: "cliente@exemplo.com",
+          customer_cpf: "12345678901",
         }),
       });
       const json = await resp.json();

@@ -15,7 +15,7 @@ import { createCustomer, createPixPayment } from "@/lib/asaas";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { product_sku, customer_name, customer_email, customer_phone } = body;
+    const { product_sku, customer_name, customer_email, customer_phone, customer_cpf } = body;
 
     if (!product_sku || !customer_email) {
       return NextResponse.json({ error: "product_sku and customer_email required" }, { status: 400 });
@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "product not found" }, { status: 404 });
     }
 
-    // Cria customer no Asaas
-    const customer = await createCustomer(customer_name, customer_email, customer_phone);
+    // Cria customer no Asaas (CPF é obrigatório pra cobranças)
+    const customer = await createCustomer(customer_name, customer_email, customer_phone, customer_cpf);
     if (!customer) {
-      return NextResponse.json({ error: "Failed to create Asaas customer" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to create Asaas customer. Verifique se sua conta Asaas está aprovada para PIX." }, { status: 500 });
     }
 
     // Cria cobrança PIX
