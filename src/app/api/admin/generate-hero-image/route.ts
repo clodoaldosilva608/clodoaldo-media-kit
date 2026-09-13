@@ -79,8 +79,21 @@ Responda APENAS com a descrição visual (sem prefixo, sem explicações).`;
     }
 
     // 2) z-ai-web-dev-sdk gera a imagem
-    const ZAI = (await import("z-ai-web-dev-sdk")).default;
-    const zai = await ZAI.create();
+    //    Instanciamos direto sem depender do arquivo .z-ai-config
+    //    (que não existe no Vercel). Credenciais vêm de env vars.
+    const ZAIModule: any = await import("z-ai-web-dev-sdk");
+    const ZAI = ZAIModule.default || ZAIModule;
+
+    const zaiConfig: any = {
+      baseUrl: process.env.Z_AI_BASE_URL || "https://internal-api.z.ai/v1",
+      apiKey: process.env.Z_AI_API_KEY || "Z.ai",
+    };
+    // Token e userId opcionais (se existirem no env)
+    if (process.env.Z_AI_TOKEN) zaiConfig.token = process.env.Z_AI_TOKEN;
+    if (process.env.Z_AI_USER_ID) zaiConfig.userId = process.env.Z_AI_USER_ID;
+    if (process.env.Z_AI_CHAT_ID) zaiConfig.chatId = process.env.Z_AI_CHAT_ID;
+
+    const zai = new ZAI(zaiConfig);
     const size = "1440x720"; // wide landscape, ideal pra hero
 
     const imgResp = await zai.images.generations.create({
