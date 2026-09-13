@@ -2923,3 +2923,49 @@ Stage Summary:
 - ✅ Personalização por firstName, nicho e cidade
 - ✅ Deploy Vercel completo em https://clodoaldo.vercel.app
 - ✅ Botão "Gerar Proposta" no CRM continua funcionando (mesma rota /api/public/proposta)
+
+---
+Task ID: Proposta-Cronometro-Oferta-Surpresa
+Agent: main (GLM)
+Task: Adicionar cronômetro de validade + oferta surpresa de prorrogação quando expira
+
+Work Log:
+- Adicionado countdown bar sticky no topo da proposta (DD:HH:MM:SS em tempo real)
+- Calculado validUntilMs no servidor (now + 7 dias) e embutido no JS como DEADLINE
+- CSS: bar vermelha com gradient, units com background escuro e tabular-nums
+- Modo urgente (<24h): classe .urgent com animation pulseUrgent (scale 1.015)
+- Quando timer zera:
+  - Bar troca pra classe .expired (gradient laranja + pulseExpired animation)
+  - Mensagem da bar muda pra "⚠️ Proposta expirada — mas tem oferta surpresa abaixo"
+  - Modal de oferta surpresa abre automaticamente (classe .show)
+  - body overflow hidden pra bloquear scroll
+- Modal oferta surpresa:
+  - Badge pulsante "🚨 Oferta Surpresa de Última Hora"
+  - Headline: "Espera, ${firstName}! Não deixa escapar..."
+  - Sub-headline emocional: "Sua proposta venceu, mas eu não quero que você perca a oportunidade..."
+  - Caixa de bônus (4 itens com emoji 🎁):
+    * +48 horas extras pra decidir
+    * 1 revisão extra grátis do site (não inclusa no plano base)
+    * Treinamento pessoal de 30min comigo
+    * Condição de pagamento estendida
+  - Mini-timer de 48h dentro do modal (HH:MM:SS)
+  - Quando mini-timer zera: CTA muda pra vermelho "⏰ Última chance — falar agora no WhatsApp"
+  - CTA WhatsApp: "Quero aproveitar a prorrogação agora"
+  - Fine print: "Oferta válida uma única vez. Após o fim do prazo extra, a proposta será arquivada definitivamente."
+  - Botão X pra fechar + click fora fecha
+- Animações: fadeIn (overlay), slideUp (modal), pulseBadge, pulseUrgent, pulseExpired
+- Print-friendly: countdown e modal ocultos no @media print
+- Mobile responsive: bar usa flex-wrap
+- Sincronizado /api/public/proposta e /api/admin/proposta-pdf (cp direto)
+- Deploy Vercel: https://clodoaldo.vercel.app
+- Smoke test: POST /api/public/proposta com lead inválido → 404 ✓
+
+Stage Summary:
+- ✅ Cronômetro em tempo real sticky no topo da proposta
+- ✅ Modo urgente visual quando faltam <24h (pulse animation)
+- ✅ Quando expira: bar muda cor + mensagem + abre modal de oferta surpresa
+- ✅ Modal oferece prorrogação de +48h com 4 bônus extras
+- ✅ Mini-timer de 48h dentro do modal (segunda camada de urgência)
+- ✅ Quando mini-timer zera: CTA muda pra vermelho "última chance"
+- ✅ Modal pode ser fechado mas timer continua (reabre só se lead refresh)
+- ✅ Print-friendly (oculta countdown e modal no print)
