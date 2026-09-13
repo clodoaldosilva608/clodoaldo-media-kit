@@ -183,7 +183,7 @@ Posso te mostrar números reais: em média, meus clientes veem +30% a +120% de a
     break: `Justo! Confiança é tudo num negócio. Deixa eu compartilhar 3 coisas sobre mim:
 
 1. Meu nome é Clodoaldo Silva, você pode me achar em qualquer rede — não sou anônimo
-2. Tenho portfólio público com cases reais de clientes da região — você pode verificar tudo direto no meu site: 🌐 clodoaldo-media-kit.vercel.app
+2. Tenho portfólio público com cases reais de clientes da região — você pode verificar tudo direto no meu site: 🌐 clodoaldo.vercel.app
 3. O pagamento é em 3x — você só paga a última parcela se o site estiver pronto e funcionando
 
 Qualquer dúvida, é só me chamar no WhatsApp: 📱 (81) 92005-1068. Se não fizer sentido pra você, a gente encerra amigável.`,

@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const waNum = (lead.whatsapp || "5581920051068").replace(/\D/g, "");
     const cityName = city.split(",")[0].trim();
     const nicheUpper = niche.charAt(0).toUpperCase() + niche.slice(1);
-    const demoUrl = lead.demo_url || `https://clodoaldo-media-kit.vercel.app/api/preview?lead=${lead.id}&style=dark`;
+    const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
 
     // Gerar prompt base (compartilhado por todas as plataformas)
     const basePrompt = buildBasePrompt(lead, niche, cityName, hasWebsite, rating, website, formattedAddress, lat, lng, instagram, facebook, waNum, demoUrl);

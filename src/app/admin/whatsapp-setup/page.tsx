@@ -187,7 +187,7 @@ export default function WhatsAppSetupPage() {
           <li>Toque em <strong>Ferramentas comerciais → Catálogo</strong></li>
           <li>Toque em <strong>"Adicionar novo item"</strong> ou <strong>"Importar"</strong> (se disponível)</li>
           <li>Para cada produto do CSV, adicione manualmente: Nome, Descrição, Preço, SKU</li>
-          <li>Adicione foto (use logo do clodoaldo-media-kit.vercel.app/assets/clodoaldo-logo.png)</li>
+          <li>Adicione foto (use logo do clodoaldo.vercel.app/assets/clodoaldo-logo.png)</li>
           <li>Publique o catálogo — fica visível no seu perfil comercial</li>
         </ol>
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] text-amber-200/80">

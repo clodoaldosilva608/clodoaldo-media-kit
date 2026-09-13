@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString("pt-BR");
     const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR");
-    const demoUrl = lead.demo_url || `https://clodoaldo-media-kit.vercel.app/api/preview?lead=${lead.id}&style=dark`;
+    const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
 
     const totalCents = (products || []).reduce((sum: number, p: any) => sum + (p.price_cents || 0), 0);
     const totalFormatted = (totalCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
   </div>
   <div class="footer">
     Clodoaldo Silva — Criador e Desenvolvedor Digital<br>
-    📱 (81) 92005-1068 • 🌐 clodoaldo-media-kit.vercel.app
+    📱 (81) 92005-1068 • 🌐 clodoaldo.vercel.app
   </div>
 </div>
 </body></html>`;

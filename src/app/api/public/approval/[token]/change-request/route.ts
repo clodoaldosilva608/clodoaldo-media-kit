@@ -121,7 +121,7 @@ Acesse o painel admin para responder.`,
         category: CATEGORY_LABELS[body.category as keyof typeof CATEGORY_LABELS] || body.category,
         hasExtraCost: body.force_with_cost || false,
         forceWithCost: body.force_with_cost || false,
-        adminUrl: `https://clodoaldo-media-kit.vercel.app/admin/aprovacoes`,
+        adminUrl: `https://clodoaldo.vercel.app/admin/aprovacoes`,
       });
     } catch {}
 

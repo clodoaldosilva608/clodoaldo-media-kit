@@ -289,7 +289,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Geocode the location using OpenStreetMap Nominatim (FREE, no key needed)
     const geocodeUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location + ", Brasil")}&format=json&limit=1`;
     const geocodeResp = await fetch(geocodeUrl, {
-      headers: { "User-Agent": "ClodoaldoAdmin/1.0 (contato@clodoaldo-media-kit.vercel.app)" },
+      headers: { "User-Agent": "ClodoaldoAdmin/1.0 (contato@clodoaldo.vercel.app)" },
     });
 
     if (!geocodeResp.ok) {

@@ -9,7 +9,7 @@ import { getSupabaseServer } from "@/lib/supabase-server";
 
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "https://clodoaldo-media-kit.vercel.app/api/oauth/google/callback";
+const REDIRECT_URI = process.env.GOOGLE_OAUTH_REDIRECT_URI || "https://clodoaldo.vercel.app/api/oauth/google/callback";
 
 // Escopos OAuth (sem youtube/blogger — eles usam API Key)
 const SCOPES = [

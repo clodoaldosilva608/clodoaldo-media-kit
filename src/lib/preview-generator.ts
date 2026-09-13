@@ -767,11 +767,11 @@ export function generatePreviewHTML(lead: PreviewLead): string {
 <meta name="theme-color" content="${c.dark}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="${lead.name}">
-<link rel="icon" href="https://clodoaldo-media-kit.vercel.app/assets/clodoaldo-logo.png">
-<link rel="apple-touch-icon" href="https://clodoaldo-media-kit.vercel.app/assets/clodoaldo-logo.png">
+<link rel="icon" href="https://clodoaldo.vercel.app/assets/clodoaldo-logo.png">
+<link rel="apple-touch-icon" href="https://clodoaldo.vercel.app/assets/clodoaldo-logo.png">
 <meta property="og:title" content="${lead.name} | ${n} em ${city}">
 <meta property="og:description" content="${lead.rating ? lead.rating + ' estrelas no Google.' : ''}">
-<meta property="og:image" content="https://clodoaldo-media-kit.vercel.app/assets/clodoaldo-logo.png">
+<meta property="og:image" content="https://clodoaldo.vercel.app/assets/clodoaldo-logo.png">
 <meta property="og:type" content="website">
 <style>
 :root{--primary:${c.primary};--accent:${c.accent};--dark:${c.dark};--light:${c.light};--gold:#FFD700}
@@ -1016,7 +1016,7 @@ footer .social a:hover{background:var(--primary);color:${c.dark};border-color:va
   </div>
   <div class="credit">
     <p>© ${new Date().getFullYear()} ${lead.name}. Todos os direitos reservados.</p>
-    <p style="margin-top:6px">Site criado por <a href="https://clodoaldo-media-kit.vercel.app" target="_blank">Clodoaldo Silva</a></p>
+    <p style="margin-top:6px">Site criado por <a href="https://clodoaldo.vercel.app" target="_blank">Clodoaldo Silva</a></p>
   </div>
 </footer>
 

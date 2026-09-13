@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
 
         // Dispara evento de purchase (analytics)
         try {
-          await fetch("https://clodoaldo-media-kit.vercel.app/api/track", {
+          await fetch("https://clodoaldo.vercel.app/api/track", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

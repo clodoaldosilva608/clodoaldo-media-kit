@@ -9,8 +9,8 @@ export function personSchema() {
     "@context": "https://schema.org",
     "@type": "Person",
     name: "Clodoaldo Silva",
-    url: "https://clodoaldo-media-kit.vercel.app",
-    image: "https://clodoaldo-media-kit.vercel.app/assets/clodoaldo-hero.webp",
+    url: "https://clodoaldo.vercel.app",
+    image: "https://clodoaldo.vercel.app/assets/clodoaldo-hero.webp",
     jobTitle: "Criador e desenvolvedor digital",
     description:
       "Criador, desenvolvedor e estrategista digital. Transforma ideias em produtos reais desde 2016.",
@@ -27,8 +27,8 @@ export function organizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Clodoaldo Silva",
-    url: "https://clodoaldo-media-kit.vercel.app",
-    logo: "https://clodoaldo-media-kit.vercel.app/assets/clodoaldo-logo.webp",
+    url: "https://clodoaldo.vercel.app",
+    logo: "https://clodoaldo.vercel.app/assets/clodoaldo-logo.webp",
     founder: { "@type": "Person", name: "Clodoaldo Silva" },
     foundingDate: "2016",
     description:

@@ -215,12 +215,12 @@ async function notifyReplyTelegram(input: {
       inline_keyboard: [
         [
           { text: "💬 Responder no WhatsApp", url: waLink },
-          { text: "🔗 Ver no admin", url: "https://clodoaldo-media-kit.vercel.app/admin/parceiros" },
+          { text: "🔗 Ver no admin", url: "https://clodoaldo.vercel.app/admin/parceiros" },
         ],
       ],
     } : {
       inline_keyboard: [
-        [{ text: "🔗 Ver no admin", url: "https://clodoaldo-media-kit.vercel.app/admin/parceiros" }],
+        [{ text: "🔗 Ver no admin", url: "https://clodoaldo.vercel.app/admin/parceiros" }],
       ],
     },
   });

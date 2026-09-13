@@ -35,8 +35,8 @@ export const DEFAULT_TEMPLATES: EmailTemplate[] = [
 <p>Obrigado pelo seu interesse em meus serviços de criação de sites e presença digital. Recebi seus dados e em até <strong>24 horas úteis</strong> entrarei em contato pelo WhatsApp para entender melhor seu projeto.</p>
 <p>Enquanto isso, fique à vontade para:</p>
 <ul>
-  <li>Conhecer meu trabalho em <a href="https://clodoaldo-media-kit.vercel.app">clodoaldo-media-kit.vercel.app</a></li>
-  <li>Ver os cases publicados na <a href="https://clodoaldo-media-kit.vercel.app/biblioteca">biblioteca</a></li>
+  <li>Conhecer meu trabalho em <a href="https://clodoaldo.vercel.app">clodoaldo.vercel.app</a></li>
+  <li>Ver os cases publicados na <a href="https://clodoaldo.vercel.app/biblioteca">biblioteca</a></li>
   <li>Responder este email com qualquer dúvida</li>
 </ul>
 <p>Abraço,<br/><strong>Clodoaldo Silva</strong></p>

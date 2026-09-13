@@ -8,7 +8,7 @@ import { notifyPaidOrder } from "@/lib/telegram";
  * Webhook da Kiwify — recebe notificações de pagamento.
  *
  * Configurar no painel Kiwify:
- *   URL: https://clodoaldo-media-kit.vercel.app/api/webhook-kiwify
+ *   URL: https://clodoaldo.vercel.app/api/webhook-kiwify
  *   Método: POST
  *   Secret: o valor de KIWIFY_WEBHOOK_SECRET (env var)
  *

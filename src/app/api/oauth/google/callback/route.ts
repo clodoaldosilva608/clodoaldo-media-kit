@@ -6,17 +6,17 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(error)}`);
+    return NextResponse.redirect(`https://clodoaldo.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(error)}`);
   }
 
   if (!code) {
-    return NextResponse.redirect("https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_error=no_code");
+    return NextResponse.redirect("https://clodoaldo.vercel.app/admin/aprovacoes?google_error=no_code");
   }
 
   try {
     const tokens = await exchangeCodeForTokens(code);
     if (!tokens.access_token) {
-      return NextResponse.redirect(`https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(tokens.error_description || tokens.error || "token_exchange_failed")}`);
+      return NextResponse.redirect(`https://clodoaldo.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(tokens.error_description || tokens.error || "token_exchange_failed")}`);
     }
 
     // Get user email from token info
@@ -33,10 +33,10 @@ export async function GET(req: NextRequest) {
     await saveTokens(tokens);
 
     const redirectUrl = userEmail
-      ? `https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_connected=1&google_email=${encodeURIComponent(userEmail)}`
-      : "https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_connected=1";
+      ? `https://clodoaldo.vercel.app/admin/aprovacoes?google_connected=1&google_email=${encodeURIComponent(userEmail)}`
+      : "https://clodoaldo.vercel.app/admin/aprovacoes?google_connected=1";
     return NextResponse.redirect(redirectUrl);
   } catch (e: any) {
-    return NextResponse.redirect(`https://clodoaldo-media-kit.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(e.message)}`);
+    return NextResponse.redirect(`https://clodoaldo.vercel.app/admin/aprovacoes?google_error=${encodeURIComponent(e.message)}`);
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Instagram, Mail, MessageCircle, Youtube, Lock } from "lucide-react";
+import { Instagram, Mail, MessageCircle, Youtube, Lock, Link2 } from "lucide-react";
 import { Logo } from "./logo";
 
 function TikTokIcon({ size = 16 }: { size?: number }) {
@@ -91,6 +91,16 @@ export function Footer() {
             <li>
               <a href="https://youtube.com/@clodoaldosilvaa" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
                 <Youtube size={14} /> @clodoaldosilvaa
+              </a>
+            </li>
+            <li>
+              <a href="https://bio.site/clodoadosilva" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                <Link2 size={14} /> Site de Biografia
+              </a>
+            </li>
+            <li>
+              <a href="https://linktr.ee/clodoaldo608" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
+                <Link2 size={14} /> Linktree
               </a>
             </li>
           </ul>

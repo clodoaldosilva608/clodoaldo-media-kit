@@ -7,8 +7,8 @@ import { CASE_STUDIES, CASE_CATEGORY_LABELS, CASE_CATEGORY_COLORS, type CaseCate
 export const metadata: Metadata = {
   title: "Resultados — Cases estruturados | Clodoaldo Silva",
   description: "Cases reais com contexto, problema, estratégia, execução, métrica e resultado. Transparência total.",
-  alternates: { canonical: "https://clodoaldo-media-kit.vercel.app/resultados" },
-  openGraph: { title: "Resultados — Clodoaldo Silva", description: "Cases estruturados com transparência total.", url: "https://clodoaldo-media-kit.vercel.app/resultados" },
+  alternates: { canonical: "https://clodoaldo.vercel.app/resultados" },
+  openGraph: { title: "Resultados — Clodoaldo Silva", description: "Cases estruturados com transparência total.", url: "https://clodoaldo.vercel.app/resultados" },
 };
 
 const CATEGORIES: Array<{ id: CaseCategory | "todos"; label: string }> = [

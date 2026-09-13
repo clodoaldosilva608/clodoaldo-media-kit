@@ -29,7 +29,7 @@ import {
  * Auth: protected by CRON_SECRET env var.
  */
 
-const ORIGIN = "https://clodoaldo-media-kit.vercel.app";
+const ORIGIN = "https://clodoaldo.vercel.app";
 
 export async function POST(req: NextRequest) {
   // Auth check

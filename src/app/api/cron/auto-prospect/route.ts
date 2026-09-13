@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const today = new Date().toLocaleDateString("pt-BR");
 
     // 2. Search Google Maps for leads
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo.vercel.app";
 
     // 2a. Primeiro tenta Apify (mais completo — traz placeId, instagram, facebook, email)
     let leads: Lead[] = [];
@@ -447,7 +447,7 @@ function buildEmailHtml(leads: any[], niche: string, city: string, date: string)
         <p style="font-size:14px;color:#666;margin-bottom:16px;">Clique em "WhatsApp" para enviar a mensagem pronta. Clique em "Ver Demo" para mostrar o site que você já criou para o lead.</p>
         ${cards}
       </div>
-      <div style="text-align:center;padding:16px;font-size:11px;color:#999;">Prospecção automática • clodoaldo-media-kit.vercel.app</div>
+      <div style="text-align:center;padding:16px;font-size:11px;color:#999;">Prospecção automática • clodoaldo.vercel.app</div>
     </div>
   </body></html>`;
 }

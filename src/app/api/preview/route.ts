@@ -5,7 +5,7 @@ import { generatePreviewHTML, generatePreviewHTMLWithStyle } from "@/lib/preview
 /**
  * GET /api/preview?lead=<prospect_id>&style=<dark|light|bold|elegant>
  * Returns a full HTML page with the site preview for the lead.
- * Shareable link: https://clodoaldo-media-kit.vercel.app/api/preview?lead=<id>&style=dark
+ * Shareable link: https://clodoaldo.vercel.app/api/preview?lead=<id>&style=dark
  */
 export async function GET(req: NextRequest) {
   try {
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!leadData) {
-      const notFoundHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview não encontrado</title></head><body style="background:#1b1b1b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center"><h1>Preview não encontrado</h1><p>O lead pode ter sido removido ou o link é inválido.</p><p style="margin-top:20px"><a href="https://clodoaldo-media-kit.vercel.app" style="color:#FE7B02">← Voltar ao site</a></p></div></body></html>`;
+      const notFoundHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview não encontrado</title></head><body style="background:#1b1b1b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0"><div style="text-align:center"><h1>Preview não encontrado</h1><p>O lead pode ter sido removido ou o link é inválido.</p><p style="margin-top:20px"><a href="https://clodoaldo.vercel.app" style="color:#FE7B02">← Voltar ao site</a></p></div></body></html>`;
       return new NextResponse(notFoundHtml, {
         status: 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },

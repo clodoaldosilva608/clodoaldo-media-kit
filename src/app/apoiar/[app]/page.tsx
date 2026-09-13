@@ -22,7 +22,7 @@ export async function generateMetadata({
   }
   const title = `Apoie ${app.name} e seja um Criador Parceiro | Clodoaldo Silva`;
   const description = `Construa o futuro conosco. Apoie o desenvolvimento de ${app.name} — ${app.tagline} — e tenha seu nome eternizado no Roll dos Criadores Parceiros.`;
-  const url = `https://clodoaldo-media-kit.vercel.app/apoiar/${app.slug}`;
+  const url = `https://clodoaldo.vercel.app/apoiar/${app.slug}`;
   return {
     title,
     description,

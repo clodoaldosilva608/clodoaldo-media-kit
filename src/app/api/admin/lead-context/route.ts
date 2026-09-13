@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     // 3) Constrói contexto final
     const niche = prospect?.niche || lead.intent || "negócio local";
     const city = prospect?.city || "Recife, PE";
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo.vercel.app";
     const demoUrl = lead.demo_url || `${siteUrl}/api/preview?lead=${lead.id}&style=dark`;
 
     return NextResponse.json({

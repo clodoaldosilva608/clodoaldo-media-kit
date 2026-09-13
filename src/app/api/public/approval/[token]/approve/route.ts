@@ -88,7 +88,7 @@ Próximo passo: entrar em contato para finalizar entrega.`,
         clientName: project.client_name,
         projectTitle: project.project_title,
         approvedAt: now,
-        adminUrl: `https://clodoaldo-media-kit.vercel.app/admin/aprovacoes`,
+        adminUrl: `https://clodoaldo.vercel.app/admin/aprovacoes`,
       });
     } catch {}
 

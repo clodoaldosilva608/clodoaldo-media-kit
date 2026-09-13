@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         ``,
       ];
 
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo-media-kit.vercel.app";
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://clodoaldo.vercel.app";
       const crmUrl = `${siteUrl}/admin/leads-crm`;
 
       leads.slice(0, 20).forEach((lead, i) => {

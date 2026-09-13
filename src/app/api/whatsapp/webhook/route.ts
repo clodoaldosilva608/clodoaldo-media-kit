@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       `<b>Mensagem:</b>`,
       `<i>${escapeHtml(text.slice(0, 500))}${text.length > 500 ? "…" : ""}</i>`,
       ``,
-      prospect ? `🔗 <a href="https://clodoaldo-media-kit.vercel.app/admin/parceiros">Ver no admin</a>` : "",
+      prospect ? `🔗 <a href="https://clodoaldo.vercel.app/admin/parceiros">Ver no admin</a>` : "",
     ].filter(Boolean).join("\n");
 
     try {
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
           inline_keyboard: [
             [
               { text: "💬 Responder no WhatsApp", url: `https://wa.me/${from}` },
-              { text: "🔗 Ver no admin", url: "https://clodoaldo-media-kit.vercel.app/admin/parceiros" },
+              { text: "🔗 Ver no admin", url: "https://clodoaldo.vercel.app/admin/parceiros" },
             ],
           ],
         } : undefined,

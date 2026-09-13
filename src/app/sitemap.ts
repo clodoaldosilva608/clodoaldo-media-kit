@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { APPS } from "@/lib/apps-catalog";
 
-const BASE_URL = "https://clodoaldo-media-kit.vercel.app";
+const BASE_URL = "https://clodoaldo.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
