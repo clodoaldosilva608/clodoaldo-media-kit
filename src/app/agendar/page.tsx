@@ -123,40 +123,7 @@ export default function AgendarPage() {
                 </div>
               </a>
 
-              {/* Opção 2: Google Calendar */}
-              <a
-                href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZaaZSZv2f1KQbQ3g5kqVdRP8X8gE2mN0oJaG3Jq4H9vqJ5lP4zT3rL2sK6nV5xW8yA1bC4dE7fG0hI3jK6mN9oP2qR5sT8uV1wX4yZ0aB3cD6eF9gH2iJ5kL8mN1oP4qR7sT0uV3wX6yZ9aB2cD5eF8gH1iJ4kL7mN0oP3qR6sT9uV2wX5yZ8aB1cD4eF7gH0iJ3kL6mN9oP2qR5sT8uV1wX4yZ"
-                target="_blank"
-                rel="noreferrer"
-                className="block rounded-2xl border border-blue-500/40 bg-blue-500/10 p-6 transition hover:bg-blue-500/20"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/20">
-                    <Calendar className="h-6 w-6 text-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-foreground">Google Calendar</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Escolha um horário diretamente na minha agenda do Google.
-                      Confirmação automática.
-                    </p>
-                  </div>
-                  <ArrowLeft className="h-5 w-5 rotate-180 text-muted-foreground" />
-                </div>
-              </a>
 
-              {/* Setup Cal.com (instruções pra mim mesmo) */}
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-5">
-                <h3 className="text-sm font-bold text-amber-300 mb-2">💡 Configurar Cal.com (opcional)</h3>
-                <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Crie conta grátis em <a href="https://cal.com" target="_blank" rel="noreferrer" className="text-amber-400 underline">cal.com</a></li>
-                  <li>Crie evento "Consultoria — 30min"</li>
-                  <li>Conecte seu Google Calendar</li>
-                  <li>Pegue a URL do evento (ex: cal.com/clodoaldo/consultoria)</li>
-                  <li>Configure env var <code className="rounded bg-black/20 px-1">CALCOM_EVENT_URL</code> no Vercel</li>
-                  <li>Recarregue esta página — o embed aparece automaticamente</li>
-                </ol>
-              </div>
             </div>
           </>
         )}
