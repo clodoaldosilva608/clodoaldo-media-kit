@@ -59,7 +59,18 @@ export async function createCustomer(name: string, email: string, phone?: string
     });
     const searchData = await searchResp.json();
     if (searchData?.data?.length > 0) {
-      return searchData.data[0];
+      const existing = searchData.data[0];
+      // Se customer existe mas não tem CPF e nós temos CPF, atualiza
+      if (cpfCnpj && !existing.cpfCnpj) {
+        const updateResp = await fetch(`${ASAAS_BASE}/customers/${existing.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "access_token": apiKey },
+          body: JSON.stringify({ name, email, phone: phone || existing.phone, cpfCnpj }),
+        });
+        const updated = await updateResp.json();
+        return updated.id ? updated : existing;
+      }
+      return existing;
     }
 
     // Cria novo (CPF/CNPJ é obrigatório pra cobranças)
@@ -109,9 +120,27 @@ export async function createPixPayment(params: {
     if (data.errors) {
       const errMsg = data.errors.map((e: any) => e.description).join("; ");
       console.error("[asaas] payment error:", errMsg);
-      // Return error object instead of null so caller can show message
       return { error: errMsg } as any;
     }
+
+    // Asaas não retorna o QR code na criação — precisa chamar endpoint separado
+    if (data.id) {
+      try {
+        const qrResp = await fetch(`${ASAAS_BASE}/payments/${data.id}/pixQrCode`, {
+          headers: { "access_token": apiKey },
+        });
+        const qrData = await qrResp.json();
+        if (qrData && !qrData.errors) {
+          data.pixCopyPaste = qrData.payload || null;
+          data.pixQrCode = qrData.encodedImage
+            ? `data:image/png;base64,${qrData.encodedImage}`
+            : null;
+        }
+      } catch (e) {
+        console.warn("[asaas] pixQrCode fetch error:", e);
+      }
+    }
+
     return data;
   } catch (e) {
     console.error("[asaas] createPixPayment error:", e);
