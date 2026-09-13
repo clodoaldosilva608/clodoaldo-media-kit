@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, EmptyState, Button, Input, Label, Textarea } from "@/components/admin/ui";
 import { adminUpsert, fetchAdminData } from "@/lib/admin/data";
-import { Settings, RefreshCw, Save, Database, AlertTriangle, Code, Copy, Check, FileText, Mail, Send, Loader2, CheckCircle2, QrCode, DollarSign, Plus, Trash2 } from "lucide-react";
+import { Settings, RefreshCw, Save, Database, AlertTriangle, Code, Copy, Check, FileText, Mail, Send, Loader2, CheckCircle2, QrCode, DollarSign, Plus, Trash2, Zap } from "lucide-react";
 
 interface AppSetting {
   key: string;
@@ -161,6 +161,7 @@ export default function AdminSettingsPage() {
 
       <GoogleOAuthWidget />
       <PixConfigWidget />
+      <AsaasConfigWidget />
       <WeeklyReportWidget />
     </AdminShell>
   );
@@ -660,6 +661,169 @@ function PixConfigWidget() {
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-3 text-[11px] text-emerald-200/70">
             💡 Você pode cadastrar múltiplas chaves PIX (telefone, email, CPF, aleatória ou BR Code completo). A chave padrão é usada automaticamente no fluxo de entrega do projeto.
           </div>
+        </div>
+      )}
+    </Widget>
+  );
+}
+
+// =====================================================
+// ASAAS CONFIG WIDGET — status + webhook + PIX automático
+// =====================================================
+function AsaasConfigWidget() {
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [webhookTest, setWebhookTest] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch("/api/admin/payment-config");
+      const json = await resp.json();
+      setStatus(json);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function testWebhook() {
+    setTesting(true);
+    setWebhookTest(null);
+    try {
+      const resp = await fetch("/api/webhook-asaas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "asaas-access-token": process.env.NEXT_PUBLIC_CRON_SECRET || "bc4d32cc6d0e39e91f62a790f282b0e2c3d3d5fd6e936943",
+        },
+        body: JSON.stringify({
+          event: "PAYMENT_RECEIVED",
+          payment: {
+            id: "pay_test_" + Date.now(),
+            status: "RECEIVED",
+            value: 1700,
+            externalReference: "test_webhook",
+          },
+        }),
+      });
+      const json = await resp.json();
+      setWebhookTest({ ok: resp.ok, data: json });
+    } catch (e: any) {
+      setWebhookTest({ ok: false, error: e.message });
+    }
+    setTesting(false);
+  }
+
+  const configured = status?.asaas_configured;
+
+  return (
+    <Widget
+      title="Asaas — PIX Automático"
+      icon={<DollarSign className="h-4 w-4 text-emerald-400" />}
+      className="mt-4"
+      action={<Button variant="outline" size="sm" onClick={load} disabled={loading}><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /></Button>}
+    >
+      {loading ? (
+        <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-600" /></div>
+      ) : (
+        <div className="space-y-4">
+          {/* Status */}
+          <div className={`rounded-xl border p-4 ${configured ? "border-emerald-500/30 bg-emerald-500/[0.06]" : "border-amber-500/30 bg-amber-500/[0.06]"}`}>
+            <div className="flex items-center gap-3">
+              {configured ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+              )}
+              <div>
+                <div className={`text-sm font-bold ${configured ? "text-emerald-200" : "text-amber-200"}`}>
+                  {configured ? "Asaas conectado" : "Asaas não configurado"}
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-0.5">
+                  {configured
+                    ? "PIX automático ativo — cobranças geradas e confirmadas via webhook"
+                    : "Configure ASAAS_API_KEY e ASAAS_WEBHOOK_TOKEN no Vercel"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {configured && (
+            <>
+              {/* Webhook info */}
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 space-y-2">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Webhook URL</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 font-mono text-[11px] text-zinc-300 break-all bg-black/20 px-2 py-1.5 rounded">
+                    {status?.webhook_url || "https://clodoaldo.vercel.app/api/webhook-asaas"}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(status?.webhook_url || "https://clodoaldo.vercel.app/api/webhook-asaas");
+                    }}
+                    className="text-zinc-400 hover:text-zinc-200 p-1.5 shrink-0"
+                    title="Copiar URL"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="text-[10px] text-zinc-500">
+                  Configure no painel Asaas → Settings → Webhooks → URL acima → Evento: PAYMENT_RECEIVED
+                </div>
+              </div>
+
+              {/* Webhook test */}
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={testWebhook} disabled={testing}>
+                  {testing ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Testando…</> : <><Zap className="h-3.5 w-3.5" /> Testar webhook</>}
+                </Button>
+                {webhookTest && (
+                  <span className={`text-xs font-semibold ${webhookTest.ok ? "text-emerald-300" : "text-rose-300"}`}>
+                    {webhookTest.ok ? "✅ Webhook OK!" : "❌ Erro no webhook"}
+                  </span>
+                )}
+              </div>
+
+              {/* Env vars status */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-2.5 text-center">
+                  <code className="block text-[10px] font-mono text-zinc-300">ASAAS_API_KEY</code>
+                  <Badge variant="success">✓ Configurado</Badge>
+                </div>
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] p-2.5 text-center">
+                  <code className="block text-[10px] font-mono text-zinc-300">ASAAS_WEBHOOK_TOKEN</code>
+                  <Badge variant="success">✓ Configurado</Badge>
+                </div>
+              </div>
+
+              {/* Flow explanation */}
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.04] p-3 text-[11px] text-blue-200/80">
+                <strong>Fluxo automático:</strong>
+                <ol className="mt-1.5 space-y-0.5 list-decimal list-inside text-zinc-400">
+                  <li>Cliente clica "Pagar com PIX" no site → Asaas gera QR Code + Copia e Cola</li>
+                  <li>Cliente paga → Asaas envia webhook pra /api/webhook-asaas</li>
+                  <li>Sistema atualiza order pra 'paid' → envia email → notifica Telegram</li>
+                  <li>Custo: R$ 0,99 por PIX recebido (descontado do valor)</li>
+                </ol>
+              </div>
+            </>
+          )}
+
+          {!configured && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 text-[11px] text-amber-200/80">
+              <strong>Como configurar:</strong>
+              <ol className="mt-1.5 space-y-1 list-decimal list-inside text-zinc-400">
+                <li>Crie conta em <a href="https://www.asaas.com" target="_blank" rel="noreferrer" className="text-amber-400 underline">asaas.com</a> (grátis)</li>
+                <li>Complete cadastro com CPF/CNPJ → aguarde aprovação (instantâneo)</li>
+                <li>Gere API Key em Perfil → Integrações → API Keys</li>
+                <li>Configure Webhook: URL acima, Token, Evento: PAYMENT_RECEIVED</li>
+                <li>Adicione <code className="text-amber-300">ASAAS_API_KEY</code> e <code className="text-amber-300">ASAAS_WEBHOOK_TOKEN</code> no Vercel</li>
+                <li>Recarregue esta página</li>
+              </ol>
+            </div>
+          )}
         </div>
       )}
     </Widget>
