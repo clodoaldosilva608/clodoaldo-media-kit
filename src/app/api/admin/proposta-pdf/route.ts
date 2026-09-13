@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
 /**
- * POST /api/admin/proposta-pdf
+ * POST /api/public/proposta
  *
- * Gera HTML de proposta comercial persuasiva — trabalha o inconsciente:
- * - Loss aversion (o que perde por não ter)
- * - Social proof (números, prova social)
- * - Anchoring (compara com aluguel, funcionário)
- * - Reciprocity (demo grátis já entregue)
- * - Scarcity (validade 7 dias)
- * - Authority (credenciais, portfólio)
+ * Gera HTML de uma CARTA DE VENDAS persuasiva (não tabela de preços).
+ * Foco em neurociência comportamental aplicada à conversão:
+ * - Reciprocity (demo já entregue de graça)
+ * - Loss Aversion (o que perde por dia/mês sem site)
+ * - Future Pacing (imagine daqui 90 dias)
+ * - Value Stack (empilhar valor percebido, sem revelar preço)
+ * - Authority (8+ anos, 75+ empresas)
+ * - Social Proof (números, resultados)
+ * - Risk Reversal (sem fidelidade, site é seu, suporte direto)
+ * - Scarcity + Urgency (validade 7 dias + custo invisível de esperar)
+ * - CTA Múltiplo → WhatsApp para definir investimento
  *
  * Body: { lead_id, product_skus?: string[] }
  */
@@ -38,178 +42,326 @@ export async function POST(req: NextRequest) {
     const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR");
     const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
 
-    const totalCents = (products || []).reduce((sum: number, p: any) => sum + (p.price_cents || 0), 0);
-    const totalFormatted = (totalCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const installment = (totalCents / 12 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const monthlyEquivalent = (totalCents / 12 / 100 * 0.3).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    // Nicho para personalização
+    const nicheText = lead.notes?.match(/Nicho: ([^,\n]+)/)?.[1] || lead.intent || "seu nicho";
+    const cidade = lead.notes?.match(/Cidade: ([^,\n]+)/)?.[1] || lead.city || "sua região";
+    const firstName = (lead.name || "empreendedor").split(" ")[0];
 
-    const productRows = (products || []).map((p: any, i: number) => `
-      <tr>
-        <td style="padding:14px;border-bottom:1px solid #eee;">
-          <div style="font-weight:bold;color:#0a0a0a;font-size:14px;">${p.icon || "✅"} ${p.name}</div>
-          <div style="font-size:11px;color:#888;margin-top:3px;">${p.description || ""}</div>
-        </td>
-        <td style="padding:14px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;color:#10b981;font-weight:bold;font-size:13px;">
-          ${p.price_label || (p.price_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-        </td>
-      </tr>
+    // Lista de produtos/serviços incluídos (VALUE STACK — sem preço)
+    const valueStack = (products || []).map((p: any, i: number) => `
+      <div class="value-item">
+        <div class="value-num">${String(i + 1).padStart(2, "0")}</div>
+        <div class="value-content">
+          <div class="value-title">${p.icon || "✅"} ${p.name}</div>
+          <div class="value-desc">${p.description || "Incluso no seu projeto."}</div>
+        </div>
+        <div class="value-check">✓</div>
+      </div>
     `).join("");
 
-    // Determinar nicho para personalizar a proposta
-    const nicheText = lead.notes?.match(/Nicho: ([^,]+)/)?.[1] || lead.intent || "seu negócio";
-    const hasSite = lead.site_status === "ok" || lead.notes?.includes("Tem site: Sim");
+    const whatsappLink = `https://wa.me/5581920051068?text=${encodeURIComponent(
+      `Olá Clodoaldo! Acabei de ler a proposta que você preparou para ${lead.name}. Quero entender melhor o investimento e como começamos. Pode me explicar?`
+    )}`;
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Proposta — ${lead.name} — ${today}</title>
+<title>Plano de Crescimento Digital — ${lead.name}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
-  .container { max-width: 700px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-  .header { background: linear-gradient(135deg, #0a0a0f, #1a1a2e); color: #fff; padding: 32px; text-align: center; }
-  .header h1 { font-size: 22px; font-weight: 800; }
-  .header .subtitle { font-size: 13px; opacity: 0.7; margin-top: 4px; }
-  .header .date { font-size: 11px; opacity: 0.5; margin-top: 8px; }
-  .body { padding: 32px; }
-  .section-title { font-size: 16px; font-weight: 800; color: #0a0a0a; margin: 24px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #10b981; }
-  .lead-info { background: #f9fafb; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center; }
-  .lead-info h2 { font-size: 18px; color: #0a0a0a; }
-  .lead-info p { font-size: 12px; color: #888; margin-top: 4px; }
-  .demo-box { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center; }
-  .demo-box a { color: #10b981; font-weight: bold; text-decoration: none; word-break: break-all; font-size: 12px; }
-  .pain-box { background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-  .pain-box h3 { font-size: 14px; color: #991b1b; margin-bottom: 10px; }
-  .pain-box p { font-size: 13px; color: #7f1d1d; line-height: 1.6; margin-bottom: 8px; }
-  .gain-box { background: #f0fdf4; border-left: 4px solid #10b981; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
-  .gain-box h3 { font-size: 14px; color: #065f46; margin-bottom: 10px; }
-  .gain-box p { font-size: 13px; color: #064e3b; line-height: 1.6; margin-bottom: 8px; }
-  .anchor-box { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center; }
-  .anchor-box .big { font-size: 28px; font-weight: 900; color: #0a0a0a; }
-  .anchor-box .small { font-size: 12px; color: #92400e; margin-top: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  th { text-align: left; padding: 12px; border-bottom: 2px solid #10b981; font-size: 11px; text-transform: uppercase; color: #666; }
-  .total-row { background: #f0fdf4; }
-  .total-row td { font-weight: 800; font-size: 16px; color: #10b981; border-bottom: none; }
-  .conditions { margin-bottom: 24px; }
-  .conditions h3 { font-size: 14px; color: #0a0a0a; margin-bottom: 8px; }
-  .conditions ul { list-style: none; }
-  .conditions li { font-size: 13px; color: #555; padding: 5px 0; }
-  .conditions li::before { content: "✓ "; color: #10b981; font-weight: bold; }
-  .urgency { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: center; }
-  .urgency h3 { font-size: 15px; color: #991b1b; }
-  .urgency p { font-size: 12px; color: #7f1d1d; margin-top: 4px; }
-  .cta { text-align: center; margin-top: 24px; }
-  .cta a { display: inline-block; background: #10b981; color: #fff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
-  .validity { text-align: center; font-size: 11px; color: #999; padding: 16px; border-top: 1px solid #eee; }
-  .footer { text-align: center; padding: 20px; font-size: 11px; color: #999; }
-  .social-proof { display: flex; justify-content: space-around; margin-bottom: 24px; }
-  .social-proof .stat { text-align: center; }
-  .social-proof .num { font-size: 24px; font-weight: 900; color: #10b981; }
-  .social-proof .label { font-size: 10px; color: #888; }
-  @media print { body { background: #fff; padding: 0; } .container { box-shadow: none; } }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1a1a1a; padding: 20px; line-height: 1.7; }
+  .container { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.08); }
+
+  /* HEADER premium */
+  .header { background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f1f1a 100%); color: #fff; padding: 40px 32px; text-align: center; position: relative; }
+  .header::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #10b981, #34d399, #10b981); }
+  .header .badge { display: inline-block; background: rgba(16,185,129,0.15); color: #34d399; padding: 6px 16px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; }
+  .header h1 { font-size: 26px; font-weight: 800; line-height: 1.2; }
+  .header .subtitle { font-size: 13px; opacity: 0.7; margin-top: 8px; }
+  .header .meta { font-size: 11px; opacity: 0.5; margin-top: 12px; }
+
+  .body { padding: 40px 32px; }
+
+  /* Personalização */
+  .lead-card { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 14px; padding: 20px; margin-bottom: 28px; text-align: center; }
+  .lead-card .for { font-size: 10px; color: #047857; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .lead-card h2 { font-size: 22px; color: #064e3b; margin: 6px 0 4px; font-weight: 800; }
+  .lead-card p { font-size: 12px; color: #065f46; }
+
+  /* Letter style */
+  .letter p { font-size: 14px; color: #2a2a2a; margin-bottom: 14px; line-height: 1.75; }
+  .letter .signature { font-size: 13px; color: #555; margin-top: 18px; font-style: italic; }
+
+  /* Demo box (RECIPROCITY) */
+  .demo-box { background: linear-gradient(135deg, #f0fdf4 0%, #d1fae5 100%); border: 2px solid #10b981; border-radius: 14px; padding: 24px; margin: 24px 0; text-align: center; }
+  .demo-box .demo-label { font-size: 10px; color: #047857; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+  .demo-box h3 { font-size: 18px; color: #064e3b; margin: 8px 0 12px; font-weight: 800; }
+  .demo-box a { color: #047857; font-weight: 700; text-decoration: underline; word-break: break-all; font-size: 13px; display: block; margin: 12px 0; }
+  .demo-box .note { font-size: 11px; color: #065f46; margin-top: 8px; }
+
+  /* LOSS AVERSION */
+  .pain-section { background: #fef2f2; border-left: 5px solid #dc2626; border-radius: 10px; padding: 24px; margin: 28px 0; }
+  .pain-section .tag { display: inline-block; background: #dc2626; color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .pain-section h3 { font-size: 17px; color: #7f1d1d; margin-bottom: 14px; font-weight: 800; }
+  .pain-section p { font-size: 13.5px; color: #7f1d1d; margin-bottom: 12px; line-height: 1.7; }
+  .pain-section .highlight { background: rgba(220,38,38,0.1); padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+  .calc-box { background: #fff; border: 2px dashed #fca5a5; border-radius: 10px; padding: 18px; margin-top: 14px; text-align: center; }
+  .calc-box .label { font-size: 11px; color: #991b1b; text-transform: uppercase; letter-spacing: 1px; }
+  .calc-box .big { font-size: 32px; font-weight: 900; color: #dc2626; margin: 8px 0; }
+  .calc-box .small { font-size: 12px; color: #7f1d1d; }
+
+  /* FUTURE PACE */
+  .future-section { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-left: 5px solid #10b981; border-radius: 10px; padding: 24px; margin: 28px 0; }
+  .future-section .tag { display: inline-block; background: #10b981; color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .future-section h3 { font-size: 17px; color: #064e3b; margin-bottom: 14px; font-weight: 800; }
+  .future-section p { font-size: 13.5px; color: #064e3b; margin-bottom: 12px; line-height: 1.7; }
+  .future-section strong { color: #064e3b; }
+
+  /* VALUE STACK */
+  .value-section { margin: 32px 0; }
+  .value-section .section-title { font-size: 18px; font-weight: 800; color: #0a0a0a; margin-bottom: 8px; }
+  .value-section .section-sub { font-size: 12px; color: #888; margin-bottom: 18px; }
+  .value-item { display: flex; align-items: center; background: #fff; border: 2px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; gap: 14px; transition: all 0.2s; }
+  .value-item:hover { border-color: #10b981; transform: translateX(2px); }
+  .value-num { background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 800; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .value-content { flex: 1; }
+  .value-title { font-weight: 700; color: #0a0a0a; font-size: 14px; }
+  .value-desc { font-size: 11.5px; color: #777; margin-top: 2px; line-height: 1.4; }
+  .value-check { color: #10b981; font-size: 18px; font-weight: 700; }
+
+  /* AUTHORITY */
+  .authority-section { background: linear-gradient(135deg, #fafafa, #f5f5f5); border-radius: 12px; padding: 22px; margin: 28px 0; border: 1px solid #e5e7eb; }
+  .authority-section h3 { font-size: 16px; color: #0a0a0a; margin-bottom: 12px; font-weight: 800; }
+  .authority-section p { font-size: 13.5px; color: #444; margin-bottom: 10px; line-height: 1.7; }
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 14px 8px; text-align: center; border: 1px solid #e5e7eb; }
+  .stat-card .num { font-size: 22px; font-weight: 900; color: #10b981; }
+  .stat-card .label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  /* RISK REVERSAL */
+  .risk-section { background: #fff7ed; border: 2px solid #fdba74; border-radius: 12px; padding: 22px; margin: 28px 0; }
+  .risk-section h3 { font-size: 16px; color: #7c2d12; margin-bottom: 12px; font-weight: 800; }
+  .risk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .risk-item { background: #fff; border-radius: 8px; padding: 12px; font-size: 12px; color: #7c2d12; display: flex; align-items: flex-start; gap: 8px; }
+  .risk-item .icon { color: #ea580c; font-weight: 800; flex-shrink: 0; }
+  .risk-item strong { display: block; margin-bottom: 2px; color: #7c2d12; }
+
+  /* SCARCITY */
+  .scarcity { background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 2px solid #fca5a5; border-radius: 14px; padding: 22px; margin: 28px 0; text-align: center; }
+  .scarcity .timer-icon { font-size: 28px; }
+  .scarcity h3 { font-size: 17px; color: #991b1b; margin: 8px 0; font-weight: 800; }
+  .scarcity p { font-size: 13px; color: #7f1d1d; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+  /* CTA */
+  .cta-box { background: linear-gradient(135deg, #0a0a0f, #1a1a2e); color: #fff; border-radius: 16px; padding: 32px 24px; margin: 32px 0; text-align: center; }
+  .cta-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+  .cta-box p { font-size: 13px; opacity: 0.85; margin-bottom: 20px; line-height: 1.6; }
+  .cta-button { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 18px 40px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 15px; box-shadow: 0 8px 24px rgba(16,185,129,0.4); transition: transform 0.2s; }
+  .cta-button:hover { transform: translateY(-2px); }
+  .cta-note { font-size: 11px; opacity: 0.6; margin-top: 14px; }
+
+  /* Inline CTA */
+  .inline-cta { text-align: center; margin: 20px 0; }
+  .inline-cta a { display: inline-block; background: #10b981; color: #fff; padding: 12px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 13px; box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
+
+  /* P.S. */
+  .ps { background: #f9fafb; border-radius: 12px; padding: 22px; margin: 28px 0; border-left: 4px solid #6366f1; }
+  .ps .ps-label { font-size: 14px; font-weight: 800; color: #4338ca; margin-bottom: 8px; }
+  .ps p { font-size: 13px; color: #374151; line-height: 1.7; margin-bottom: 10px; }
+
+  .footer { text-align: center; padding: 24px 16px; font-size: 11px; color: #999; background: #fafafa; border-top: 1px solid #eee; }
+  .footer strong { color: #555; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .container { box-shadow: none; border-radius: 0; }
+    .cta-button { box-shadow: none; }
+  }
+  @media (max-width: 600px) {
+    body { padding: 8px; }
+    .body { padding: 24px 18px; }
+    .header { padding: 28px 18px; }
+    .header h1 { font-size: 22px; }
+    .stats-row { grid-template-columns: 1fr; }
+    .risk-grid { grid-template-columns: 1fr; }
+    .value-item { padding: 12px; gap: 10px; }
+    .value-num { width: 30px; height: 30px; font-size: 11px; }
+  }
 </style></head><body>
 <div class="container">
   <div class="header">
-    <h1>📋 Proposta de Parceria Comercial</h1>
-    <div class="subtitle">Clodoaldo Silva — Criador e Desenvolvedor Digital</div>
-    <div class="date">Emitida em ${today} • Válida até ${validUntil}</div>
+    <div class="badge">📋 Proposta Exclusiva</div>
+    <h1>Plano de Crescimento Digital</h1>
+    <div class="subtitle">Projetado manualmente para acelerar a captação de clientes do seu negócio</div>
+    <div class="meta">Emitida em ${today} • Válida até ${validUntil}</div>
   </div>
+
   <div class="body">
 
-    <div class="lead-info">
+    <div class="lead-card">
+      <div class="for">Preparada exclusivamente para</div>
       <h2>${lead.name}</h2>
-      <p>${lead.whatsapp || "—"} • ${nicheText}</p>
+      <p>${nicheText} • ${cidade} • ${lead.whatsapp || ""}</p>
     </div>
 
-    <!-- RECIPROCITY: demo já entregue -->
+    <!-- LETTER OPENING — Storytelling, hook, reciprocity -->
+    <div class="letter">
+      <p>Olá <strong>${firstName}</strong>,</p>
+      <p>Antes de qualquer coisa: <strong>eu já comecei o trabalho pra você</strong>. Enquanto outros profissionais pedem 30 dias só pra te mandar um orçamento frio, eu já deixei pronto um <strong>preview do seu novo site</strong> — criado manualmente, com base no seu nicho, na sua cidade, no seu público.</p>
+      <p>Não é um template genérico. É <strong>o seu site</strong>, do seu jeito, pronto pra você ver com os próprios olhos como vai ficar. Sem custo, sem compromisso, sem letra miúda.</p>
+      <p>Essa proposta que você está lendo agora não é só uma lista de serviços. É o <strong>plano completo de crescimento digital</strong> que preparei pro seu negócio — e ela só existe porque eu enxerguei, nos detalhes do seu nicho, uma oportunidade real de você captar muito mais clientes a partir de amanhã.</p>
+      <p class="signature">— Clodoaldo Silva, criador e desenvolvedor digital</p>
+    </div>
+
+    <!-- RECIPROCITY: demo box -->
     <div class="demo-box">
-      🎨 <strong>Já criei seu site demo — está pronto pra ver agora:</strong><br><br>
-      <a href="${demoUrl}" target="_blank">${demoUrl}</a><br><br>
-      <span style="font-size:11px;color:#666;">Este preview foi criado gratuitamente, exclusivamente para ${lead.name}. É só clicar pra ver como ficaria.</span>
+      <div class="demo-label">🎁 Já está pronto (de graça)</div>
+      <h3>Seu site demonstração está no ar</h3>
+      <a href="${demoUrl}" target="_blank">${demoUrl}</a>
+      <div class="note">Clica, abre, navega. Esse preview foi construído manualmente pensando no seu negócio. Imagina ele 100% personalizado, com suas fotos, seus serviços, suas cores — pronto pra converter visitantes em clientes.</div>
     </div>
 
-    <!-- LOSS AVERSION: o que está perdendo -->
-    <div class="pain-box">
-      <h3>⚠️ O que você está perdendo TODO MÊS sem um site profissional</h3>
-      <p><strong>1. Clientes indo pro concorrente:</strong> 150-400 pessoas pesquisam "${nicheText}" na sua região todo mês no Google. Sem site, <strong>todas vão pro concorrente que aparece primeiro</strong>.</p>
-      <p><strong>2. Invisibilidade digital:</strong> 87% dos consumidores pesquisam online antes de decidir onde comprar. Se não te encontram, <strong>você não existe</strong> pra esses 87%.</p>
-      <p><strong>3. Custo invisível:</strong> A cada mês sem site = 30-50 clientes novos que NÃO vieram. Em 6 meses, são <strong>200+ clientes perdidos</strong>. Em 1 ano, 400+. Cada cliente que não veio é dinheiro que foi direto pro bolso do concorrente.</p>
-      <p><strong>4. Dependência de indicação:</strong> Se para de chover indicação, para de chover cliente. Sem site, você é refém do boca-a-boca — que não é escalável nem previsível.</p>
+    <!-- LOSS AVERSION — strongest emotion -->
+    <div class="pain-section">
+      <div class="tag">⚠️ O Custo Invisível de Esperar</div>
+      <h3>${firstName}, todo mês sem um site profissional tá te custando dinheiro.</h3>
+      <p>Posso ser direto? <strong>Cada dia que você adia essa decisão, clientes seus estão entrando no concorrente.</strong> Não é palpite — é matemática:</p>
+      <p><strong>1. Pesquisa no Google.</strong> Toda mês, dezenas de pessoas pesquisam "<span class="highlight">${nicheText} em ${cidade}</span>" no Google. Sem um site otimizado, <strong>todas essas pessoas vão parar no concorrente que aparece primeiro</strong>. Não porque ele é melhor. Só porque ele apareceu.</p>
+      <p><strong>2. Cliente que não te acha, não te compra.</strong> 87% dos consumidores pesquisam online antes de decidir onde comprar. Se você não aparece, você <strong>não existe</strong> pra esses 87%. Some do radar. E o cliente vai pra quem apareceu.</p>
+      <p><strong>3. Dependência perigosa.</strong> Sem site, você é refém do boca-a-boca e de indicação. Funciona? Funciona. Mas <strong>quando seca, seca</strong>. E ninguém te avisa. Acordou um dia, parou de chover cliente, e você não sabe por quê.</p>
+
+      <div class="calc-box">
+        <div class="label">Projeção conservadora de perda</div>
+        <div class="big">−30 a −50 clientes/mês</div>
+        <div class="small">Em 6 meses: <strong>200+ clientes</strong> que não vieram<br>Em 12 meses: <strong>400+ clientes</strong> que foram pro concorrente<br><br>Cada cliente que não veio é dinheiro que <strong>entrou direto no bolso de quem apareceu primeiro no Google</strong>.</div>
+      </div>
+
+      <p style="margin-top: 16px;"><strong>O pior custo é o que você não vê.</strong> Você não vê o cliente que pesquisou, não te achou, e foi pra outro. Você só sente no fim do mês, quando o faturamento não fecha. <strong>Esse é o custo invisível de esperar.</strong></p>
     </div>
 
-    <!-- GAIN: o que ganha -->
-    <div class="gain-box">
-      <h3>✅ O que muda com o site profissional</h3>
-      <p><strong>1. Aparece no Google:</strong> Quando alguém pesquisa "${nicheText} em Recife", você aparece. Cliente te acha antes do concorrente.</p>
-      <p><strong>2. Converte 24/7:</strong> O site trabalha por você enquanto você dorme. Cliente acessa, vê seus serviços, clica no WhatsApp e te chama — a qualquer hora.</p>
-      <p><strong>3. Profissionalismo:</strong> Cliente que vê um site moderno confia mais. Site ruim = "será que o serviço também é ruim?". Site premium = "esse cara é sério".</p>
-      <p><strong>4. Escala sem custo:</strong> 10, 100, 1000 visitantes por dia — o custo é o mesmo. Não precisa contratar mais ninguém pra atender mais gente.</p>
+    <!-- INLINE CTA -->
+    <div class="inline-cta">
+      <a href="${whatsappLink}" target="_blank">💬 Vamos conversar sobre seu projeto no WhatsApp</a>
     </div>
 
-    <!-- ANCHORING: comparação de valor -->
-    <div class="anchor-box">
-      <div class="small">O site profissional custa MENOS que:</div>
-      <div class="big">1 mês de aluguel da loja</div>
-      <div class="small">E diferente do aluguel (que se paga pra sempre), o site é SEU — trabalha 24/7 por anos</div>
+    <!-- FUTURE PACE — gain framing -->
+    <div class="future-section">
+      <div class="tag">✨ Daqui 90 dias</div>
+      <h3>Imaginou como o seu negócio vai estar?</h3>
+      <p><strong>Cliente te procura no Google</strong> — e te encontra. Não o concorrente. Você.</p>
+      <p><strong>Site trabalhando 24/7.</strong> Enquanto você dorme, atende, faz delivery, cuida da família — o site tá lá, captando cliente, mandando direto pro seu WhatsApp. Cliente acorda 3 da manhã com vontade de comprar? Às 3 da manhã ele te manda mensagem. <strong>Sem você precisar fazer nada.</strong></p>
+      <p><strong>Profissionalismo que vende.</strong> Cliente entra no site, vê um trabalho limpo, moderno, bem-feito — e pensa: <em>"esse cara é sério"</em>. Site ruim gera desconfiança. Site premium gera confiança. E cliente <strong>compra de quem confia</strong>.</p>
+      <p><strong>Escala sem custo.</strong> 10, 100, 1000 visitantes por dia — o custo é o mesmo. Você não precisa contratar mais ninguém pra atender mais gente. O site escala sozinho. <strong>Esse é o poder de ter uma máquina trabalhando por você.</strong></p>
     </div>
 
-    <!-- SOCIAL PROOF -->
-    <div class="social-proof">
-      <div class="stat"><div class="num">+75</div><div class="label">empresas atendidas</div></div>
-      <div class="stat"><div class="num">+8 anos</div><div class="label">de experiência</div></div>
-      <div class="stat"><div class="num">100%</div><div class="label">sem fidelidade</div></div>
+    <!-- VALUE STACK — sem preços, só empilhar valor -->
+    <div class="value-section">
+      <div class="section-title">📦 O que entra no seu projeto</div>
+      <div class="section-sub">Tudo isso já tá incluso — não é cobrado à parte, não tem "extra" escondido. Você fecha uma vez, recebe tudo.</div>
+      ${valueStack || `
+        <div class="value-item">
+          <div class="value-num">01</div>
+          <div class="value-content">
+            <div class="value-title">✅ Site Profissional Premium</div>
+            <div class="value-desc">Design moderno, responsivo, otimizado pra conversão e pra Google.</div>
+          </div>
+          <div class="value-check">✓</div>
+        </div>
+        <div class="value-item">
+          <div class="value-num">02</div>
+          <div class="value-content">
+            <div class="value-title">✅ Otimização pra Google (SEO)</div>
+            <div class="value-desc">Configurado pra você aparecer nas buscas do seu nicho na sua região.</div>
+          </div>
+          <div class="value-check">✓</div>
+        </div>
+        <div class="value-item">
+          <div class="value-num">03</div>
+          <div class="value-content">
+            <div class="value-title">✅ Botão Direto de WhatsApp</div>
+            <div class="value-desc">Visitante clica uma vez e já tá falando com você. Fim da fricção.</div>
+          </div>
+          <div class="value-check">✓</div>
+        </div>
+      `}
     </div>
 
-    <!-- PRODUTOS -->
-    <div class="section-title">📦 Investimento</div>
-    <table>
-      <thead>
-        <tr><th>Produto / Serviço</th><th style="text-align:right;">Investimento</th></tr>
-      </thead>
-      <tbody>
-        ${productRows}
-        <tr class="total-row">
-          <td style="padding:16px 12px;font-size:16px;">Total</td>
-          <td style="padding:16px 12px;text-align:right;font-size:18px;">${totalFormatted}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <!-- CONDIÇÕES -->
-    <div class="conditions">
-      <h3>Condições que eliminam o risco</h3>
-      <ul>
-        <li><strong>Parcelamento em até 12x</strong> de ${installment} — cabe no orçamento</li>
-        <li><strong>PIX com 5% de desconto</strong> à vista</li>
-        <li><strong>Sem fidelidade</strong> — cancele a recorrência quando quiser, sem multa</li>
-        <li><strong>Sem trabalho pra você</strong> — eu cuido de tudo (design, conteúdo, publicação)</li>
-        <li><strong>Site é seu pra sempre</strong> — entregue com domínio e hospedagem</li>
-        <li><strong>Suporte por WhatsApp</strong> durante todo o período</li>
-        <li><strong>Garantia implícita:</strong> se não gostar do resultado, ajusto até ficar perfeito</li>
-      </ul>
+    <!-- AUTHORITY -->
+    <div class="authority-section">
+      <h3>💼 Por que eu, e não qualquer um?</h3>
+      <p>Porque eu não entrego "um site". Eu entrego um <strong>sistema de captação de clientes</strong>. A diferença é simples: site bonito todo mundo faz. Site que <strong>aparece no Google, converte visitante em cliente e funciona 24/7</strong> — isso pouca gente sabe fazer.</p>
+      <p>Eu trabalho manualmente em cada projeto. Não é template, não é automático, não é "pronto em 5 minutos". Cada site é construído pensando no negócio de trás dele — porque um site sem estratégia é só um PDF caro na internet.</p>
+      <div class="stats-row">
+        <div class="stat-card"><div class="num">+75</div><div class="label">empresas atendidas</div></div>
+        <div class="stat-card"><div class="num">+8 anos</div><div class="label">de experiência real</div></div>
+        <div class="stat-card"><div class="num">100%</div><div class="label">sem fidelidade</div></div>
+      </div>
     </div>
 
-    <!-- SCARCITY -->
-    <div class="urgency">
-      <h3>⏰ Esta proposta é válida até ${validUntil}</h3>
-      <p>Após esta data, valores podem sofrer reajuste. Cada mês sem site = 30-50 clientes que não vieram. <strong>Quanto mais cedo começar, mais clientes captura.</strong></p>
+    <!-- RISK REVERSAL -->
+    <div class="risk-section">
+      <h3>🛡️ Tudo pra você decidir sem medo</h3>
+      <div class="risk-grid">
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Sem fidelidade</strong>Você cancela a recorrência quando quiser, sem multa, sem burocracia.</div>
+        </div>
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Site é seu pra sempre</strong>Entregue com domínio e hospedagem. Seu patrimônio digital.</div>
+        </div>
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Suporte direto comigo</strong>Você fala com quem fez. Não com estagiário, não com robô.</div>
+        </div>
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Sem trabalho pra você</strong>Eu cuido de tudo: design, conteúdo, publicação, domínio.</div>
+        </div>
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Ajusto até ficar perfeito</strong>Se não gostar de algum detalhe, a gente ajusta junto.</div>
+        </div>
+        <div class="risk-item">
+          <div class="icon">✓</div>
+          <div><strong>Condições que cabem no seu momento</strong>PIX, cartão, parcelamento — a gente combina.</div>
+        </div>
+      </div>
     </div>
 
-    <!-- CTA -->
-    <div class="cta">
-      <a href="https://wa.me/5581920051068?text=${encodeURIComponent(`Olá Clodoaldo! Aceito a proposta de ${totalFormatted} para ${lead.name}. Como prosseguimos?`)}" target="_blank">
-        💬 Aceitar proposta no WhatsApp
-      </a>
-      <p style="margin-top:12px;font-size:11px;color:#999;">Ou me chame pra tirar dúvidas. Sem compromisso, sem pressão.</p>
+    <!-- SCARCITY + URGENCY -->
+    <div class="scarcity">
+      <div class="timer-icon">⏰</div>
+      <h3>Esta proposta é válida até ${validUntil}</h3>
+      <p>Depois dessa data, condições podem mudar. Mas o verdadeiro custo de esperar não é o reajuste — é cada cliente que continua indo pro concorrente enquanto você decide. <strong>Cada mês sem site = 30 a 50 clientes que não vieram.</strong> Quanto mais cedo começar, mais clientes captura.</p>
     </div>
+
+    <!-- MAIN CTA — define investimento no WhatsApp -->
+    <div class="cta-box">
+      <h3>Vamos definir seu investimento no WhatsApp?</h3>
+      <p>Cada negócio é único, no seu ritmo, no seu momento. Por isso o investimento <strong>não é fixo</strong> — ele é construído junto com você, considerando o que faz sentido pro seu caixa hoje. PIX com desconto, cartão parcelado, combinações de serviços… a gente monta do seu jeito.</p>
+      <a href="${whatsappLink}" target="_blank" class="cta-button">💬 Falar com Clodoaldo no WhatsApp</a>
+      <div class="cta-note">Resposta rápida, sem compromisso, sem pressão. Só uma conversa de negócio pra destravar o seu crescimento.</div>
+    </div>
+
+    <!-- P.S. — último gancho emocional -->
+    <div class="ps">
+      <div class="ps-label">P.S.</div>
+      <p>Se você leu essa proposta até aqui, é porque algo ressoou. Talvez tenha sido o número de clientes que você tá perdendo. Talvez o preview do site que já tá pronto. Talvez a sensação de que <strong>esperar mais um mês não vai te trazer mais cliente nenhum</strong>.</p>
+      <p>O custo de fazer nada continua o mesmo. O custo de fazer agora só diminui com o tempo — porque cada dia a mais com site = mais cliente capturando = mais faturamento entrando. <strong>A matemática é simples.</strong></p>
+      <p>Me chama no WhatsApp. Bora destravar isso.</p>
+    </div>
+
+    <!-- INLINE CTA final -->
+    <div class="inline-cta">
+      <a href="${whatsappLink}" target="_blank">💬 Quero começar meu projeto agora</a>
+    </div>
+
   </div>
 
-  <div class="validity">
-    Proposta personalizada para <strong>${lead.name}</strong> • Válida até <strong>${validUntil}</strong>
-  </div>
   <div class="footer">
-    Clodoaldo Silva — Criador e Desenvolvedor Digital<br>
-    📱 (81) 92005-1068 • 🌐 clodoaldo.vercel.app • 📅 cal.com/clodoaldo-silva-y3si2j/30min
+    <strong>Clodoaldo Silva</strong> — Criador e Desenvolvedor Digital<br>
+    📱 (81) 92005-1068 • 🌐 clodoaldo.vercel.app • 📅 cal.com/clodoaldo-silva-y3si2j/30min<br>
+    Proposta personalizada para <strong>${lead.name}</strong> • Válida até <strong>${validUntil}</strong>
   </div>
 </div>
 </body></html>`;
