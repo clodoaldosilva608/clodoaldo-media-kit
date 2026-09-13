@@ -38,6 +38,7 @@ interface Lead {
   demo_url?: string | null;
   demo_generated_at?: string | null;
   prospect_id?: string | null;
+  hero_image_url?: string | null;
 }
 
 interface StageStats { count: number; total_value_cents: number; }
@@ -1191,6 +1192,11 @@ function SitePromptTab({ lead, leadContext }: { lead: Lead; leadContext: any }) 
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openedPlatform, setOpenedPlatform] = useState<string | null>(null);
+  const [heroLoading, setHeroLoading] = useState(false);
+  const [heroUrl, setHeroUrl] = useState<string | null>(lead.hero_image_url || null);
+  const [heroPrompt, setHeroPrompt] = useState<string | null>(null);
+  const [heroError, setHeroError] = useState<string | null>(null);
+  const [heroStyle, setHeroStyle] = useState<"modern" | "elegant" | "vibrant" | "minimal">("modern");
 
   async function generatePrompt() {
     setLoading(true);
@@ -1213,6 +1219,35 @@ function SitePromptTab({ lead, leadContext }: { lead: Lead; leadContext: any }) 
     }
   }
 
+  async function generateHero() {
+    setHeroLoading(true);
+    setHeroError(null);
+    setHeroUrl(null);
+    setHeroPrompt(null);
+    try {
+      const nicho = leadContext?.niche || lead.intent || "negócio local";
+      const cidade = leadContext?.city || "";
+      const resp = await fetch("/api/admin/generate-hero-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          nicho,
+          cidade,
+          style: heroStyle,
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Falha");
+      setHeroUrl(json.url);
+      setHeroPrompt(json.prompt_used);
+    } catch (e: any) {
+      setHeroError(e.message);
+    } finally {
+      setHeroLoading(false);
+    }
+  }
+
   function copyPrompt() {
     if (!prompt) return;
     navigator.clipboard.writeText(prompt);
@@ -1232,6 +1267,76 @@ function SitePromptTab({ lead, leadContext }: { lead: Lead; leadContext: any }) 
 
   return (
     <div className="space-y-4">
+      {/* Hero image generator (IA) */}
+      <div className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/[0.06] p-3">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-fuchsia-300" />
+            <span className="text-sm font-bold text-fuchsia-200">Hero image IA · personalizada pro nicho</span>
+          </div>
+          <select
+            value={heroStyle}
+            onChange={(e) => setHeroStyle(e.target.value as any)}
+            className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-[11px] text-zinc-200 focus:border-fuchsia-500/50 focus:outline-none"
+          >
+            <option value="modern">Moderno (neon sutil, dark)</option>
+            <option value="elegant">Elegante (dourado, cinema)</option>
+            <option value="vibrant">Vibrante (cores saturadas)</option>
+            <option value="minimal">Minimalista (espaço negativo)</option>
+          </select>
+        </div>
+        <p className="text-[11px] text-zinc-400 mb-2">
+          Gemini descreve o visual ideal pro nicho + IA gera hero image 1440x720 única. Salva no lead e pode usar na demo.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={generateHero} disabled={heroLoading}>
+            {heroLoading ? (
+              <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Gerando…</>
+            ) : (
+              <><Sparkles className="h-3.5 w-3.5" /> Gerar hero image</>
+            )}
+          </Button>
+        </div>
+
+        {heroError && (
+          <div className="mt-2 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-2 text-[11px] text-rose-200">
+            {heroError}
+          </div>
+        )}
+
+        {heroUrl && (
+          <div className="mt-3 space-y-2">
+            <div className="overflow-hidden rounded-lg border border-fuchsia-500/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroUrl} alt="Hero IA" className="w-full h-auto" />
+            </div>
+            {heroPrompt && (
+              <details className="rounded-lg border border-white/5 bg-black/30 p-2">
+                <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  Prompt visual usado
+                </summary>
+                <p className="mt-1 text-[11px] text-zinc-400 italic">{heroPrompt}</p>
+              </details>
+            )}
+            <div className="flex gap-2">
+              <a
+                href={heroUrl}
+                download={`hero-${lead.name.replace(/\s+/g, "-").toLowerCase()}.png`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Baixar
+              </a>
+              <button
+                onClick={() => navigator.clipboard.writeText(heroUrl)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+              >
+                <Copy className="h-3.5 w-3.5" /> Copiar URL
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-3">
         <div className="flex items-center gap-2 mb-1">
