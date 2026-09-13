@@ -14,6 +14,8 @@ const NAV = [
   { href: "/#servicos", label: "Soluções" },
   { href: "/#como-funciona", label: "Como funciona" },
   { href: "/#cases", label: "Resultados" },
+  { href: "/#catalogo", label: "Catálogo" },
+  { href: "/agendar", label: "Agendar" },
   { href: "/sobre", label: "Sobre" },
   { href: "/#contato", label: "Contato" },
 ];

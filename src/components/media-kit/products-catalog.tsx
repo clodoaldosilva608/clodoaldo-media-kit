@@ -243,6 +243,9 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [selectedKey, setSelectedKey] = useState<PixKey | null>(null);
   const [copied, setCopied] = useState(false);
+  const [asaasConfigured, setAsaasConfigured] = useState(false);
+  const [asaasLoading, setAsaasLoading] = useState(false);
+  const [asaasPayment, setAsaasPayment] = useState<any>(null);
 
   const amount = product.price_cents / 100;
   const amountFormatted = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -255,6 +258,12 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
         setLoadingKeys(false);
       })
       .catch(() => setLoadingKeys(false));
+
+    // Verifica se Asaas está configurado
+    fetch("/api/admin/payment-config")
+      .then(r => r.json())
+      .then(d => setAsaasConfigured(d.asaas_configured || false))
+      .catch(() => {});
   }, []);
 
   function chooseBank(key: PixKey) {
@@ -268,6 +277,32 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
     navigator.clipboard.writeText(selectedKey.value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function payWithAsaas() {
+    setAsaasLoading(true);
+    try {
+      const resp = await fetch("/api/admin/payment-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_sku: product.whatsapp_sku,
+          customer_name: "Cliente Site",
+          customer_email: "cliente@exemplo.com",
+        }),
+      });
+      const json = await resp.json();
+      if (json.pix_copy_paste || json.payment_link) {
+        setAsaasPayment(json);
+      } else if (json.setup_instructions) {
+        alert("Asaas não configurado. Use pagamento manual (chave PIX) por enquanto.");
+      } else {
+        alert("Erro ao gerar PIX automático: " + (json.error || "desconhecido"));
+      }
+    } catch (e: any) {
+      alert("Erro: " + e.message);
+    }
+    setAsaasLoading(false);
   }
 
   return (
@@ -311,6 +346,55 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
                 Selecione o banco onde você vai fazer o PIX. Cada banco tem uma chave diferente.
               </p>
             </div>
+
+            {/* Asaas PIX automático (se configurado) */}
+            {asaasConfigured && !asaasPayment && (
+              <button
+                onClick={payWithAsaas}
+                disabled={asaasLoading}
+                className="flex items-center gap-3 w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-left transition hover:bg-emerald-500/20 disabled:opacity-50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xl">⚡</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-emerald-300">PIX Automático (Asaas)</div>
+                  <div className="text-[11px] text-muted-foreground">QR Code + Copia e Cola — confirmação automática</div>
+                </div>
+                {asaasLoading && <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />}
+              </button>
+            )}
+
+            {/* Asaas payment result */}
+            {asaasPayment && (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">✅ PIX gerado — {asaasPayment.value ? 'R$ ' + asaasPayment.value : amountFormatted}</div>
+                  {asaasPayment.pix_copy_paste && (
+                    <>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 mt-2">PIX Copia e Cola</div>
+                      <div className="font-mono text-[10px] break-all rounded bg-black/20 p-2">{asaasPayment.pix_copy_paste}</div>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(asaasPayment.pix_copy_paste); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                      >
+                        {copied ? <><Check className="h-3.5 w-3.5" /> Copiado!</> : <><Copy className="h-3.5 w-3.5" /> Copiar</>}
+                      </button>
+                    </>
+                  )}
+                  {asaasPayment.pix_qr_code && (
+                    <img src={asaasPayment.pix_qr_code} alt="QR Code PIX" className="mx-auto mt-2 rounded-lg" width={200} height={200} />
+                  )}
+                  {asaasPayment.payment_link && (
+                    <a href={asaasPayment.payment_link} target="_blank" rel="noreferrer" className="mt-2 block text-center text-xs font-bold text-emerald-600 underline">
+                      Abrir página de pagamento →
+                    </a>
+                  )}
+                  <div className="mt-2 text-[10px] text-emerald-300">
+                    💡 Pagamento confirmado automaticamente. Você receberá email de confirmação.
+                  </div>
+                </div>
+                <button onClick={() => setAsaasPayment(null)} className="text-xs text-muted-foreground hover:text-foreground">← Voltar pra lista de bancos</button>
+              </div>
+            )}
 
             {loadingKeys ? (
               <div className="py-8 text-center">
