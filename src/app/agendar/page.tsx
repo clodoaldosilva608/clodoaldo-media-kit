@@ -83,19 +83,43 @@ export default function AgendarPage() {
           </div>
         </div>
 
-        {/* Cal.com embed */}
+        {/* Cal.com embed + WhatsApp button (ambos sempre visíveis) */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
           </div>
         ) : calcomUrl ? (
-          <div className="rounded-2xl border border-zinc-200 overflow-hidden dark:border-zinc-800">
-            <iframe
-              src={calcomUrl}
-              className="w-full"
-              style={{ height: "600px", border: "none" }}
-              title="Agendamento — Clodoaldo Silva"
-            />
+          <div className="space-y-4">
+            {/* Cal.com embed */}
+            <div className="rounded-2xl border border-zinc-200 overflow-hidden dark:border-zinc-800">
+              <iframe
+                src={calcomUrl}
+                className="w-full"
+                style={{ height: "600px", border: "none" }}
+                title="Agendamento — Clodoaldo Silva"
+              />
+            </div>
+
+            {/* Botão WhatsApp (sempre visível abaixo do Cal.com) */}
+            <a
+              href={`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent("Olá Clodoaldo! Quero agendar uma consultoria. Tenho disponibilidade nos seguintes horários:")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-6 transition hover:bg-emerald-500/20"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20">
+                  <MessageCircle className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-foreground">Prefere agendar pelo WhatsApp?</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Mande seus horários disponíveis e eu confirmo em minutos.
+                  </p>
+                </div>
+                <ArrowLeft className="h-5 w-5 rotate-180 text-muted-foreground" />
+              </div>
+            </a>
           </div>
         ) : (
           <>
