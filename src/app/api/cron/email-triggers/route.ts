@@ -5,8 +5,8 @@ import { renderTemplate } from "@/lib/email-templates";
 /**
  * POST /api/cron/email-triggers
  *
- * Vercel Cron — runs every 2 hours.
- * Schedule: "0 */2 * * *"
+ * Vercel Cron — runs daily.
+ * Schedule: "0 14 * * * (diário)"
  *
  * Dispara emails automáticos baseados em triggers:
  * 1. welcome: lead criado nas últimas 2h sem email enviado
