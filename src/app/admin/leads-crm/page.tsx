@@ -406,7 +406,7 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
       return;
     }
     w.document.write("<html><body style='font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0'><p>Gerando proposta...</p></body></html>");
-    fetch("/api/admin/proposta-pdf", {
+    fetch("/api/public/proposta", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lead_id: lead.id }),
