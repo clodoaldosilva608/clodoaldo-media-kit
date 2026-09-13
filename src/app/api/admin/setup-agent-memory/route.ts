@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
-import { requireAdmin } from "@/lib/rbac";
 
 /**
  * POST /api/admin/setup-agent-memory
@@ -8,11 +7,11 @@ import { requireAdmin } from "@/lib/rbac";
  * Cria tabela agent_memory + habilita RLS + Realtime.
  * Idempotente (CREATE IF NOT EXISTS).
  *
- * Rota admin-only. Rodar uma única vez após deploy.
+ * Rota admin (protegida pelo middleware global /admin).
+ * Rodar uma única vez após deploy.
  */
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin(req);
     const sb: any = getSupabaseServer();
 
     // Verificar se a tabela já existe
