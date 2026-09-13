@@ -3,10 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * GET /api/test-hero-image?nicho=barbearia&style=modern
  *
- * Endpoint PUBLICO de teste — chama Gemini (descricao) + Pollinations (imagem)
- * e retorna a imagem + prompt usado + analise. Pra validar o pipeline na Vercel.
- *
- * Nao tem auth. Pode ser removido apos validacao.
+ * Endpoint PUBLICO de teste — valida o pipeline completo na Vercel.
+ * Fluxo idêntico ao /api/admin/generate-hero-image mas sem auth e sem salvar no lead.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +18,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 503 });
     }
 
-    // 1) Gemini descreve o visual ideal pro nicho
     const styleMap: Record<string, string> = {
       modern: "moderno, clean, com toques de neon sutil, paleta dark com accent vibrante",
       elegant: "elegante e sofisticado, paleta neutra com dourado, iluminação cinematográfica",
@@ -28,6 +25,26 @@ export async function GET(req: NextRequest) {
       minimal: "minimalista, muito espaço negativo, poucos elementos, tipografia bold",
     };
     const styleHint = styleMap[style] || styleMap.modern;
+
+    const fallbackMap: Record<string, string> = {
+      barbearia: "Vintage leather barber chair, large ornate mirror, scissors and straight razor on wooden counter, warm tungsten lighting, dark moody barbershop atmosphere, brass accents, professional photography, 4k, hero banner",
+      restaurante: "Elegant restaurant interior, set dining table with white linen, crystal wine glasses, candle lighting, gourmet dish on plate, warm ambient lighting, sophisticated atmosphere, professional photography, 4k, hero banner",
+      academia: "Modern gym interior, dumbbells rack, weight machines, dramatic lighting, dark atmosphere with neon accents, polished concrete floor, athletic equipment, professional photography, 4k, hero banner",
+      pizzaria: "Artisanal pizza fresh from wood-fired oven, melted mozzarella, basil leaves, rustic wooden board, warm golden lighting, italian restaurant atmosphere, professional food photography, 4k, hero banner",
+      "salao de beleza": "Modern beauty salon interior, styling chairs with large mirrors, hair products on shelf, soft pink lighting, elegant atmosphere, professional photography, 4k, hero banner",
+      "clinica estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
+      "clinica-estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
+      "pet shop": "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
+      petshop: "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
+      cafeteria: "Cozy coffee shop interior, espresso machine, wooden counter with pastries, hanging Edison bulbs, barista preparing latte, warm atmosphere, artisanal coffee, professional photography, 4k, hero banner",
+      hamburgueria: "Modern burger restaurant interior, gourmet burgers on wooden board, milkshake glasses, neon signs, industrial decor, fries basket, appetizing food photography, 4k, hero banner",
+      imobiliaria: "Modern real estate office interior, architectural models on table, large windows with city view, blueprints on wall, sophisticated furniture, professional atmosphere, 4k photography, hero banner",
+      contabilidade: "Modern accounting office interior, organized desk with financial documents, computer with charts, calculator, professional books on shelf, neutral tones, business atmosphere, 4k photography, hero banner",
+      "consultorio odontologico": "Modern dental office interior, dental chair with overhead light, dental equipment, clean white atmosphere, sterilization area, professional medical photography, 4k, hero banner",
+      farmacia: "Modern pharmacy interior, medicine shelves, white counter with pharmacist, health products display, clean medical atmosphere, professional lighting, 4k photography, hero banner",
+      "loja de roupas": "Boutique clothing store interior, racks with fashionable clothes, full-length mirrors, mannequins, soft dressing room lighting, modern retail design, professional photography, 4k, hero banner",
+      default: `Professional ${nicho} business interior, ${nicho} specific equipment and furniture, cinematic lighting, 4k professional photography, hero banner`,
+    };
 
     const describePrompt = `Você é um diretor de arte criando um prompt para um modelo text-to-image (Stable Diffusion / Flux).
 
@@ -50,87 +67,92 @@ REGRAS:
 - Não inclua texto/logos na imagem
 - Não mencione marcas reais`;
 
-    const descResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: describePrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
-        }),
-      }
-    );
+    // CAMADA 1: Tenta Gemini (timeout 12s)
+    let imagePrompt = "";
+    let geminiUsed = false;
+    let geminiStatus = 0;
+    let finishReason: string | null = null;
+    const geminiController = new AbortController();
+    const geminiTimeout = setTimeout(() => geminiController.abort(), 12000);
 
-    const descRaw = await descResp.json();
-
-    // Debug: extrair finishReason e candidatos completos
-    const candidate = descRaw?.candidates?.[0];
-    const finishReason = candidate?.finishReason;
-    const promptFeedback = descRaw?.promptFeedback;
-    const rawText = candidate?.content?.parts?.[0]?.text || "";
-    let imagePrompt = rawText
-      .replace(/```/g, "")
-      .replace(/^["']|["']$/g, "")
-      .trim();
-
-    // Retry se prompt curto demais
-    if (!imagePrompt || imagePrompt.length < 100) {
-      const retryPrompt = `Write a 60-word image generation prompt in English for a "${nicho}" hero banner. Style: ${styleHint}. Include specific objects from this niche. Start directly with the description. End with a complete sentence.`;
-      const retryResp = await fetch(
+    try {
+      const descResp = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: retryPrompt }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 2000 },
+            contents: [{ parts: [{ text: describePrompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
           }),
+          signal: geminiController.signal,
         }
       );
-      if (retryResp.ok) {
-        const retryData = await retryResp.json();
-        const retryText = (retryData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
+      clearTimeout(geminiTimeout);
+      geminiStatus = descResp.status;
+
+      if (descResp.ok) {
+        const descData = await descResp.json();
+        finishReason = descData?.candidates?.[0]?.finishReason || null;
+        imagePrompt = (descData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
           .replace(/```/g, "")
           .replace(/^["']|["']$/g, "")
           .trim();
-        if (retryText.length > imagePrompt.length) imagePrompt = retryText;
+        if (imagePrompt.length >= 100) geminiUsed = true;
+      }
+    } catch (e) {
+      clearTimeout(geminiTimeout);
+      geminiStatus = 0;
+    }
+
+    // CAMADA 2: Retry com prompt mais direto
+    if (!geminiUsed) {
+      const retryController = new AbortController();
+      const retryTimeout = setTimeout(() => retryController.abort(), 10000);
+      try {
+        const retryPrompt = `Write a 60-word image generation prompt in English for a "${nicho}" hero banner. Style: ${styleHint}. Include specific objects from this niche. Start directly with the description. End with a complete sentence.`;
+        const retryResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: retryPrompt }] }],
+              generationConfig: { temperature: 0.5, maxOutputTokens: 2000 },
+            }),
+            signal: retryController.signal,
+          }
+        );
+        clearTimeout(retryTimeout);
+        if (retryResp.ok) {
+          const retryData = await retryResp.json();
+          const retryText = (retryData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
+            .replace(/```/g, "")
+            .replace(/^["']|["']$/g, "")
+            .trim();
+          if (retryText.length >= 100) {
+            imagePrompt = retryText;
+            geminiUsed = true;
+          }
+        }
+      } catch (e) {
+        clearTimeout(retryTimeout);
       }
     }
 
-    // Fallback inteligente em INGLÊS por nicho
-    const fallbackMap: Record<string, string> = {
-      barbearia: "Vintage leather barber chair, large ornate mirror, scissors and straight razor on wooden counter, warm tungsten lighting, dark moody barbershop atmosphere, brass accents, professional photography, 4k, hero banner",
-      restaurante: "Elegant restaurant interior, set dining table with white linen, crystal wine glasses, candle lighting, gourmet dish on plate, warm ambient lighting, sophisticated atmosphere, professional photography, 4k, hero banner",
-      academia: "Modern gym interior, dumbbells rack, weight machines, dramatic lighting, dark atmosphere with neon accents, polished concrete floor, athletic equipment, professional photography, 4k, hero banner",
-      pizzaria: "Artisanal pizza fresh from wood-fired oven, melted mozzarella, basil leaves, rustic wooden board, warm golden lighting, italian restaurant atmosphere, professional food photography, 4k, hero banner",
-      "salao de beleza": "Modern beauty salon interior, styling chairs with large mirrors, hair products on shelf, soft pink lighting, elegant atmosphere, professional photography, 4k, hero banner",
-      "clinica estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
-      "clinica-estetica": "Modern aesthetic clinic interior, treatment bed, aesthetic equipment, soft white and beige tones, LED therapy panel, clean minimalist atmosphere, spa lighting, professional photography, 4k, hero banner",
-      "pet shop": "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
-      petshop: "Bright pet shop interior, shelves with pet food and toys, dog grooming station, aquariums, small animals, friendly atmosphere, colorful pet products, professional photography, 4k, hero banner",
-      cafeteria: "Cozy coffee shop interior, espresso machine, wooden counter with pastries, hanging Edison bulbs, barista preparing latte, warm atmosphere, artisanal coffee, professional photography, 4k, hero banner",
-      hamburgueria: "Modern burger restaurant interior, gourmet burgers on wooden board, milkshake glasses, neon signs, industrial decor, fries basket, appetizing food photography, 4k, hero banner",
-      imobiliaria: "Modern real estate office interior, architectural models on table, large windows with city view, blueprints on wall, sophisticated furniture, professional atmosphere, 4k photography, hero banner",
-      contabilidade: "Modern accounting office interior, organized desk with financial documents, computer with charts, calculator, professional books on shelf, neutral tones, business atmosphere, 4k photography, hero banner",
-      "consultorio odontologico": "Modern dental office interior, dental chair with overhead light, dental equipment, clean white atmosphere, sterilization area, professional medical photography, 4k, hero banner",
-      farmacia: "Modern pharmacy interior, medicine shelves, white counter with pharmacist, health products display, clean medical atmosphere, professional lighting, 4k photography, hero banner",
-      "loja de roupas": "Boutique clothing store interior, racks with fashionable clothes, full-length mirrors, mannequins, soft dressing room lighting, modern retail design, professional photography, 4k, hero banner",
-      default: `Professional ${nicho} business interior, ${nicho} specific equipment and furniture, cinematic lighting, 4k professional photography, hero banner`,
-    };
-    if (!imagePrompt || imagePrompt.length < 100) {
+    // CAMADA 3: Fallback hardcoded
+    if (!geminiUsed) {
       imagePrompt = fallbackMap[nicho] || fallbackMap.default;
     }
 
-    // 2) Pollinations gera a imagem
+    // CAMADA 4: Pollinations gera imagem
     const width = 1440;
     const height = 720;
     const fullPrompt = `${imagePrompt}, professional photography, high quality, 4k, sharp focus, hero banner`;
     const encodedPrompt = encodeURIComponent(fullPrompt).slice(0, 1800);
     const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&model=flux&seed=${Date.now() % 1000000}`;
 
-    // Retry em caso de 429 (rate limit do Pollinations)
-    let buffer: Buffer;
+    let buffer: Buffer | null = null;
     let lastErr: any = null;
 
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -148,7 +170,7 @@ REGRAS:
         clearTimeout(timeout);
 
         if (imgResp.status === 429) {
-          lastErr = new Error(`Pollinations 429 (rate limit) attempt ${attempt + 1}`);
+          lastErr = new Error(`Pollinations 429 attempt ${attempt + 1}`);
           await new Promise(r => setTimeout(r, 4000));
           continue;
         }
@@ -167,13 +189,14 @@ REGRAS:
       }
     }
 
-    if (lastErr || !buffer!) {
+    if (lastErr || !buffer) {
       return NextResponse.json({
         error: `Image generation failed: ${lastErr?.message || 'no buffer'}`,
+        prompt_used: imagePrompt,
+        gemini_used: geminiUsed,
       }, { status: 502 });
     }
 
-    // 3) Retornar como data URL + metadados pra inspeção
     const base64 = buffer.toString("base64");
     const dataUrl = `data:image/jpeg;base64,${base64}`;
 
@@ -183,10 +206,10 @@ REGRAS:
       cidade,
       style,
       prompt_used: imagePrompt,
-      raw_gemini_text: rawText,
-      gemini_status: descResp.status,
+      gemini_status: geminiStatus,
       gemini_finish_reason: finishReason,
-      gemini_prompt_feedback: promptFeedback,
+      gemini_used: geminiUsed,
+      fallback_used: !geminiUsed,
       pollinations_url: pollinationsUrl,
       image_size: buffer.length,
       image_data_url: dataUrl,
