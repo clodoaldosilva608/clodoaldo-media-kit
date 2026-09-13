@@ -41,18 +41,26 @@ export async function POST(req: NextRequest) {
     };
     const styleHint = styleMap[style || "modern"] || styleMap.modern;
 
-    const describePrompt = `Você é um diretor de arte. Descreva em UMA frase (máximo 80 palavras) uma imagem hero profissional para um site do nicho "${nicho}"${cidade ? ` em ${cidade}` : ""}.
+    const describePrompt = `Você é um diretor de arte criando um prompt para um modelo text-to-image (Stable Diffusion / Flux).
 
-A descrição deve:
-- Ser visualmente específica (não genérica)
-- Incluir elementos reais do nicho (ex: barbearia → tesoura, cadeira, espelho; restaurante → prato, ingredientes, chef)
-- Mencionar iluminação, ângulo e mood
-- Estilo: ${styleHint}
-- NÃO incluir texto na imagem (sem logo, sem palavra)
-- NÃO mencionar pessoas reais ou marcas reais
-- Ser otimizada pra ser usada como prompt num modelo text-to-image
+NICHO: ${nicho}
+CIDADE: ${cidade || "Recife"}
+ESTILO VISUAL: ${styleHint}
 
-Responda APENAS com a descrição visual (sem prefixo, sem explicações).`;
+Escreva um prompt EM INGLÊS (modelos text-to-image funcionam melhor em inglês) com 60-100 palavras descrevendo uma imagem hero profissional para o site deste nicho.
+
+O prompt DEVE incluir elementos visuais específicos do nicho. Exemplos:
+- barbearia → "vintage leather barber chair, large mirror, scissors and straight razor on wooden counter, warm tungsten lighting, dark moody atmosphere, brass accents"
+- restaurante → "elegant restaurant interior, set dining table with white linen, wine glasses, candle lighting, gourmet dish on plate, warm ambient lighting"
+- academia → "modern gym interior, dumbbells rack, weight machines, dramatic lighting, dark atmosphere with neon accents, polished concrete floor"
+
+REGRAS:
+- Comece DIRETO com a descrição (sem "Here is...", sem "Prompt:")
+- Inglês apenas
+- Mínimo 60 palavras
+- Termine com uma frase completa (não corte no meio)
+- Não inclua texto/logos na imagem
+- Não mencione marcas reais`;
 
     const descResp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
@@ -61,7 +69,7 @@ Responda APENAS com a descrição visual (sem prefixo, sem explicações).`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: describePrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
         }),
       }
     );
@@ -69,13 +77,38 @@ Responda APENAS com a descrição visual (sem prefixo, sem explicações).`;
       return NextResponse.json({ error: `Gemini ${descResp.status}` }, { status: 502 });
     }
     const descData = await descResp.json();
-    const imagePrompt = (descData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
+    let imagePrompt = (descData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
       .replace(/```/g, "")
       .replace(/^["']|["']$/g, "")
       .trim();
 
-    if (!imagePrompt || imagePrompt.length < 20) {
-      return NextResponse.json({ error: "Gemini retornou prompt vazio" }, { status: 502 });
+    // Verificar se o prompt está completo (mínimo 80 chars e termina com palavra completa)
+    if (!imagePrompt || imagePrompt.length < 80) {
+      // Retry com prompt ainda mais direto
+      const retryPrompt = `Write a 60-word image generation prompt in English for a "${nicho}" hero banner. Style: ${styleHint}. Include specific objects from this niche. Start directly with the description. End with a complete sentence.`;
+      const retryResp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: retryPrompt }] }],
+            generationConfig: { temperature: 0.5, maxOutputTokens: 800 },
+          }),
+        }
+      );
+      if (retryResp.ok) {
+        const retryData = await retryResp.json();
+        imagePrompt = (retryData?.candidates?.[0]?.content?.parts?.[0]?.text || "")
+          .replace(/```/g, "")
+          .replace(/^["']|["']$/g, "")
+          .trim();
+      }
+    }
+
+    if (!imagePrompt || imagePrompt.length < 60) {
+      // Fallback final: prompt hardcoded baseado no nicho
+      imagePrompt = `Professional ${nicho} business hero image, specific ${nicho} equipment and furniture, ${styleHint}, cinematic lighting, 4k photography`;
     }
 
     // 2) Gerar a imagem via Pollinations.ai (API pública, sem auth)
