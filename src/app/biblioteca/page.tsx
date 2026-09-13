@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { Header } from "@/components/media-kit/header";
 import { Footer } from "@/components/media-kit/footer";
 import { FREE_EBOOKS, PAID_EBOOKS, type Service, type ServiceSlug } from "@/lib/services-catalog";
