@@ -28,6 +28,8 @@ interface Lead {
   hasWebsite?: boolean; hasEmail?: boolean; hasWhatsApp?: boolean;
   hasSocialMedia?: boolean; webDevOpportunity?: boolean; openingHours?: string | null;
   status?: string; priority?: string; notes?: string | null; created_at?: string;
+  company?: string | null;
+  owner_name?: string | null; owner_email?: string | null; instagram_handle?: string | null;
 }
 
 const NICHES = ["restaurante","barbearia","academia","salao de beleza","clinica estetica","escritorio de advocacia","consultorio odontologico","loja de roupas","papelaria","farmacia","pet shop","estetica automotiva","pizzaria","hamburgueria","cafeteria","loja de conveniencia","imobiliaria","contabilidade","agencia de marketing","estudio de pilates"];
@@ -65,6 +67,19 @@ export default function AdminParceirosPage() {
   const [replyVersion, setReplyVersion] = useState(0); // increments when a reply is saved → triggers LeadDetailModal refresh
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({}); // prospect_id → reply count
   const [showRepliedOnly, setShowRepliedOnly] = useState(false); // filter in "Leads Salvos"
+  const [globalSearch, setGlobalSearch] = useState(""); // busca por nome/empresa/whatsapp/email/cidade/nicho em Pipeline + Leads Salvos
+
+  // Helper: filtrar prospects por texto (nome, empresa, whatsapp, email, cidade, nicho, endereço)
+  const matchSearch = (p: Lead, q: string): boolean => {
+    if (!q.trim()) return true;
+    const needle = q.toLowerCase().trim();
+    const haystack = [
+      p.name, p.company, p.whatsapp, p.phone, p.email,
+      p.city, p.niche, p.formatted_address, p.notes,
+      p.owner_name, p.owner_email, p.instagram_handle, p.instagram,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(needle);
+  };
 
   // Fetch reply counts (called on mount + after each reply save)
   const loadReplyCounts = useCallback(async () => {
@@ -579,6 +594,30 @@ Clodoaldo Silva`;
         <button onClick={()=>setView("report")} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition ${view==="report"?"bg-emerald-500/20 text-emerald-300":"text-zinc-400 hover:text-zinc-200"}`}><RefreshCw className="h-4 w-4" /> Relatorio</button>
       </div>
 
+      {/* Barra de busca global — visível em Pipeline, Leads Salvos */}
+      {(view === "kanban" || view === "salvos") && (
+        <div className="mb-4 flex items-center gap-2">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <Input
+              placeholder={`Buscar por nome, empresa, WhatsApp, email, cidade, nicho... (${prospects.filter(p => matchSearch(p, globalSearch)).length} de ${prospects.length})`}
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              className="pl-8"
+            />
+            {globalSearch && (
+              <button
+                onClick={() => setGlobalSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+                title="Limpar"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {view==="search" && (
         <Widget title="Prospeccao de clientes via Google Maps" icon={<MapPin className="h-4 w-4 text-emerald-400" />}>
           <div className="mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
@@ -834,7 +873,7 @@ Clodoaldo Silva`;
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-4 min-w-[1000px]">
             {KANBAN.map(col => {
-              const items = prospects.filter(p=>p.status===col.key);
+              const items = prospects.filter(p=>p.status===col.key && matchSearch(p, globalSearch));
               const colors:Record<string,string> = {blue:"border-blue-500/30 bg-blue-500/[0.03]",amber:"border-amber-500/30 bg-amber-500/[0.03]",violet:"border-violet-500/30 bg-violet-500/[0.03]",emerald:"border-emerald-500/30 bg-emerald-500/[0.03]",rose:"border-rose-500/30 bg-rose-500/[0.03]"};
               const hc:Record<string,string> = {blue:"text-blue-300",amber:"text-amber-300",violet:"text-violet-300",emerald:"text-emerald-300",rose:"text-rose-300"};
               return (
@@ -904,6 +943,7 @@ Clodoaldo Silva`;
               </div>
               <div className="space-y-2">
                 {prospects.filter(p => {
+                  if (!matchSearch(p, globalSearch)) return false;
                   if (!showRepliedOnly) return true;
                   return (replyCounts[p.id || ""] || 0) > 0;
                 }).map((p) => {
@@ -1132,6 +1172,7 @@ function EnviosView() {
   const [nicheFilter,setNicheFilter]=useState<string>("all");
   const [campaignFilter,setCampaignFilter]=useState<string>("all");
   const [statusFilter,setStatusFilter]=useState<string>("all");
+  const [search,setSearch]=useState<string>("");
 
   useEffect(()=>{
     fetch("/api/admin/envios?limit=500")
@@ -1144,11 +1185,24 @@ function EnviosView() {
   const niches = Array.from(new Set(data.map((e:any)=>e.prospect_niche).filter(Boolean))) as string[];
   const campaigns = Array.from(new Set(data.map((e:any)=>e.campaign).filter(Boolean))) as string[];
 
+  // Helper de busca textual
+  const matchSearchEnvios = (e: any, q: string): boolean => {
+    if (!q.trim()) return true;
+    const needle = q.toLowerCase().trim();
+    const haystack = [
+      e.prospect_name, e.prospect_phone, e.prospect_whatsapp, e.prospect_email,
+      e.prospect_city, e.prospect_niche, e.campaign, e.status, e.error_message,
+      e.message_body, e.subject,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(needle);
+  };
+
   // Apply filters
   const filtered = data.filter((e:any) => {
     if (nicheFilter !== "all" && e.prospect_niche !== nicheFilter) return false;
     if (campaignFilter !== "all" && e.campaign !== campaignFilter) return false;
     if (statusFilter !== "all" && e.status !== statusFilter) return false;
+    if (!matchSearchEnvios(e, search)) return false;
     return true;
   });
 
@@ -1190,6 +1244,28 @@ function EnviosView() {
 
           {/* === Filters === */}
           <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Buscar</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Nome, WhatsApp, email, cidade, nicho, campanha..."
+                  value={search}
+                  onChange={e=>setSearch(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 pl-8 pr-7 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+                {search && (
+                  <button
+                    onClick={()=>setSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+                    title="Limpar"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
               <select
@@ -1229,10 +1305,10 @@ function EnviosView() {
                 <option value="pending">Pendentes</option>
               </select>
             </div>
-            {(nicheFilter !== "all" || campaignFilter !== "all" || statusFilter !== "all") && (
+            {(nicheFilter !== "all" || campaignFilter !== "all" || statusFilter !== "all" || search) && (
               <button
                 type="button"
-                onClick={() => { setNicheFilter("all"); setCampaignFilter("all"); setStatusFilter("all"); }}
+                onClick={() => { setNicheFilter("all"); setCampaignFilter("all"); setStatusFilter("all"); setSearch(""); }}
                 className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
               >
                 Limpar filtros
@@ -1292,6 +1368,7 @@ function RespostasView({ onOpenReply }: { onOpenReply: (lead: Lead) => void }) {
   const [selectedReply, setSelectedReply] = useState<any | null>(null);
   const [nicheFilter, setNicheFilter] = useState<string>("all");
   const [classFilter, setClassFilter] = useState<string>("all");
+  const [search, setSearch] = useState<string>("");
 
   const load=useCallback(()=>{setLoading(true);fetch("/api/admin/respostas?limit=500").then(r=>r.json()).then(d=>{setData(d.data||[]);setLoading(false);}).catch(()=>setLoading(false));},[]);
   useEffect(()=>{load();},[load]);
@@ -1311,10 +1388,23 @@ function RespostasView({ onOpenReply }: { onOpenReply: (lead: Lead) => void }) {
   const niches = Array.from(new Set(data.map((r:any)=>r.prospect_niche).filter(Boolean))) as string[];
   const classes = Array.from(new Set(data.map((r:any)=>r.classification).filter(Boolean))) as string[];
 
+  // Helper de busca textual
+  const matchSearchRespostas = (r: any, q: string): boolean => {
+    if (!q.trim()) return true;
+    const needle = q.toLowerCase().trim();
+    const haystack = [
+      r.prospect_name, r.prospect_phone, r.prospect_whatsapp, r.prospect_email,
+      r.prospect_city, r.prospect_niche, r.classification, r.reply_text,
+      r.subject, r.body,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(needle);
+  };
+
   // Apply filters
   const filtered = data.filter((r:any) => {
     if (nicheFilter !== "all" && r.prospect_niche !== nicheFilter) return false;
     if (classFilter !== "all" && r.classification !== classFilter) return false;
+    if (!matchSearchRespostas(r, search)) return false;
     return true;
   });
 
@@ -1334,6 +1424,28 @@ function RespostasView({ onOpenReply }: { onOpenReply: (lead: Lead) => void }) {
         <div className="space-y-3">
           {/* === Stats + filters === */}
           <div className="flex flex-wrap items-end gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Buscar</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Nome, WhatsApp, email, cidade, nicho, texto da resposta..."
+                  value={search}
+                  onChange={e=>setSearch(e.target.value)}
+                  className="w-full rounded-lg border border-white/10 bg-zinc-900 pl-8 pr-7 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                />
+                {search && (
+                  <button
+                    onClick={()=>setSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+                    title="Limpar"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
               <select
@@ -1360,10 +1472,10 @@ function RespostasView({ onOpenReply }: { onOpenReply: (lead: Lead) => void }) {
                 ))}
               </select>
             </div>
-            {(nicheFilter !== "all" || classFilter !== "all") && (
+            {(nicheFilter !== "all" || classFilter !== "all" || search) && (
               <button
                 type="button"
-                onClick={() => { setNicheFilter("all"); setClassFilter("all"); }}
+                onClick={() => { setNicheFilter("all"); setClassFilter("all"); setSearch(""); }}
                 className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
               >
                 Limpar filtros
