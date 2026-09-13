@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     const { data: products } = await productsQuery;
 
     const today = new Date().toLocaleDateString("pt-BR");
-    const validUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("pt-BR");
+    const validDays = 7;
+    const validUntilMs = Date.now() + validDays * 24 * 60 * 60 * 1000;
+    const validUntil = new Date(validUntilMs).toLocaleDateString("pt-BR");
     const demoUrl = lead.demo_url || `https://clodoaldo.vercel.app/api/preview?lead=${lead.id}&style=dark`;
 
     // Nicho para personalização
@@ -171,10 +173,48 @@ export async function POST(req: NextRequest) {
   .footer { text-align: center; padding: 24px 16px; font-size: 11px; color: #999; background: #fafafa; border-top: 1px solid #eee; }
   .footer strong { color: #555; }
 
+  /* COUNTDOWN TIMER — sticky no topo */
+  .countdown-bar { position: sticky; top: 0; z-index: 100; background: linear-gradient(135deg, #991b1b, #7f1d1d); color: #fff; padding: 10px 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .countdown-bar .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+  .countdown-bar .timer { display: flex; gap: 6px; align-items: center; }
+  .countdown-bar .unit { background: rgba(0,0,0,0.35); border-radius: 8px; padding: 6px 10px; min-width: 48px; text-align: center; font-weight: 800; font-size: 14px; font-variant-numeric: tabular-nums; box-shadow: inset 0 1px 0 rgba(255,255,255,0.1); }
+  .countdown-bar .unit .num { display: block; font-size: 18px; line-height: 1; }
+  .countdown-bar .unit .lbl { display: block; font-size: 8px; opacity: 0.7; text-transform: uppercase; margin-top: 2px; letter-spacing: 0.5px; }
+  .countdown-bar .sep { font-weight: 800; opacity: 0.5; font-size: 16px; }
+  .countdown-bar.expired { background: linear-gradient(135deg, #b45309, #92400e); animation: pulseExpired 1.5s ease-in-out infinite; }
+  @keyframes pulseExpired { 0%,100% { box-shadow: 0 4px 16px rgba(0,0,0,0.2); } 50% { box-shadow: 0 4px 24px rgba(245,158,11,0.6); } }
+  .countdown-bar.urgent { animation: pulseUrgent 1s ease-in-out infinite; }
+  @keyframes pulseUrgent { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+  .countdown-bar.urgent .unit { background: rgba(0,0,0,0.55); }
+
+  /* MODAL OFERTA SURPRESA */
+  .surpresa-overlay { position: fixed; inset: 0; background: rgba(10,10,15,0.85); backdrop-filter: blur(6px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .surpresa-overlay.show { display: flex; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .surpresa-modal { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 3px solid #f59e0b; border-radius: 20px; max-width: 540px; width: 100%; padding: 36px 28px; text-align: center; position: relative; box-shadow: 0 20px 60px rgba(245,158,11,0.4); animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1); }
+  @keyframes slideUp { from { transform: translateY(40px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+  .surpresa-modal .badge-surpresa { display: inline-block; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 6px 16px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(245,158,11,0.4); animation: pulseBadge 1.5s ease-in-out infinite; }
+  @keyframes pulseBadge { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .surpresa-modal h2 { font-size: 24px; font-weight: 900; color: #7c2d12; line-height: 1.2; margin-bottom: 10px; }
+  .surpresa-modal .surpresa-sub { font-size: 14px; color: #92400e; margin-bottom: 22px; line-height: 1.6; }
+  .surpresa-modal .surpresa-bonus { background: #fff; border: 2px dashed #f59e0b; border-radius: 12px; padding: 16px; margin: 16px 0; text-align: left; }
+  .surpresa-modal .surpresa-bonus .bonus-title { font-size: 12px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; text-align: center; }
+  .surpresa-modal .surpresa-bonus ul { list-style: none; }
+  .surpresa-modal .surpresa-bonus li { font-size: 13px; color: #7c2d12; padding: 6px 0; display: flex; align-items: flex-start; gap: 8px; }
+  .surpresa-modal .surpresa-bonus li::before { content: "🎁"; flex-shrink: 0; }
+  .surpresa-modal .surpresa-cta { display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 16px 36px; border-radius: 14px; text-decoration: none; font-weight: 800; font-size: 15px; box-shadow: 0 8px 20px rgba(16,185,129,0.4); margin-top: 16px; }
+  .surpresa-modal .surpresa-cta:hover { transform: translateY(-2px); }
+  .surpresa-modal .surpresa-extra-timer { font-size: 13px; color: #7c2d12; margin-top: 14px; font-weight: 700; }
+  .surpresa-modal .surpresa-extra-timer .extra-timer-display { color: #dc2626; font-weight: 900; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .surpresa-modal .surpresa-close { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 22px; color: #92400e; cursor: pointer; opacity: 0.5; line-height: 1; }
+  .surpresa-modal .surpresa-close:hover { opacity: 1; }
+  .surpresa-modal .surpresa-fine { font-size: 10px; color: #a16207; margin-top: 12px; opacity: 0.7; }
+
   @media print {
     body { background: #fff; padding: 0; }
     .container { box-shadow: none; border-radius: 0; }
     .cta-button { box-shadow: none; }
+    .countdown-bar, .surpresa-overlay { display: none !important; }
   }
   @media (max-width: 600px) {
     body { padding: 8px; }
@@ -187,6 +227,21 @@ export async function POST(req: NextRequest) {
     .value-num { width: 30px; height: 30px; font-size: 11px; }
   }
 </style></head><body>
+
+<!-- COUNTDOWN BAR (sticky no topo) -->
+<div id="countdownBar" class="countdown-bar">
+  <div class="label">⏰ Esta proposta expira em</div>
+  <div class="timer">
+    <div class="unit"><span class="num" id="cdDays">--</span><span class="lbl">dias</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="cdHours">--</span><span class="lbl">horas</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="cdMins">--</span><span class="lbl">min</span></div>
+    <span class="sep">:</span>
+    <div class="unit"><span class="num" id="cdSecs">--</span><span class="lbl">seg</span></div>
+  </div>
+</div>
+
 <div class="container">
   <div class="header">
     <div class="badge">📋 Proposta Exclusiva</div>
@@ -364,6 +419,116 @@ export async function POST(req: NextRequest) {
     Proposta personalizada para <strong>${lead.name}</strong> • Válida até <strong>${validUntil}</strong>
   </div>
 </div>
+
+<!-- MODAL OFERTA SURPRESA (aparece quando o cronômetro zera) -->
+<div id="surpresaOverlay" class="surpresa-overlay" role="dialog" aria-modal="true" aria-labelledby="surpresaTitle">
+  <div class="surpresa-modal">
+    <button class="surpresa-close" onclick="document.getElementById('surpresaOverlay').classList.remove('show')" aria-label="Fechar">×</button>
+    <div class="badge-surpresa">🚨 Oferta Surpresa de Última Hora</div>
+    <h2 id="surpresaTitle">Espera, ${firstName}! Não deixa escapar…</h2>
+    <div class="surpresa-sub">
+      Sua proposta <strong>venceu</strong>, mas eu não quero que você perca a oportunidade de destravar o crescimento do seu negócio só por alguns dias de indecisão. <br>
+      Por isso, decidi fazer algo que <strong>raramente</strong> faço:
+    </div>
+    <div class="surpresa-bonus">
+      <div class="bonus-title">🎁 Prorrogação exclusiva com BÔNUS</div>
+      <ul>
+        <li><strong>+48 horas extras</strong> pra você decidir com calma</li>
+        <li><strong>1 revisão extra grátis</strong> do site depois de pronto (não inclusa no plano base)</li>
+        <li><strong>Treinamento pessoal de 30min</strong> comigo pra você tirar máximo proveito do site</li>
+        <li><strong>Condição de pagamento estendida</strong> — mais tempo pra parcelar, se precisar</li>
+      </ul>
+    </div>
+    <div class="surpresa-extra-timer">
+      ⏰ Esta prorrogação dura apenas:<br>
+      <span class="extra-timer-display" id="extraTimer">48:00:00</span>
+    </div>
+    <a href="${whatsappLink}" target="_blank" class="surpresa-cta">💬 Quero aproveitar a prorrogação agora</a>
+    <div class="surpresa-fine">Oferta válida uma única vez. Após o fim do prazo extra, a proposta será arquivada definitivamente.</div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const DEADLINE = ${validUntilMs};
+  const EXTRA_MS = 48 * 60 * 60 * 1000; // 48h extras
+  const bar = document.getElementById('countdownBar');
+  const dEl = document.getElementById('cdDays');
+  const hEl = document.getElementById('cdHours');
+  const mEl = document.getElementById('cdMins');
+  const sEl = document.getElementById('cdSecs');
+  const overlay = document.getElementById('surpresaOverlay');
+  const extraTimerEl = document.getElementById('extraTimer');
+  let surpresaShown = false;
+  let extraDeadline = 0;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function updateMain() {
+    const now = Date.now();
+    const diff = DEADLINE - now;
+    if (diff <= 0) {
+      // Expirou — mostrar oferta surpresa uma única vez
+      bar.classList.add('expired');
+      bar.classList.remove('urgent');
+      dEl.textContent = '00'; hEl.textContent = '00'; mEl.textContent = '00'; sEl.textContent = '00';
+      bar.querySelector('.label').textContent = '⚠️ Proposta expirada — mas tem oferta surpresa abaixo';
+      if (!surpresaShown) {
+        surpresaShown = true;
+        extraDeadline = now + EXTRA_MS;
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      return;
+    }
+    // Modo urgente quando faltam menos de 24h
+    if (diff < 24 * 60 * 60 * 1000) bar.classList.add('urgent');
+
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const mins = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+    const secs = Math.floor((diff % (60 * 1000)) / 1000);
+    dEl.textContent = pad(days);
+    hEl.textContent = pad(hours);
+    mEl.textContent = pad(mins);
+    sEl.textContent = pad(secs);
+  }
+
+  function updateExtra() {
+    if (!extraDeadline) return;
+    const diff = extraDeadline - Date.now();
+    if (diff <= 0) {
+      extraTimerEl.textContent = '00:00:00';
+      extraTimerEl.style.color = '#991b1b';
+      const cta = overlay.querySelector('.surpresa-cta');
+      if (cta) {
+        cta.textContent = '⏰ Última chance — falar agora no WhatsApp';
+        cta.style.background = 'linear-gradient(135deg, #dc2626, #991b1b)';
+      }
+      return;
+    }
+    const hours = Math.floor(diff / (60 * 60 * 1000));
+    const mins = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+    const secs = Math.floor((diff % (60 * 1000)) / 1000);
+    extraTimerEl.textContent = pad(hours) + ':' + pad(mins) + ':' + pad(secs);
+  }
+
+  // Permite fechar o modal clicando fora (mas continua contando extra timer)
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  });
+
+  // Tick principal
+  updateMain();
+  setInterval(function() {
+    updateMain();
+    updateExtra();
+  }, 1000);
+})();
+</script>
 </body></html>`;
 
     return new NextResponse(html, {
