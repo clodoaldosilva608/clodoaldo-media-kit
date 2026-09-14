@@ -211,6 +211,25 @@ html.light .footer-link:hover {
   color: var(--primary);
 }
 
+/* Footer em dispositivos touch (mobile): mostra indicadores permanentes */
+@media (hover: none) {
+  /* Underline sempre visível no mobile */
+  .footer-underline-mobile {
+    max-width: 100% !important;
+    opacity: 0.5;
+  }
+  /* Seta sempre visível no mobile */
+  .footer-arrow-desktop {
+    opacity: 0.5 !important;
+    transform: translate(0, 0) !important;
+  }
+  /* Ícones com cor primary suave no mobile */
+  .footer-link .shrink-0 {
+    color: var(--primary);
+    opacity: 0.7;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

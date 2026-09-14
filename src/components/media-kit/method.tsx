@@ -104,26 +104,26 @@ export function Method() {
         </div>
 
         {/* Aviso de limites de escopo (Passo 9 do brief) */}
-        <div className="mt-10 sm:mt-12 rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] p-5 sm:p-6">
+        <div className="mt-10 sm:mt-12 rounded-2xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/[0.04] p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div className="flex-1">
-              <h4 className="text-sm font-bold text-amber-200 mb-2">Limites de escopo transparentes</h4>
-              <ul className="space-y-1.5 text-xs text-amber-100/80">
+              <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200 mb-2">Limites de escopo transparentes</h4>
+              <ul className="space-y-1.5 text-xs text-amber-800 dark:text-amber-100/80">
                 <li className="flex items-start gap-2">
-                  <span className="shrink-0 text-amber-400">•</span>
+                  <span className="shrink-0 text-amber-600 dark:text-amber-400">•</span>
                   <span><strong>Canais de comunicação:</strong> WhatsApp durante toda a execução. Calls agendadas apenas quando necessário (geralmente 1-2 por projeto).</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="shrink-0 text-amber-400">•</span>
+                  <span className="shrink-0 text-amber-600 dark:text-amber-400">•</span>
                   <span><strong>Prazos:</strong> começam a contar após aprovação da proposta + envio dos materiais necessários. Atrasos do seu lado não conteabilizam no prazo de entrega.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="shrink-0 text-amber-400">•</span>
+                  <span className="shrink-0 text-amber-600 dark:text-amber-400">•</span>
                   <span><strong>Alterações:</strong> 2 rodadas de ajuste inclusas na fase de Produção. Alterações fora do escopo combinado são orçadas à parte.</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="shrink-0 text-amber-400">•</span>
+                  <span className="shrink-0 text-amber-600 dark:text-amber-400">•</span>
                   <span><strong>Garantia:</strong> 15 dias após lançamento pra corrigir bugs sem custo. Depois disso, manutenção é paga (ou inclusa no pacote recorrente).</span>
                 </li>
               </ul>

@@ -42,19 +42,19 @@ function FooterLink({
         className="footer-link group inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
       >
         {icon && (
-          <span className="shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6">
+          <span className="shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6 text-primary/70 group-hover:text-primary">
             {icon}
           </span>
         )}
         <span className="relative">
           {children}
-          {/* Underline animado que cresce da esquerda no hover */}
-          <span className="absolute -bottom-0.5 left-0 h-px w-0 bg-primary transition-all duration-300 group-hover:w-full" />
+          {/* Underline animado: w-0 no desktop (cresce no hover), w-full no mobile (sempre visível) */}
+          <span className="absolute -bottom-0.5 left-0 h-px w-full max-w-0 bg-primary/40 transition-all duration-300 group-hover:max-w-full group-hover:bg-primary footer-underline-mobile" />
         </span>
-        {/* Seta que aparece no hover */}
+        {/* Seta: oculta no desktop (aparece no hover), visível no mobile */}
         <ArrowUpRight
           size={12}
-          className="shrink-0 opacity-0 -translate-x-1 -translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 text-primary"
+          className="shrink-0 text-primary/50 transition-all duration-200 footer-arrow-desktop group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:text-primary"
         />
       </LinkComponent>
     </li>
