@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, ChevronLeft, Building2, ArrowLeft } from "lucide-react";
 
 /**
  * Products Catalog — Seção da landing page que mostra os 9 produtos
@@ -78,6 +78,23 @@ function getBankEmoji(bank: string | null): string {
   const key = bank.toLowerCase().trim();
   return BANK_EMOJIS[key] || "🏦";
 }
+
+/**
+ * Mapeamento de imagens extras por produto (whatsapp_sku → path da imagem extra).
+ * Cada produto do catálogo tem uma imagem principal (do banco) + opcionalmente
+ * uma imagem extra de marketing/mockup que aparece como galeria clicável.
+ */
+const EXTRA_PRODUCT_IMAGES: Record<string, string> = {
+  "site-profissional": "/assets/produtos/novas/site-profissional.jpg",
+  "seo-local": "/assets/produtos/novas/seo-local.jpg",
+  "google-meu-negocio": "/assets/produtos/novas/google-meu-negocio.jpg",
+  "integracao-whatsapp": "/assets/produtos/novas/integracao-whatsapp.jpg",
+  "cardapio-digital-qr": "/assets/produtos/novas/cardapio-digital-qr.jpg",
+  "edicao-cardapio": "/assets/produtos/novas/edicao-cardapio.jpg",
+  "artes-redes-sociais": "/assets/produtos/novas/artes-redes-sociais.jpg",
+  "pacote-recorrencia-mensal": "/assets/produtos/novas/pacote-recorrencia-mensal.jpg",
+  "produtos-digitais-sob-medida": "/assets/produtos/novas/produtos-digitais-sob-medida.jpg",
+};
 
 export function ProductsCatalog() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -169,17 +186,67 @@ export function ProductsCatalog() {
 }
 
 function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix: () => void; whatsappLink: string }) {
+  // Galeria de imagens: imagem principal do produto + imagem extra (se existir)
+  const extraImage = EXTRA_PRODUCT_IMAGES[product.whatsapp_sku || ""];
+  const images = [product.image_path, extraImage].filter(Boolean) as string[];
+  const [currentImage, setCurrentImage] = useState(0);
+
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition hover:border-primary/40 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-      {/* Image */}
-      {product.image_path && (
-        <div className="aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+      {/* Image gallery */}
+      {images.length > 0 && (
+        <div className="aspect-[4/3] overflow-hidden bg-zinc-100 dark:bg-zinc-800 relative">
           <img
-            src={product.image_path}
+            src={images[currentImage]}
             alt={product.name}
             className="h-full w-full object-cover transition group-hover:scale-105"
             loading="lazy"
           />
+          {/* Gallery dots indicator */}
+          {images.length > 1 && (
+            <>
+              {/* Dots */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={(e) => { e.preventDefault(); setCurrentImage(i); }}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === currentImage
+                        ? "w-5 bg-white"
+                        : "w-1.5 bg-white/50 hover:bg-white/80"
+                    }`}
+                    aria-label={`Ver imagem ${i + 1}`}
+                  />
+                ))}
+              </div>
+              {/* Navigation arrows */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev - 1 + images.length) % images.length); }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
+                    aria-label="Imagem anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev + 1) % images.length); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
+                    aria-label="Próxima imagem"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              {/* Counter badge */}
+              {images.length > 1 && (
+                <div className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] font-bold text-white">
+                  {currentImage + 1}/{images.length}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
