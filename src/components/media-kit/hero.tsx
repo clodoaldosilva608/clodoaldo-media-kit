@@ -83,9 +83,9 @@ export function Hero() {
           scrollIndicatorRef.current.style.opacity = String(Math.max(0, 1 - p * 5));
         }
 
-        // BACKGROUND: stays pure black (like United Carriers)
+        // BACKGROUND: usa a cor de fundo do tema (respeita light/dark)
         if (bgRef.current) {
-          bgRef.current.style.backgroundColor = "#000000";
+          bgRef.current.style.backgroundColor = "var(--background)";
         }
 
         // OVERLAY: atmospheric blue grows from 30% onward
@@ -111,11 +111,11 @@ export function Hero() {
         ref={sectionRef}
         id="inicio"
         className="relative"
-        style={{ height: "150vh", backgroundColor: "#000000", color: "#fff" }}
+        style={{ height: "150vh", backgroundColor: "var(--background)", color: "var(--foreground)" }}
       >
         <div className="hero-sticky sticky top-0 h-screen overflow-hidden flex items-center">
-          {/* Background — pure black */}
-          <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "#000000" }} />
+          {/* Background — usa cor do tema (light/dark) */}
+          <div ref={bgRef} className="absolute inset-0" style={{ backgroundColor: "var(--background)" }} />
 
           {/* Subtle grid lines */}
           <div
