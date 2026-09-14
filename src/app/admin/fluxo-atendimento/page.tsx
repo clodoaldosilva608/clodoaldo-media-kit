@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, Button, EmptyState } from "@/components/admin/ui";
 import {
   RefreshCw, Clock, CheckCircle2, MessageCircle, AlertCircle,
-  Phone, Mail, Globe, Send, Calendar, X, ExternalLink, Search, MapPin,
+  Phone, Mail, Globe, Send, Calendar, X, ExternalLink, Search, MapPin, Trash2,
 } from "lucide-react";
 
 interface Prospect {
@@ -71,9 +71,11 @@ export default function FluxoAtendimentoPage() {
   // Estados de busca e filtros
   const [search, setSearch] = useState("");
   const [websiteFilter, setWebsiteFilter] = useState<"all" | "with" | "without">("all");
+  const [whatsappFilter, setWhatsappFilter] = useState<"all" | "with" | "without">("all");
   const [nicheFilter, setNicheFilter] = useState<string>("all");
   const [cityFilter, setCityFilter] = useState<string>("all");
   const [repliedFilter, setRepliedFilter] = useState<"all" | "replied" | "no_reply">("all");
+  const [showDiscarded, setShowDiscarded] = useState<boolean>(false);
 
   // Helper: busca textual em vários campos do prospect
   const matchSearch = (p: Prospect, q: string): boolean => {
@@ -92,11 +94,62 @@ export default function FluxoAtendimentoPage() {
     if (!matchSearch(p, search)) return false;
     if (websiteFilter === "with" && !p.has_website) return false;
     if (websiteFilter === "without" && p.has_website) return false;
+    if (whatsappFilter === "with" && !p.whatsapp) return false;
+    if (whatsappFilter === "without" && p.whatsapp) return false;
     if (nicheFilter !== "all" && p.niche !== nicheFilter) return false;
     if (cityFilter !== "all" && p.city !== cityFilter) return false;
     if (repliedFilter === "replied" && !p.replied) return false;
     if (repliedFilter === "no_reply" && p.replied) return false;
+    // Filtro de descartados: por padrão esconde leads descartados (status=perdido + notes inclui DESCARTADO)
+    const isDiscarded = p.status === "perdido" && (p.notes || "").toUpperCase().includes("DESCARTADO");
+    if (!showDiscarded && isDiscarded) return false;
+    if (showDiscarded && !isDiscarded) return false;
     return true;
+  };
+
+  // Helper: descartar lead (marca como perdido + adiciona tag DESCARTADO nas notes)
+  const discardLead = async (prospectId: string, reason?: string) => {
+    if (!confirm("Descartar este lead? Ele será movido pra 'Perdidos' e escondido do fluxo. Você pode reverter mostrando descartados no filtro.")) return;
+    try {
+      // Atualizar localmente primeiro (UX imediata)
+      setProspects(prev => prev.map(p => {
+        if (p.id === prospectId) {
+          return {
+            ...p,
+            status: "perdido",
+            notes: ((p.notes || "") + (p.notes ? "\n" : "") + `DESCARTADO em ${new Date().toLocaleString("pt-BR")}${reason ? `: ${reason}` : ""}`).trim(),
+          };
+        }
+        return p;
+      }));
+
+      // Atualizar no banco
+      const resp = await fetch("/api/admin/prospects/mark-sent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          message_variant: "discard",
+          message_text: "Lead descartado manualmente via fluxo de atendimento",
+        }),
+      });
+
+      // Também atualizar status e notes via API direta
+      await fetch("/api/admin/prospects/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          status: "perdido",
+          notes_append: `DESCARTADO em ${new Date().toLocaleString("pt-BR")}${reason ? `: ${reason}` : ""}`,
+        }),
+      });
+
+      setToast(`🗑️ Lead descartado`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (e: any) {
+      alert("Erro ao descartar: " + e.message);
+    }
   };
 
   // Listas únicas pra selects de nicho e cidade
@@ -292,6 +345,20 @@ export default function FluxoAtendimentoPage() {
             </select>
           </div>
 
+          {/* Filtro: WhatsApp */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">WhatsApp</label>
+            <select
+              value={whatsappFilter}
+              onChange={e => setWhatsappFilter(e.target.value as any)}
+              className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[120px]"
+            >
+              <option value="all">Todos</option>
+              <option value="with">💬 Com WhatsApp</option>
+              <option value="without">🚫 Sem WhatsApp</option>
+            </select>
+          </div>
+
           {/* Filtro: Nicho */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
@@ -322,11 +389,23 @@ export default function FluxoAtendimentoPage() {
             </select>
           </div>
 
+          {/* Toggle: mostrar descartados */}
+          <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-zinc-300 hover:text-zinc-100 transition">
+            <input
+              type="checkbox"
+              checked={showDiscarded}
+              onChange={e => setShowDiscarded(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-white/20 bg-white/5 text-rose-500 focus:ring-1 focus:ring-rose-500/40"
+            />
+            <Trash2 className="h-3 w-3" />
+            Ver descartados
+          </label>
+
           {/* Limpar filtros */}
-          {(search || websiteFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all") && (
+          {(search || websiteFilter !== "all" || whatsappFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all" || showDiscarded) && (
             <button
               type="button"
-              onClick={() => { setSearch(""); setWebsiteFilter("all"); setRepliedFilter("all"); setNicheFilter("all"); setCityFilter("all"); }}
+              onClick={() => { setSearch(""); setWebsiteFilter("all"); setWhatsappFilter("all"); setRepliedFilter("all"); setNicheFilter("all"); setCityFilter("all"); setShowDiscarded(false); }}
               className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
             >
               Limpar filtros
@@ -335,7 +414,7 @@ export default function FluxoAtendimentoPage() {
         </div>
 
         {/* Resumo dos filtros ativos */}
-        {(search || websiteFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all") && (
+        {(search || websiteFilter !== "all" || whatsappFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all" || showDiscarded) && (
           <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
             <span className="text-[10px] text-zinc-500 self-center">Filtros ativos:</span>
             {search && (
@@ -348,6 +427,12 @@ export default function FluxoAtendimentoPage() {
               <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
                 {websiteFilter === "with" ? "🌐 Com site" : "⚠️ Sem site"}
                 <button onClick={() => setWebsiteFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {whatsappFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                {whatsappFilter === "with" ? "💬 Com WhatsApp" : "🚫 Sem WhatsApp"}
+                <button onClick={() => setWhatsappFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
               </span>
             )}
             {repliedFilter !== "all" && (
@@ -437,7 +522,7 @@ export default function FluxoAtendimentoPage() {
                 <div className="py-6 text-center text-zinc-600 text-xs">Vazio</div>
               ) : (
                 stage.items.slice(0, 50).map(p => (
-                  <ProspectCard key={p.id} prospect={p} />
+                  <ProspectCard key={p.id} prospect={p} onDiscard={discardLead} />
                 ))
               )}
               {stage.items.length > 50 && (
@@ -485,7 +570,7 @@ function KpiCard({ label, value, color }: { label: string; value: number | strin
   );
 }
 
-function ProspectCard({ prospect }: { prospect: Prospect }) {
+function ProspectCard({ prospect, onDiscard }: { prospect: Prospect; onDiscard: (id: string) => void }) {
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(prospect.send_status === "sent");
   const [expanded, setExpanded] = useState(false);
@@ -595,7 +680,14 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
 
       {/* Modal de detalhes — abre ao clicar no card */}
       {expanded && (
-        <ProspectDetailModal prospect={prospect} onClose={() => setExpanded(false)} waLink={waLink} crmLink={crmLink} marked={marked} />
+        <ProspectDetailModal
+          prospect={prospect}
+          onClose={() => setExpanded(false)}
+          waLink={waLink}
+          crmLink={crmLink}
+          marked={marked}
+          onDiscard={() => onDiscard(prospect.id)}
+        />
       )}
     </>
   );
@@ -610,12 +702,14 @@ function ProspectDetailModal({
   waLink,
   crmLink,
   marked,
+  onDiscard,
 }: {
   prospect: Prospect;
   onClose: () => void;
   waLink: string | null;
   crmLink: string;
   marked: boolean;
+  onDiscard: () => void;
 }) {
   return (
     <div
@@ -803,10 +897,17 @@ function ProspectDetailModal({
             )}
             <a
               href={crmLink}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-300 hover:bg-violet-500/25 ring-1 ring-violet-500/20 ml-auto"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-300 hover:bg-violet-500/25 ring-1 ring-violet-500/20"
             >
               <ExternalLink className="h-3.5 w-3.5" /> Abrir no CRM
             </a>
+            <button
+              onClick={() => { onDiscard(); onClose(); }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/25 ring-1 ring-rose-500/20 ml-auto"
+              title="Descartar lead (move pra Perdidos e esconde do fluxo)"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Descartar lead
+            </button>
           </div>
         </div>
       </div>

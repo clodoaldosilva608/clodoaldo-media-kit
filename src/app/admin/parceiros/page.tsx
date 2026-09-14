@@ -9,7 +9,7 @@ import {
   MessageCircle, ExternalLink, Mail, Copy, Check, Zap, Clock,
   Smartphone, AlertTriangle, Code2, Eye, Layout, Shield, Share2, Link2,
   FileCheck, Send, CheckSquare, Square, Sparkles, ChevronRight,
-  FileDown, Filter, Reply, MessageSquare,
+  FileDown, Filter, Reply, MessageSquare, Ban,
 } from "lucide-react";
 import {
   getRelevantObjections,
@@ -68,6 +68,8 @@ export default function AdminParceirosPage() {
   const [replyCounts, setReplyCounts] = useState<Record<string, number>>({}); // prospect_id → reply count
   const [showRepliedOnly, setShowRepliedOnly] = useState(false); // filter in "Leads Salvos"
   const [globalSearch, setGlobalSearch] = useState(""); // busca por nome/empresa/whatsapp/email/cidade/nicho em Pipeline + Leads Salvos
+  const [websiteFilter, setWebsiteFilter] = useState<"all" | "with" | "without">("all");
+  const [whatsappFilter, setWhatsappFilter] = useState<"all" | "with" | "without">("all");
 
   // Helper: filtrar prospects por texto (nome, empresa, whatsapp, email, cidade, nicho, endereço)
   const matchSearch = (p: Lead, q: string): boolean => {
@@ -80,6 +82,18 @@ export default function AdminParceirosPage() {
     ].filter(Boolean).join(" ").toLowerCase();
     return haystack.includes(needle);
   };
+
+  // Helper: aplicar filtros avançados (site, whatsapp)
+  const matchAdvancedFilters = (p: Lead): boolean => {
+    if (websiteFilter === "with" && !p.hasWebsite) return false;
+    if (websiteFilter === "without" && p.hasWebsite) return false;
+    if (whatsappFilter === "with" && !p.hasWhatsApp && !p.whatsapp) return false;
+    if (whatsappFilter === "without" && (p.hasWhatsApp || p.whatsapp)) return false;
+    return true;
+  };
+
+  // Helper combinado: busca + filtros
+  const matchAll = (p: Lead): boolean => matchSearch(p, globalSearch) && matchAdvancedFilters(p);
 
   // Fetch reply counts (called on mount + after each reply save)
   const loadReplyCounts = useCallback(async () => {
@@ -377,9 +391,36 @@ export default function AdminParceirosPage() {
   }
 
   async function deleteProspect(id:string) {
-    if(!confirm("Remover?")) return;
+    if(!confirm("Remover definitivamente? Esta ação não pode ser desfeita.")) return;
     setProspects(prev => prev.filter(p => p.id!==id));
     try { await fetch("/api/admin/prospects", { method:"DELETE", headers:{"Content-Type":"application/json"}, body: JSON.stringify({id}) }); } catch {}
+  }
+
+  // Descartar lead (não deleta — marca como perdido + tag DESCARTADO, esconde do fluxo)
+  async function discardProspect(id:string) {
+    if(!confirm("Descartar este lead? Ele será movido pra 'Perdidos' e escondido do fluxo. Você pode reverter mostrando descartados no filtro do Fluxo de Atendimento.")) return;
+    // Atualizar localmente primeiro
+    setProspects(prev => prev.map(p => {
+      if (p.id === id) {
+        return {
+          ...p,
+          status: "perdido",
+          notes: ((p.notes || "") + (p.notes ? "\n" : "") + `DESCARTADO em ${new Date().toLocaleString("pt-BR")}`).trim(),
+        };
+      }
+      return p;
+    }));
+    try {
+      await fetch("/api/admin/prospects/update-status", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          prospect_id: id,
+          status: "perdido",
+          notes_append: `DESCARTADO em ${new Date().toLocaleString("pt-BR")}`,
+        }),
+      });
+    } catch {}
   }
 
   function copyToClipboard(text:string, id:string) { navigator.clipboard.writeText(text); setCopiedText(id); setTimeout(()=>setCopiedText(null),2000); }
@@ -596,11 +637,11 @@ Clodoaldo Silva`;
 
       {/* Barra de busca global — visível em Pipeline, Leads Salvos */}
       {(view === "kanban" || view === "salvos") && (
-        <div className="mb-4 flex items-center gap-2">
-          <div className="relative flex-1 max-w-md">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] p-2.5">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
             <Input
-              placeholder={`Buscar por nome, empresa, WhatsApp, email, cidade, nicho... (${prospects.filter(p => matchSearch(p, globalSearch)).length} de ${prospects.length})`}
+              placeholder={`Buscar por nome, empresa, WhatsApp, email, cidade, nicho... (${prospects.filter(p => matchAll(p)).length} de ${prospects.length})`}
               value={globalSearch}
               onChange={(e) => setGlobalSearch(e.target.value)}
               className="pl-8"
@@ -615,6 +656,38 @@ Clodoaldo Silva`;
               </button>
             )}
           </div>
+
+          {/* Filtro: Site */}
+          <select
+            value={websiteFilter}
+            onChange={e => setWebsiteFilter(e.target.value as any)}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+          >
+            <option value="all">🌐 Site: todos</option>
+            <option value="with">🌐 Com site</option>
+            <option value="without">⚠️ Sem site</option>
+          </select>
+
+          {/* Filtro: WhatsApp */}
+          <select
+            value={whatsappFilter}
+            onChange={e => setWhatsappFilter(e.target.value as any)}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+          >
+            <option value="all">💬 WhatsApp: todos</option>
+            <option value="with">💬 Com WhatsApp</option>
+            <option value="without">🚫 Sem WhatsApp</option>
+          </select>
+
+          {(globalSearch || websiteFilter !== "all" || whatsappFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => { setGlobalSearch(""); setWebsiteFilter("all"); setWhatsappFilter("all"); }}
+              className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
       )}
 
@@ -873,7 +946,7 @@ Clodoaldo Silva`;
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-4 min-w-[1000px]">
             {KANBAN.map(col => {
-              const items = prospects.filter(p=>p.status===col.key && matchSearch(p, globalSearch));
+              const items = prospects.filter(p=>p.status===col.key && matchAll(p));
               const colors:Record<string,string> = {blue:"border-blue-500/30 bg-blue-500/[0.03]",amber:"border-amber-500/30 bg-amber-500/[0.03]",violet:"border-violet-500/30 bg-violet-500/[0.03]",emerald:"border-emerald-500/30 bg-emerald-500/[0.03]",rose:"border-rose-500/30 bg-rose-500/[0.03]"};
               const hc:Record<string,string> = {blue:"text-blue-300",amber:"text-amber-300",violet:"text-violet-300",emerald:"text-emerald-300",rose:"text-rose-300"};
               return (
@@ -903,13 +976,22 @@ Clodoaldo Silva`;
                         >
                           <div className="mb-1 flex items-start justify-between gap-2">
                             <h4 className="text-xs font-bold text-white truncate flex-1 group-hover:text-emerald-300 transition">{p.name}</h4>
-                            <button
-                              onClick={(e)=>{e.stopPropagation();deleteProspect(p.id!);}}
-                              className="shrink-0 text-zinc-600 hover:text-rose-400"
-                              title="Excluir lead"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e)=>{e.stopPropagation();discardProspect(p.id!);}}
+                                className="text-zinc-600 hover:text-amber-400 p-0.5"
+                                title="Descartar lead (move pra Perdidos, esconde do fluxo)"
+                              >
+                                <Ban className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e)=>{e.stopPropagation();deleteProspect(p.id!);}}
+                                className="text-zinc-600 hover:text-rose-400 p-0.5"
+                                title="Excluir definitivamente"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                           <p className="text-[10px] text-zinc-500 truncate mb-1">{p.formatted_address||p.city||""}</p>
                           <div className="flex flex-wrap gap-1 mb-2">
@@ -971,7 +1053,7 @@ Clodoaldo Silva`;
               </div>
               <div className="space-y-2">
                 {prospects.filter(p => {
-                  if (!matchSearch(p, globalSearch)) return false;
+                  if (!matchAll(p)) return false;
                   if (!showRepliedOnly) return true;
                   return (replyCounts[p.id || ""] || 0) > 0;
                 }).map((p) => {
