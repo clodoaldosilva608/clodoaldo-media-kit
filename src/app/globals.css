@@ -211,6 +211,13 @@ html.light .footer-link:hover {
   color: var(--primary);
 }
 
+/* Logo em modo claro: fundo escuro arredondado pra garantir contraste
+   (a logo é branca com detalhes laranja — invisível em fundo claro sem isto) */
+html.light .logo-wrap {
+  background-color: oklch(0.15 0.005 260);
+  padding: 4px;
+}
+
 /* Footer em dispositivos touch (mobile): mostra indicadores permanentes */
 @media (hover: none) {
   /* Underline sempre visível no mobile */
