@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, Button, EmptyState } from "@/components/admin/ui";
 import {
   RefreshCw, Clock, CheckCircle2, MessageCircle, AlertCircle,
-  Phone, Mail, Globe, Send, Calendar, X, ExternalLink,
+  Phone, Mail, Globe, Send, Calendar, X, ExternalLink, Search,
 } from "lucide-react";
 
 interface Prospect {
@@ -16,6 +16,8 @@ interface Prospect {
   whatsapp: string | null;
   phone: string | null;
   has_website: boolean;
+  website?: string | null;
+  email?: string | null;
   rating: number | null;
   status: string;
   send_status: string;
@@ -26,6 +28,12 @@ interface Prospect {
   next_follow_up: string | null;
   message_variant: string | null;
   created_at: string;
+  formatted_address?: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
+  instagram_handle?: string | null;
+  instagram?: string | null;
+  notes?: string | null;
 }
 
 const STAGES = [
@@ -59,6 +67,44 @@ export default function FluxoAtendimentoPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [liveChanges, setLiveChanges] = useState<number>(0);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Estados de busca e filtros
+  const [search, setSearch] = useState("");
+  const [websiteFilter, setWebsiteFilter] = useState<"all" | "with" | "without">("all");
+  const [nicheFilter, setNicheFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [repliedFilter, setRepliedFilter] = useState<"all" | "replied" | "no_reply">("all");
+
+  // Helper: busca textual em vários campos do prospect
+  const matchSearch = (p: Prospect, q: string): boolean => {
+    if (!q.trim()) return true;
+    const needle = q.toLowerCase().trim();
+    const haystack = [
+      p.name, p.whatsapp, p.phone, p.email, p.website,
+      p.city, p.niche, p.formatted_address, p.notes,
+      p.owner_name, p.owner_email, p.instagram_handle, p.instagram,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(needle);
+  };
+
+  // Helper: aplicação combinada de todos os filtros
+  const matchFilters = (p: Prospect): boolean => {
+    if (!matchSearch(p, search)) return false;
+    if (websiteFilter === "with" && !p.has_website) return false;
+    if (websiteFilter === "without" && p.has_website) return false;
+    if (nicheFilter !== "all" && p.niche !== nicheFilter) return false;
+    if (cityFilter !== "all" && p.city !== cityFilter) return false;
+    if (repliedFilter === "replied" && !p.replied) return false;
+    if (repliedFilter === "no_reply" && p.replied) return false;
+    return true;
+  };
+
+  // Listas únicas pra selects de nicho e cidade
+  const uniqueNiches = Array.from(new Set(prospects.map(p => p.niche).filter(Boolean))).sort();
+  const uniqueCities = Array.from(new Set(prospects.map(p => p.city).filter(Boolean))).sort();
+
+  // Contagem de leads que batem com os filtros (antes de agrupar por stage)
+  const filteredProspects = prospects.filter(matchFilters);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -122,26 +168,26 @@ export default function FluxoAtendimentoPage() {
     return () => clearInterval(interval);
   }, [load]);
 
-  // Group by stage
+  // Group by stage — usando filteredProspects (aplica busca + filtros)
   const grouped = STAGES.map(stage => {
     let items: Prospect[] = [];
     if (stage.key === "pending") {
-      items = prospects.filter(p => p.status === "new" && p.send_status === "pending");
+      items = filteredProspects.filter(p => p.status === "new" && p.send_status === "pending");
     } else if (stage.key === "contacted") {
-      items = prospects.filter(p => p.send_status === "sent" && !p.replied && p.status !== "fechado" && p.status !== "perdido");
+      items = filteredProspects.filter(p => p.send_status === "sent" && !p.replied && p.status !== "fechado" && p.status !== "perdido");
     } else if (stage.key === "replied") {
-      items = prospects.filter(p => p.replied && p.status !== "fechado" && p.status !== "perdido" && p.status !== "meeting");
+      items = filteredProspects.filter(p => p.replied && p.status !== "fechado" && p.status !== "perdido" && p.status !== "meeting");
     } else if (stage.key === "meeting") {
-      items = prospects.filter(p => p.status === "meeting" || (p.replied && p.status === "qualificado"));
+      items = filteredProspects.filter(p => p.status === "meeting" || (p.replied && p.status === "qualificado"));
     } else if (stage.key === "closed") {
-      items = prospects.filter(p => p.status === "fechado");
+      items = filteredProspects.filter(p => p.status === "fechado");
     } else if (stage.key === "lost") {
-      items = prospects.filter(p => p.status === "perdido");
+      items = filteredProspects.filter(p => p.status === "perdido");
     }
     return { ...stage, items, count: items.length };
   });
 
-  const totalProspects = prospects.length;
+  const totalProspects = filteredProspects.length;
   const totalPending = grouped[0].count;
   const totalContacted = grouped[1].count;
   const totalReplied = grouped[2].count;
@@ -189,6 +235,144 @@ export default function FluxoAtendimentoPage() {
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Atualizar
           </Button>
         </div>
+      </div>
+
+      {/* Barra de busca + filtros avançados */}
+      <div className="mb-4 rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Busca textual */}
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Buscar</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+              <input
+                type="text"
+                placeholder={`Nome, WhatsApp, email, website, endereço, dono, instagram... (${filteredProspects.length} de ${prospects.length})`}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-zinc-900 pl-8 pr-7 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
+                  title="Limpar"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filtro: Tem site */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Site</label>
+            <select
+              value={websiteFilter}
+              onChange={e => setWebsiteFilter(e.target.value as any)}
+              className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[110px]"
+            >
+              <option value="all">Todos</option>
+              <option value="with">🌐 Com site</option>
+              <option value="without">⚠️ Sem site</option>
+            </select>
+          </div>
+
+          {/* Filtro: Resposta */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Resposta</label>
+            <select
+              value={repliedFilter}
+              onChange={e => setRepliedFilter(e.target.value as any)}
+              className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[120px]"
+            >
+              <option value="all">Todos</option>
+              <option value="replied">💬 Respondeu</option>
+              <option value="no_reply">🔇 Sem resposta</option>
+            </select>
+          </div>
+
+          {/* Filtro: Nicho */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Nicho</label>
+            <select
+              value={nicheFilter}
+              onChange={e => setNicheFilter(e.target.value)}
+              className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[140px] max-w-[200px]"
+            >
+              <option value="all">Todos os nichos</option>
+              {uniqueNiches.map(n => (
+                <option key={n} value={n}>{n} ({prospects.filter(p => p.niche === n).length})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro: Cidade */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Cidade</label>
+            <select
+              value={cityFilter}
+              onChange={e => setCityFilter(e.target.value)}
+              className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 min-w-[140px] max-w-[200px]"
+            >
+              <option value="all">Todas as cidades</option>
+              {uniqueCities.map(c => (
+                <option key={c} value={c}>{c} ({prospects.filter(p => p.city === c).length})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Limpar filtros */}
+          {(search || websiteFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all") && (
+            <button
+              type="button"
+              onClick={() => { setSearch(""); setWebsiteFilter("all"); setRepliedFilter("all"); setNicheFilter("all"); setCityFilter("all"); }}
+              className="text-xs text-zinc-400 hover:text-zinc-200 underline ml-auto"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        {/* Resumo dos filtros ativos */}
+        {(search || websiteFilter !== "all" || repliedFilter !== "all" || nicheFilter !== "all" || cityFilter !== "all") && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+            <span className="text-[10px] text-zinc-500 self-center">Filtros ativos:</span>
+            {search && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                Busca: "{search.length > 30 ? search.slice(0, 30) + "..." : search}"
+                <button onClick={() => setSearch("")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {websiteFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
+                {websiteFilter === "with" ? "🌐 Com site" : "⚠️ Sem site"}
+                <button onClick={() => setWebsiteFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {repliedFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                {repliedFilter === "replied" ? "💬 Respondeu" : "🔇 Sem resposta"}
+                <button onClick={() => setRepliedFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {nicheFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                Nicho: {nicheFilter}
+                <button onClick={() => setNicheFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {cityFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                Cidade: {cityFilter}
+                <button onClick={() => setCityFilter("all")} className="ml-0.5 hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            <span className="ml-auto text-[10px] text-zinc-500 self-center">
+              {filteredProspects.length} de {prospects.length} leads
+            </span>
+          </div>
+        )}
       </div>
 
       {/* KPIs */}

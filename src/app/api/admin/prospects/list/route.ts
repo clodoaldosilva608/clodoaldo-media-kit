@@ -17,7 +17,9 @@ export async function GET() {
          id, name, niche, city, whatsapp, phone, has_website, rating,
          status, send_status, last_contact_at, contacted_count,
          replied, reply_classification, next_follow_up, message_variant,
-         created_at, updated_at
+         created_at, updated_at,
+         website, email, formatted_address, notes,
+         instagram, owner_name, owner_email, instagram_handle
        FROM clodoaldo_prospects
        ORDER BY
          CASE WHEN status = 'new' AND send_status = 'pending' THEN 0 ELSE 1 END,
