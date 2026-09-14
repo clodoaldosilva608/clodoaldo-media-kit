@@ -12,12 +12,10 @@ import { Logo } from "./logo";
  */
 const NAV = [
   { href: "/#servicos", label: "Soluções" },
-  { href: "/#como-funciona", label: "Como funciona" },
   { href: "/#cases", label: "Resultados" },
-  { href: "/#catalogo", label: "Catálogo" },
-  { href: "/agendar", label: "Agendar" },
+  { href: "/#catalogo", label: "Produtos" },
+  { href: "/biblioteca", label: "Conteúdos" },
   { href: "/sobre", label: "Sobre" },
-  { href: "/#contato", label: "Contato" },
 ];
 
 type Theme = "light" | "dark";
@@ -130,7 +128,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Primary CTA — visible on all sizes (mobile-first) */}
+          {/* Secondary CTA — Quiz (descoberta guiada) */}
           <Link
             href="/quiz"
             className="inline-flex items-center justify-center rounded-full bg-gradient-orange px-3.5 sm:px-4 py-2 min-h-10 sm:min-h-11 text-[11px] sm:text-xs font-bold text-primary-foreground shadow-md transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -138,17 +136,12 @@ export function Header() {
             <span className="sm:hidden">Quiz</span>
             <span className="hidden sm:inline">Fazer o quiz</span>
           </Link>
-          <Link
-            href="/biblioteca"
-            className="hidden md:inline-flex items-center justify-center px-4 py-2.5 min-h-11 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            E-books
-          </Link>
+          {/* Primary CTA — Agendar conversa */}
           <a
-            href="/#servicos"
-            className="hidden lg:inline-flex items-center justify-center rounded-full border border-primary/60 px-5 py-2.5 min-h-11 text-sm font-medium text-foreground transition-colors duration-300 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href="/agendar"
+            className="hidden sm:inline-flex items-center justify-center rounded-full border border-primary/60 px-4 lg:px-5 py-2.5 min-h-11 text-xs lg:text-sm font-medium text-foreground transition-colors duration-300 hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            Contratar
+            Agendar conversa
           </a>
 
           <button
@@ -178,18 +171,18 @@ export function Header() {
             ))}
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Link
-                href="/biblioteca"
+                href="/quiz"
                 onClick={() => setOpen(false)}
-                className="inline-flex items-center justify-center rounded-full border border-border px-5 py-3 min-h-12 text-sm font-semibold"
+                className="inline-flex items-center justify-center rounded-full bg-gradient-orange px-5 py-3 min-h-12 text-sm font-bold text-primary-foreground"
               >
-                Ver Biblioteca
+                Fazer o quiz
               </Link>
               <a
-                href="/#servicos"
+                href="/agendar"
                 onClick={() => setOpen(false)}
                 className="inline-flex items-center justify-center rounded-full border border-primary/60 px-5 py-3 min-h-12 text-sm font-semibold sm:col-span-2"
               >
-                Adquirir Serviços
+                Agendar conversa
               </a>
             </div>
           </nav>

@@ -149,7 +149,15 @@ export function Hero() {
           }}
         />
 
-        {/* Globe removido pelo usuário — será reimplementado futuramente */}
+        {/* Globe 3D — elemento visual no lado direito do hero */}
+        <div
+          ref={globeWrapRef}
+          className="absolute inset-0 z-[1] pointer-events-none will-change-transform"
+          style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
+          aria-hidden="true"
+        >
+          <HeroGlobe scrollProgress={scrollProgress} />
+        </div>
 
         {/* Text content — ON TOP of globe, left-aligned */}
         <div
@@ -226,10 +234,22 @@ export function Hero() {
                 );
               })}
             </div>
+
+            {/* Microprova de autoridade — números reais (Passo 4 do brief de design) */}
+            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] sm:text-xs text-muted-foreground hero-text-reveal" style={{ animationDelay: "1100ms" }}>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Desde 2016
+              </span>
+              <span className="text-border">·</span>
+              <span><strong className="text-foreground">+75</strong> empresas atendidas</span>
+              <span className="text-border">·</span>
+              <span><strong className="text-foreground">9</strong> produtos digitais</span>
+              <span className="text-border">·</span>
+              <span><strong className="text-foreground">+8 anos</strong> de experiência</span>
+            </div>
           </div>
         </div>
-
-        {/* Scroll indicator — hidden on mobile via CSS .scroll-indicator class */}
         <div ref={scrollIndicatorRef} className="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
           Scroll ↓
         </div>

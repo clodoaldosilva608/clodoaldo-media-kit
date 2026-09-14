@@ -27,8 +27,10 @@ export default function Home() {
       <AffiliateTrackerWrapper />
       <Header />
       <main id="main-content">
+        {/* 1. Proposta de valor — Hero com globo 3D + microprova */}
         <Hero />
-        {/* Foto do Clodoaldo — logo abaixo da seção do globo */}
+
+        {/* 2. Para quem é — Quem sou eu (foto + bio) */}
         <section className="relative py-12 sm:py-16 md:py-24 bg-background">
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
@@ -73,7 +75,6 @@ export default function Home() {
                       alt="Clodoaldo Silva — criador e desenvolvedor digital"
                       className="absolute inset-0 h-full w-full object-cover object-center"
                       loading="eager"
-                      // fetchPriority is valid in React 19+
                       fetchPriority="high"
                       decoding="async"
                     />
@@ -94,25 +95,47 @@ export default function Home() {
             </div>
           </div>
         </section>
-        {/* Quiz CTA — chamada principal para o quiz de recomendação */}
+
+        {/* 3. Descoberta guiada — Quiz CTA */}
         <QuizCTASection />
-        {/* Como trabalhamos — método em 5 etapas */}
-        <Method />
-        <Metrics />
-        {/* Por que trabalhar comigo — diferenciais */}
-        <WhyMe />
-        <Audience />
+
+        {/* 4. Principais soluções — Services (antes do Method) */}
         <Services />
-        {/* Funil com Dono — metodologia de growth (3 pilares) */}
-        <FunilComDono />
-        <LibraryPreview />
-        <Ecosystem />
+
+        {/* 5. Por que trabalhar comigo — diferenciais */}
+        <WhyMe />
+
+        {/* 6. Prova de resultados — Cases (antes do Method) */}
         <Cases />
-        <YouTubeSection />
-        <Pricing />
-        {/* Catálogo de produtos — 9 produtos com PIX + WhatsApp */}
+
+        {/* 7. Números de resultado — Metrics */}
+        <Metrics />
+
+        {/* 8. Como funciona — Método em 5 etapas */}
+        <Method />
+
+        {/* 9. Funil com Dono — metodologia de growth */}
+        <FunilComDono />
+
+        {/* 10. Catálogo de produtos — 9 produtos com PIX + WhatsApp */}
         <ProductsCatalog />
-        {/* Prova social — depoimentos de clientes */}
+
+        {/* 11. Planos e preços */}
+        <Pricing />
+
+        {/* 12. Ecossistema de apps */}
+        <Ecosystem />
+
+        {/* 13. Biblioteca de e-books e conteúdos */}
+        <LibraryPreview />
+
+        {/* 14. YouTube */}
+        <YouTubeSection />
+
+        {/* 15. Audiência / público */}
+        <Audience />
+
+        {/* 16. Prova social — depoimentos de clientes */}
         <section className="mx-auto max-w-5xl px-5 sm:px-8 py-12 sm:py-16 md:py-24" id="depoimentos">
           <div className="text-center mb-8 sm:mb-10">
             <div className="text-xs font-bold uppercase tracking-wider text-primary">Provas sociais</div>
@@ -124,11 +147,12 @@ export default function Home() {
             </p>
           </div>
           <SocialProofCarousel />
-          {/* Carrossel adicional do banco (testimonials cadastrados via admin) */}
           <div className="mt-6 sm:mt-8">
             <TestimonialCarousel limit={6} />
           </div>
         </section>
+
+        {/* 17. CTA final */}
         <Contact />
       </main>
       <Footer />
