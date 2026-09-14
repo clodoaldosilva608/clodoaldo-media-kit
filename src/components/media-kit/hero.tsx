@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Sparkles, Megaphone, Edit3, Code2, Handshake } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
-import { HeroGlobe } from "@/components/hero/hero-globe";
 import { IntroSequence } from "@/components/experience/intro-sequence";
 import { WorldMapBackground } from "@/components/experience/world-map-background";
 
@@ -18,7 +17,6 @@ const ENTRY_PATHS = [
 
 export function Hero() {
   const sectionRef = useRef<HTMLElement | null>(null);
-  const globeWrapRef = useRef<HTMLDivElement | null>(null);
   const textWrapRef = useRef<HTMLDivElement | null>(null);
   const cardsRef = useRef<HTMLDivElement | null>(null);
   const bgRef = useRef<HTMLDivElement | null>(null);
@@ -78,15 +76,6 @@ export function Hero() {
           const cardY = p < 0.35 ? 0 : (p - 0.35) * 30 / 0.25;
           cardsRef.current.style.opacity = String(cardOpacity);
           cardsRef.current.style.transform = `translateY(${cardY}px)`;
-        }
-
-        // GLOBE: grow 1.0→1.5, move right 100px, fade starts at 60%
-        if (globeWrapRef.current) {
-          const globeScale = 1 + p * 0.5;
-          const globeX = p * 100;
-          const globeOpacity = p < 0.6 ? 1 : Math.max(0, 1 - (p - 0.6) / 0.3);
-          globeWrapRef.current.style.transform = `translateX(${globeX}px) scale(${globeScale})`;
-          globeWrapRef.current.style.opacity = String(globeOpacity);
         }
 
         // SCROLL INDICATOR: fades immediately on scroll
@@ -149,17 +138,7 @@ export function Hero() {
           }}
         />
 
-        {/* Globe 3D — elemento visual no lado direito do hero */}
-        <div
-          ref={globeWrapRef}
-          className="absolute inset-0 z-[1] pointer-events-none will-change-transform"
-          style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
-          aria-hidden="true"
-        >
-          <HeroGlobe scrollProgress={scrollProgress} />
-        </div>
-
-        {/* Text content — ON TOP of globe, left-aligned */}
+        {/* Text content — left-aligned, globo removido */}
         <div
           ref={textWrapRef}
           className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:pt-20 max-md:max-w-md"
