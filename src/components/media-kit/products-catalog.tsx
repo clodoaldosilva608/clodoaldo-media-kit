@@ -80,20 +80,46 @@ function getBankEmoji(bank: string | null): string {
 }
 
 /**
- * Mapeamento de imagens extras por produto (whatsapp_sku → path da imagem extra).
- * Cada produto do catálogo tem uma imagem principal (do banco) + opcionalmente
- * uma imagem extra de marketing/mockup que aparece como galeria clicável.
+ * Mapeamento de imagens extras por produto (whatsapp_sku → array de paths das imagens extras).
+ * Cada produto do catálogo tem uma imagem principal (do banco) + N imagens extras
+ * de marketing/mockup que aparecem como galeria clicável.
  */
-const EXTRA_PRODUCT_IMAGES: Record<string, string> = {
-  "site-profissional": "/assets/produtos/novas/site-profissional.jpg",
-  "seo-local": "/assets/produtos/novas/seo-local.jpg",
-  "google-meu-negocio": "/assets/produtos/novas/google-meu-negocio.jpg",
-  "integracao-whatsapp": "/assets/produtos/novas/integracao-whatsapp.jpg",
-  "cardapio-digital-qr": "/assets/produtos/novas/cardapio-digital-qr.jpg",
-  "edicao-cardapio": "/assets/produtos/novas/edicao-cardapio.jpg",
-  "artes-redes-sociais": "/assets/produtos/novas/artes-redes-sociais.jpg",
-  "pacote-recorrencia-mensal": "/assets/produtos/novas/pacote-recorrencia-mensal.jpg",
-  "produtos-digitais-sob-medida": "/assets/produtos/novas/produtos-digitais-sob-medida.jpg",
+const EXTRA_PRODUCT_IMAGES: Record<string, string[]> = {
+  "site-profissional": [
+    "/assets/produtos/novas/site-profissional.jpg",
+    "/assets/produtos/novas/site-profissional-v2.jpg",
+    "/assets/produtos/novas/site-profissional-v3.jpg",
+    "/assets/produtos/novas/site-profissional-v4.jpg",
+  ],
+  "seo-local": [
+    "/assets/produtos/novas/seo-local.jpg",
+    "/assets/produtos/novas/seo-local-v2.jpg",
+  ],
+  "google-meu-negocio": [
+    "/assets/produtos/novas/google-meu-negocio.jpg",
+    "/assets/produtos/novas/google-meu-negocio-v2.jpg",
+    "/assets/produtos/novas/google-meu-negocio-v3.jpg",
+    "/assets/produtos/novas/google-meu-negocio-v4.jpg",
+  ],
+  "integracao-whatsapp": [
+    "/assets/produtos/novas/integracao-whatsapp.jpg",
+    "/assets/produtos/novas/integracao-whatsapp-v2.jpg",
+  ],
+  "cardapio-digital-qr": [
+    "/assets/produtos/novas/cardapio-digital-qr.jpg",
+  ],
+  "edicao-cardapio": [
+    "/assets/produtos/novas/edicao-cardapio.jpg",
+  ],
+  "artes-redes-sociais": [
+    "/assets/produtos/novas/artes-redes-sociais.jpg",
+  ],
+  "pacote-recorrencia-mensal": [
+    "/assets/produtos/novas/pacote-recorrencia-mensal.jpg",
+  ],
+  "produtos-digitais-sob-medida": [
+    "/assets/produtos/novas/produtos-digitais-sob-medida.jpg",
+  ],
 };
 
 export function ProductsCatalog() {
@@ -186,9 +212,9 @@ export function ProductsCatalog() {
 }
 
 function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix: () => void; whatsappLink: string }) {
-  // Galeria de imagens: imagem principal do produto + imagem extra (se existir)
-  const extraImage = EXTRA_PRODUCT_IMAGES[product.whatsapp_sku || ""];
-  const images = [product.image_path, extraImage].filter(Boolean) as string[];
+  // Galeria de imagens: imagem principal do produto (do banco) + imagens extras (do mapeamento)
+  const extraImages = EXTRA_PRODUCT_IMAGES[product.whatsapp_sku || ""] || [];
+  const images = [product.image_path, ...extraImages].filter(Boolean) as string[];
   const [currentImage, setCurrentImage] = useState(0);
 
   return (
@@ -202,7 +228,7 @@ function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix
             className="h-full w-full object-cover transition group-hover:scale-105"
             loading="lazy"
           />
-          {/* Gallery dots indicator */}
+          {/* Gallery controls — só aparecem se tem mais de 1 imagem */}
           {images.length > 1 && (
             <>
               {/* Dots */}
@@ -221,30 +247,24 @@ function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix
                 ))}
               </div>
               {/* Navigation arrows */}
-              {images.length > 1 && (
-                <>
-                  <button
-                    onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev - 1 + images.length) % images.length); }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
-                    aria-label="Imagem anterior"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev + 1) % images.length); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
-                    aria-label="Próxima imagem"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </>
-              )}
+              <button
+                onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev - 1 + images.length) % images.length); }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
+                aria-label="Imagem anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); setCurrentImage((prev) => (prev + 1) % images.length); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-1.5 opacity-0 group-hover:opacity-100 transition"
+                aria-label="Próxima imagem"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
               {/* Counter badge */}
-              {images.length > 1 && (
-                <div className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] font-bold text-white">
-                  {currentImage + 1}/{images.length}
-                </div>
-              )}
+              <div className="absolute top-2 right-2 rounded-full bg-black/60 backdrop-blur px-2 py-0.5 text-[10px] font-bold text-white">
+                {currentImage + 1}/{images.length}
+              </div>
             </>
           )}
         </div>
