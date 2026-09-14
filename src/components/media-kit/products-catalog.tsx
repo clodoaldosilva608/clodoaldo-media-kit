@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, ChevronLeft, Building2, ArrowLeft } from "lucide-react";
+import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, ChevronLeft, Building2, ArrowLeft, Search, AlertCircle, X } from "lucide-react";
 
 /**
  * Products Catalog — Seção da landing page que mostra os 9 produtos
@@ -125,13 +125,22 @@ const EXTRA_PRODUCT_IMAGES: Record<string, string[]> = {
 export function ProductsCatalog() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [pixModal, setPixModal] = useState<Product | null>(null);
+
+  // Estados de busca + filtros
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sortFilter, setSortFilter] = useState<"default" | "price_asc" | "price_desc" | "name">("default");
 
   useEffect(() => {
     fetch("/api/public/products")
       .then(r => r.json())
-      .then(d => setProducts(d.products || []))
-      .catch(() => {})
+      .then(d => {
+        if (d.error) throw new Error(d.error);
+        setProducts(d.products || []);
+      })
+      .catch(e => setLoadError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -144,12 +153,50 @@ export function ProductsCatalog() {
     setPixModal(p);
   }
 
+  // Helper: busca textual em vários campos
+  const matchSearch = (p: Product, q: string): boolean => {
+    if (!q.trim()) return true;
+    const needle = q.toLowerCase().trim();
+    const haystack = [
+      p.name, p.description, p.category, p.icon, p.whatsapp_sku,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(needle);
+  };
+
+  // Helper: aplicar filtros combinados
+  const filteredProducts = products
+    .filter(p => matchSearch(p, search))
+    .filter(p => categoryFilter === "all" || p.category === categoryFilter)
+    .sort((a, b) => {
+      if (sortFilter === "price_asc") return a.price_cents - b.price_cents;
+      if (sortFilter === "price_desc") return b.price_cents - a.price_cents;
+      if (sortFilter === "name") return a.name.localeCompare(b.name);
+      return 0; // default mantém ordem original
+    });
+
+  // Categorias únicas (com contagem)
+  const uniqueCategories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+
   if (loading) {
     return (
       <section className="mx-auto max-w-7xl px-5 sm:px-8 py-16 sm:py-20">
         <div className="text-center text-zinc-500">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />
           Carregando catálogo de produtos…
+        </div>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section className="mx-auto max-w-7xl px-5 sm:px-8 py-16 sm:py-20">
+        <div className="text-center text-rose-500">
+          <AlertCircle className="h-6 w-6 mx-auto mb-3" />
+          Não foi possível carregar o catálogo.
+          <button onClick={() => window.location.reload()} className="ml-2 underline">
+            Tentar novamente
+          </button>
         </div>
       </section>
     );
@@ -173,17 +220,125 @@ export function ProductsCatalog() {
         </p>
       </div>
 
-      {/* Grid de produtos */}
-      <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => (
-          <ProductCard
-            key={p.id}
-            product={p}
-            onPix={() => openPix(p)}
-            whatsappLink={buildWhatsAppLink(p)}
-          />
-        ))}
+      {/* Barra de busca + filtros */}
+      <div className="mb-8 rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/50">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Busca textual */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder={`Buscar produto... (${filteredProducts.length} de ${products.length})`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-8 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+              aria-label="Buscar produtos"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                aria-label="Limpar busca"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filtro categoria */}
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+            aria-label="Filtrar por categoria"
+          >
+            <option value="all">Todas categorias</option>
+            {uniqueCategories.map(cat => (
+              <option key={cat} value={cat}>
+                {CATEGORY_LABELS[cat] || cat} ({products.filter(p => p.category === cat).length})
+              </option>
+            ))}
+          </select>
+
+          {/* Ordenação */}
+          <select
+            value={sortFilter}
+            onChange={e => setSortFilter(e.target.value as any)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+            aria-label="Ordenar por"
+          >
+            <option value="default">Ordem padrão</option>
+            <option value="price_asc">Menor preço</option>
+            <option value="price_desc">Maior preço</option>
+            <option value="name">Nome (A-Z)</option>
+          </select>
+
+          {/* Limpar filtros */}
+          {(search || categoryFilter !== "all" || sortFilter !== "default") && (
+            <button
+              onClick={() => { setSearch(""); setCategoryFilter("all"); setSortFilter("default"); }}
+              className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 underline"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        {/* Chips dos filtros ativos */}
+        {(search || categoryFilter !== "all" || sortFilter !== "default") && (
+          <div className="mt-2 flex flex-wrap gap-1.5 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+            <span className="text-[10px] text-zinc-500 self-center uppercase tracking-wider font-bold">Filtros:</span>
+            {search && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                Busca: "{search.length > 20 ? search.slice(0, 20) + "..." : search}"
+                <button onClick={() => setSearch("")} className="ml-0.5 hover:text-black dark:hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {categoryFilter !== "all" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                {CATEGORY_LABELS[categoryFilter] || categoryFilter}
+                <button onClick={() => setCategoryFilter("all")} className="ml-0.5 hover:text-black dark:hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+            {sortFilter !== "default" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                {sortFilter === "price_asc" ? "Menor preço" : sortFilter === "price_desc" ? "Maior preço" : "Nome (A-Z)"}
+                <button onClick={() => setSortFilter("default")} className="ml-0.5 hover:text-black dark:hover:text-white"><X className="h-2.5 w-2.5" /></button>
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Grid de produtos — estado vazio quando filtro não retorna nada */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <Search className="h-6 w-6 text-zinc-400" />
+          </div>
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">Nenhum produto encontrado</h3>
+          <p className="mt-1 text-sm text-zinc-500 max-w-md mx-auto">
+            Tente ajustar a busca ou os filtros. Se não encontrou o que precisa, me chama no WhatsApp.
+          </p>
+          <button
+            onClick={() => { setSearch(""); setCategoryFilter("all"); setSortFilter("default"); }}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-200 dark:border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          >
+            <X className="h-4 w-4" /> Limpar filtros
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProducts.map((p) => (
+            <ProductCard
+              key={p.id}
+              product={p}
+              onPix={() => openPix(p)}
+              whatsappLink={buildWhatsAppLink(p)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Bottom CTA */}
       <div className="mt-10 sm:mt-12 rounded-2xl border border-primary/30 bg-primary/[0.04] p-6 sm:p-8 text-center">

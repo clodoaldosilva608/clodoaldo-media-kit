@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { QUIZ_QUESTIONS } from "@/components/quiz/quiz-config";
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles, Lock, Mail, Phone, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles, Lock, Mail, Phone, User, Clock, AlertCircle } from "lucide-react";
 
 type Step = "intro" | "questions" | "lead" | "result";
 
@@ -18,6 +18,10 @@ interface OfferDetail {
   audience?: string;
   deliverables?: string[];
   category?: string;
+  // Campos opcionais pedidos pelo brief (Passo 4)
+  exclusions?: string[];        // "O que NÃO está incluído"
+  indicative_timeline?: string; // "Prazo indicativo"
+  bonus?: string[];             // "Bônus"
 }
 
 interface QuizResult {
@@ -482,6 +486,54 @@ function ResultScreen({
           {primary.audience && (
             <div className="mb-5 rounded-xl bg-white/[0.03] p-3 text-xs text-zinc-400">
               <strong className="text-zinc-300">Ideal para:</strong> {primary.audience}
+            </div>
+          )}
+
+          {/* Prazo indicativo — Passo 4 do brief */}
+          {primary.indicative_timeline && (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+              <Clock className="h-5 w-5 shrink-0 text-amber-400" />
+              <div className="flex-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Prazo indicativo</div>
+                <div className="text-xs text-amber-200/90 mt-0.5">{primary.indicative_timeline}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Bônus — Passo 4 do brief */}
+          {primary.bonus && primary.bonus.length > 0 && (
+            <div className="mb-5 rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-300">
+                <Sparkles className="h-3.5 w-3.5" /> Bônus inclusos
+              </div>
+              <div className="grid gap-1">
+                {primary.bonus.map((b, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-violet-200/90">
+                    <span className="shrink-0 text-violet-400">+</span>
+                    {b}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* O que NÃO está incluído — Passo 4 do brief (transparência) */}
+          {primary.exclusions && primary.exclusions.length > 0 && (
+            <div className="mb-5 rounded-xl border border-rose-500/20 bg-rose-500/[0.03] p-3">
+              <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-300">
+                <AlertCircle className="h-3.5 w-3.5" /> O que NÃO está incluído
+              </div>
+              <div className="grid gap-1">
+                {primary.exclusions.map((e, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-rose-200/80">
+                    <span className="shrink-0 text-rose-400">−</span>
+                    {e}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 pt-2 border-t border-rose-500/10 text-[10px] text-rose-300/60 italic">
+                Transparência total: se precisar de algum desses, me chama pra conversar.
+              </div>
             </div>
           )}
 

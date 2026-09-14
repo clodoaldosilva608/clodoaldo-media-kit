@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Sparkles, Megaphone, Edit3, Code2 } from "lucide-react";
+import { ArrowUpRight, Sparkles, Megaphone, Edit3, Code2, Handshake } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { HeroGlobe } from "@/components/hero/hero-globe";
 import { IntroSequence } from "@/components/experience/intro-sequence";
@@ -13,6 +13,7 @@ const ENTRY_PATHS = [
   { id: "marca", icon: Megaphone, title: "Sou marca ou produto", promise: "Campanhas com narrativa, alcance e conversão.", cta: "Montar campanha", href: "/quiz?profile=marca", color: "from-[#FF7A00] to-[#B34A00]" },
   { id: "creator", icon: Edit3, title: "Sou creator ou negócio", promise: "Roteiro, edição, criativos e auditoria de conteúdo.", cta: "Melhorar meu conteúdo", href: "/quiz?profile=creator", color: "from-[#8b5cf6] to-[#4c1d95]" },
   { id: "empresa", icon: Code2, title: "Tenho ideia digital", promise: "MVP, aplicativo ou ferramenta sob medida.", cta: "Falar sobre meu projeto", href: "/quiz?profile=empresa", color: "from-[#0ea5a5] to-[#065f5f]" },
+  { id: "parceria", icon: Handshake, title: "Quero uma parceria", promise: "Indicar, afiliar ou crescer junto comigo.", cta: "Ver parcerias", href: "/criadores-parceiros", color: "from-[#10b981] to-[#065f46]" },
 ] as const;
 
 export function Hero() {
@@ -204,7 +205,7 @@ export function Hero() {
             {/* Entry path cards */}
             <div
               ref={cardsRef}
-              className="mt-6 sm:mt-10 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 max-w-xl hero-text-reveal"
+              className="mt-6 sm:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 max-w-2xl hero-text-reveal"
               style={{ animationDelay: "950ms", transition: "opacity 0.2s ease-out, transform 0.2s ease-out" }}
             >
               {ENTRY_PATHS.map((path) => {

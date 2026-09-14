@@ -62,6 +62,43 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Schema.org JSON-LD: Product + FAQ (Passo 13 do brief — SEO) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Product",
+                "@id": `https://clodoaldo.vercel.app/produtos/${slug}#product`,
+                name: product.name,
+                description: product.description || `${product.name} — serviço de ${CATEGORY_LABELS[product.category] || product.category} por Clodoaldo Silva`,
+                category: CATEGORY_LABELS[product.category] || product.category,
+                brand: { "@type": "Brand", name: "Clodoaldo Silva" },
+                offers: {
+                  "@type": "Offer",
+                  price: product.price_cents ? (product.price_cents / 100).toFixed(2) : "0",
+                  priceCurrency: "BRL",
+                  availability: "https://schema.org/InStock",
+                  url: `https://clodoaldo.vercel.app/produtos/${slug}`,
+                  seller: { "@type": "Organization", name: "Clodoaldo Silva" },
+                },
+              },
+              {
+                "@type": "FAQPage",
+                "@id": `https://clodoaldo.vercel.app/produtos/${slug}#faq`,
+                mainEntity: getFAQ(product).map(faq => ({
+                  "@type": "Question",
+                  name: faq.q,
+                  acceptedAnswer: { "@type": "Answer", text: faq.a },
+                })),
+              },
+            ],
+          }),
+        }}
+      />
+
       {/* Header */}
       <header className="border-b border-zinc-200 dark:border-zinc-800">
         <div className="mx-auto max-w-4xl px-5 py-4 flex items-center justify-between">
