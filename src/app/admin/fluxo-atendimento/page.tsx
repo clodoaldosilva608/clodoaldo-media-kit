@@ -152,6 +152,73 @@ export default function FluxoAtendimentoPage() {
     }
   };
 
+  // Helper: excluir lead DEFINITIVAMENTE (hard delete — não pode ser desfeito)
+  const deleteLeadPermanent = async (prospectId: string) => {
+    if (!confirm("⚠️ EXCLUIR DEFINITIVAMENTE?\n\nEsta ação NÃO pode ser desfeita. O lead será removido permanentemente do banco de dados.")) return;
+    if (!confirm("Tem certeza absoluta? Última chance de cancelar.")) return;
+    try {
+      // Remover localmente
+      setProspects(prev => prev.filter(p => p.id !== prospectId));
+
+      // Hard delete via API
+      await fetch("/api/admin/prospects", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: prospectId }),
+      });
+
+      setToast(`🗑️ Lead excluído definitivamente`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (e: any) {
+      alert("Erro ao excluir: " + e.message);
+    }
+  };
+
+  // Helper: reativar lead descartado (volta pro fluxo — status=new + remove tag DESCARTADO)
+  const reactivateLead = async (prospectId: string) => {
+    if (!confirm("Reativar este lead? Ele voltará pro fluxo de atendimento (status: Novo).")) return;
+    try {
+      // Atualizar localmente primeiro
+      setProspects(prev => prev.map(p => {
+        if (p.id === prospectId) {
+          // Remover linhas de DESCARTADO das notes
+          const cleanedNotes = (p.notes || "")
+            .split("\n")
+            .filter(line => !line.toUpperCase().includes("DESCARTADO"))
+            .join("\n")
+            .trim();
+          return {
+            ...p,
+            status: "new",
+            send_status: "pending",
+            notes: cleanedNotes,
+          };
+        }
+        return p;
+      }));
+
+      // Atualizar no banco via API
+      await fetch("/api/admin/prospects/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prospect_id: prospectId,
+          status: "new",
+          notes_set: (prospects.find(p => p.id === prospectId)?.notes || "")
+            .split("\n")
+            .filter(line => !line.toUpperCase().includes("DESCARTADO"))
+            .join("\n")
+            .trim(),
+        }),
+      });
+
+      setToast(`✅ Lead reativado`);
+      setTimeout(() => setToast(null), 3000);
+    } catch (e: any) {
+      alert("Erro ao reativar: " + e.message);
+    }
+  };
+
   // Listas únicas pra selects de nicho e cidade
   const uniqueNiches = Array.from(new Set(prospects.map(p => p.niche).filter(Boolean))).sort();
   const uniqueCities = Array.from(new Set(prospects.map(p => p.city).filter(Boolean))).sort();
@@ -522,7 +589,14 @@ export default function FluxoAtendimentoPage() {
                 <div className="py-6 text-center text-zinc-600 text-xs">Vazio</div>
               ) : (
                 stage.items.slice(0, 50).map(p => (
-                  <ProspectCard key={p.id} prospect={p} onDiscard={discardLead} />
+                  <ProspectCard
+                    key={p.id}
+                    prospect={p}
+                    onDiscard={discardLead}
+                    onDeletePermanent={deleteLeadPermanent}
+                    onReactivate={reactivateLead}
+                    isDiscardedView={showDiscarded}
+                  />
                 ))
               )}
               {stage.items.length > 50 && (
@@ -570,7 +644,19 @@ function KpiCard({ label, value, color }: { label: string; value: number | strin
   );
 }
 
-function ProspectCard({ prospect, onDiscard }: { prospect: Prospect; onDiscard: (id: string) => void }) {
+function ProspectCard({
+  prospect,
+  onDiscard,
+  onDeletePermanent,
+  onReactivate,
+  isDiscardedView,
+}: {
+  prospect: Prospect;
+  onDiscard: (id: string) => void;
+  onDeletePermanent: (id: string) => void;
+  onReactivate: (id: string) => void;
+  isDiscardedView: boolean;
+}) {
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(prospect.send_status === "sent");
   const [expanded, setExpanded] = useState(false);
@@ -620,10 +706,38 @@ function ProspectCard({ prospect, onDiscard }: { prospect: Prospect; onDiscard: 
           >
             {prospect.name}
           </span>
-          {prospect.has_website ? (
-            <Globe className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
+          {isDiscardedView ? (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => onReactivate(prospect.id)}
+                className="text-emerald-400 hover:text-emerald-300 p-0.5 rounded hover:bg-emerald-500/10"
+                title="Reativar lead (volta pro fluxo)"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => onDeletePermanent(prospect.id)}
+                className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-rose-500/10"
+                title="Excluir definitivamente (não pode ser desfeito)"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
           ) : (
-            <span className="text-[10px] text-zinc-500 shrink-0">🚫 site</span>
+            <>
+              {prospect.has_website ? (
+                <Globe className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
+              ) : (
+                <span className="text-[10px] text-zinc-500 shrink-0">🚫 site</span>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); onDiscard(prospect.id); }}
+                className="text-zinc-500 hover:text-rose-400 p-0.5 rounded hover:bg-rose-500/10 shrink-0"
+                title="Descartar lead"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </>
           )}
         </div>
 
@@ -687,6 +801,9 @@ function ProspectCard({ prospect, onDiscard }: { prospect: Prospect; onDiscard: 
           crmLink={crmLink}
           marked={marked}
           onDiscard={() => onDiscard(prospect.id)}
+          onDeletePermanent={() => onDeletePermanent(prospect.id)}
+          onReactivate={() => onReactivate(prospect.id)}
+          isDiscardedView={isDiscardedView}
         />
       )}
     </>
@@ -703,6 +820,9 @@ function ProspectDetailModal({
   crmLink,
   marked,
   onDiscard,
+  onDeletePermanent,
+  onReactivate,
+  isDiscardedView,
 }: {
   prospect: Prospect;
   onClose: () => void;
@@ -710,6 +830,9 @@ function ProspectDetailModal({
   crmLink: string;
   marked: boolean;
   onDiscard: () => void;
+  onDeletePermanent: () => void;
+  onReactivate: () => void;
+  isDiscardedView: boolean;
 }) {
   return (
     <div
@@ -901,14 +1024,53 @@ function ProspectDetailModal({
             >
               <ExternalLink className="h-3.5 w-3.5" /> Abrir no CRM
             </a>
-            <button
-              onClick={() => { onDiscard(); onClose(); }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/25 ring-1 ring-rose-500/20 ml-auto"
-              title="Descartar lead (move pra Perdidos e esconde do fluxo)"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Descartar lead
-            </button>
+
+            {/* Ações de descarte/exclusão — mudam conforme a view */}
+            {isDiscardedView ? (
+              <>
+                {/* Em "Ver descartados": botão de reativar + excluir definitivamente */}
+                <button
+                  onClick={() => { onReactivate(); onClose(); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 ring-1 ring-emerald-500/20 ml-auto"
+                  title="Reativar lead (volta pro fluxo normal)"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Reativar lead
+                </button>
+                <button
+                  onClick={() => { onDeletePermanent(); onClose(); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/20 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/30 ring-1 ring-rose-500/40"
+                  title="Excluir DEFINITIVAMENTE — não pode ser desfeito"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir definitivamente
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => { onDiscard(); onClose(); }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/25 ring-1 ring-rose-500/20 ml-auto"
+                title="Descartar lead (move pra Perdidos e esconde do fluxo)"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Descartar lead
+              </button>
+            )}
           </div>
+
+          {/* Aviso de lead descartado no topo do modal (visual feedback) */}
+          {isDiscardedView && (
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] p-3 text-xs text-rose-200">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <strong>Este lead está descartado.</strong>
+                  <p className="mt-1 text-rose-200/80">
+                    Para devolvê-lo ao fluxo normal, clique em <em>"Reativar lead"</em> acima.
+                    Para removê-lo permanentemente do banco de dados, clique em <em>"Excluir definitivamente"</em>.
+                    A exclusão permanente <strong>não pode ser desfeita</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
