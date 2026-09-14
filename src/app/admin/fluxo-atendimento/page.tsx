@@ -5,7 +5,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, Button, EmptyState } from "@/components/admin/ui";
 import {
   RefreshCw, Clock, CheckCircle2, MessageCircle, AlertCircle,
-  Phone, Mail, Globe, Send, Calendar, X, ExternalLink, Search,
+  Phone, Mail, Globe, Send, Calendar, X, ExternalLink, Search, MapPin,
 } from "lucide-react";
 
 interface Prospect {
@@ -488,6 +488,7 @@ function KpiCard({ label, value, color }: { label: string; value: number | strin
 function ProspectCard({ prospect }: { prospect: Prospect }) {
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(prospect.send_status === "sent");
+  const [expanded, setExpanded] = useState(false);
 
   async function markAsSent() {
     setMarking(true);
@@ -511,66 +512,321 @@ function ProspectCard({ prospect }: { prospect: Prospect }) {
 
   const waNum = prospect.whatsapp?.replace(/\D/g, "");
   const waLink = waNum ? `https://wa.me/${waNum}` : null;
+  const crmLink = `/admin/leads-crm?prospect_id=${prospect.id}`;
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3 hover:bg-white/[0.04] transition">
-      <div className="flex items-start justify-between gap-2 mb-1">
-        <a
-          href={`/admin/leads-crm?prospect_id=${prospect.id}`}
-          className="text-xs font-bold text-white hover:text-emerald-300 truncate flex-1 min-w-0"
-          title="Abrir no CRM"
-        >
-          {prospect.name}
-        </a>
-        {prospect.has_website ? (
-          <Globe className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
-        ) : (
-          <span className="text-[10px] text-zinc-500 shrink-0">🚫 site</span>
-        )}
-      </div>
-
-      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-zinc-500 mb-1.5">
-        <span>{prospect.niche}</span>
-        <span>·</span>
-        <span>{prospect.city.split(",")[0]}</span>
-        {prospect.rating && <><span>·</span><span>⭐ {prospect.rating}</span></>}
-      </div>
-
-      <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-2">
-        {prospect.last_contact_at ? (
-          <SpeedBadge lastContactAt={prospect.last_contact_at} />
-        ) : (
-          <span className="text-amber-300">Nunca contactado</span>
-        )}
-        {prospect.contacted_count > 0 && <span className="shrink-0">· #{prospect.contacted_count}</span>}
-      </div>
-
-      {/* Botões em coluna (vertical) pra não apertar em mobile */}
-      <div className="flex flex-col gap-1.5">
-        {waLink && !marked && (
-          <a
-            href={waLink}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+    <>
+      <div
+        className="rounded-xl border border-white/5 bg-white/[0.02] p-3 hover:bg-emerald-500/[0.06] hover:border-emerald-500/30 active:bg-emerald-500/[0.1] transition group cursor-pointer"
+        onClick={() => setExpanded(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded(true);
+          }
+        }}
+      >
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <span
+            className="text-xs font-bold text-white group-hover:text-emerald-300 truncate flex-1 min-w-0"
+            title={prospect.name}
           >
-            <MessageCircle className="h-3 w-3" /> Abrir WhatsApp
-          </a>
-        )}
-        {!marked && (
-          <button
-            onClick={markAsSent}
-            disabled={marking}
-            className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-blue-500/15 px-2 py-1.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/25 transition disabled:opacity-50"
-          >
-            {marking ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-            {marking ? "Marcando…" : "Marcar como enviado"}
-          </button>
-        )}
-        {marked && (
-          <div className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1.5 text-[10px] font-bold text-emerald-300">
-            <CheckCircle2 className="h-3 w-3" /> ✓ Enviado
+            {prospect.name}
+          </span>
+          {prospect.has_website ? (
+            <Globe className="h-3 w-3 text-blue-400 shrink-0 mt-0.5" />
+          ) : (
+            <span className="text-[10px] text-zinc-500 shrink-0">🚫 site</span>
+          )}
+        </div>
+
+        <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-zinc-500 mb-1.5">
+          <span>{prospect.niche}</span>
+          <span>·</span>
+          <span>{prospect.city?.split(",")[0] || "—"}</span>
+          {prospect.rating && <><span>·</span><span>⭐ {prospect.rating}</span></>}
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] text-zinc-500 mb-2">
+          {prospect.last_contact_at ? (
+            <SpeedBadge lastContactAt={prospect.last_contact_at} />
+          ) : (
+            <span className="text-amber-300">Nunca contactado</span>
+          )}
+          {prospect.contacted_count > 0 && <span className="shrink-0">· #{prospect.contacted_count}</span>}
+        </div>
+
+        {/* Botões em coluna (vertical) — stopPropagation pra não abrir o modal */}
+        <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {waLink && !marked && (
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition"
+            >
+              <MessageCircle className="h-3 w-3" /> Abrir WhatsApp
+            </a>
+          )}
+          {!marked && (
+            <button
+              onClick={markAsSent}
+              disabled={marking}
+              className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-blue-500/15 px-2 py-1.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/25 transition disabled:opacity-50"
+            >
+              {marking ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+              {marking ? "Marcando…" : "Marcar como enviado"}
+            </button>
+          )}
+          {marked && (
+            <div className="w-full inline-flex items-center justify-center gap-1 rounded-md bg-emerald-500/20 px-2 py-1.5 text-[10px] font-bold text-emerald-300">
+              <CheckCircle2 className="h-3 w-3" /> ✓ Enviado
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2 pt-2 border-t border-white/5 text-[9px] text-zinc-500 group-hover:text-emerald-400/70 transition flex items-center justify-between">
+          <span className="truncate">📍 Clique pra ver todos os detalhes</span>
+          <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+        </div>
+      </div>
+
+      {/* Modal de detalhes — abre ao clicar no card */}
+      {expanded && (
+        <ProspectDetailModal prospect={prospect} onClose={() => setExpanded(false)} waLink={waLink} crmLink={crmLink} marked={marked} />
+      )}
+    </>
+  );
+}
+
+// =====================================================
+// MODAL DE DETALHES DO PROSPECT (Fluxo de Atendimento)
+// =====================================================
+function ProspectDetailModal({
+  prospect,
+  onClose,
+  waLink,
+  crmLink,
+  marked,
+}: {
+  prospect: Prospect;
+  onClose: () => void;
+  waLink: string | null;
+  crmLink: string;
+  marked: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="bg-zinc-950 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-zinc-950 border-b border-white/10 p-4 flex items-start justify-between gap-3 z-10">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-bold text-white truncate">{prospect.name}</h2>
+            <div className="text-[11px] text-zinc-400 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span>{prospect.niche}</span>
+              <span>·</span>
+              <span>{prospect.city}</span>
+              {prospect.rating && <><span>·</span><span className="text-amber-300">⭐ {prospect.rating}</span></>}
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/5"
+            title="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Status badges */}
+          <div className="flex flex-wrap gap-2">
+            {prospect.has_website ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-1 text-[10px] font-bold text-blue-300 ring-1 ring-blue-500/20">
+                <Globe className="h-3 w-3" /> Tem site
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-300 ring-1 ring-amber-500/20">
+                <AlertCircle className="h-3 w-3" /> Sem site
+              </span>
+            )}
+            {prospect.whatsapp && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+                <MessageCircle className="h-3 w-3" /> WhatsApp
+              </span>
+            )}
+            {prospect.replied && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2.5 py-1 text-[10px] font-bold text-violet-300 ring-1 ring-violet-500/20">
+                <Mail className="h-3 w-3" /> Respondeu
+              </span>
+            )}
+            {marked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+                <CheckCircle2 className="h-3 w-3" /> Enviado
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-bold text-zinc-400 ring-1 ring-white/10">
+              {prospect.status === "new" ? "Novo" :
+               prospect.status === "contacted" ? "Contactado" :
+               prospect.status === "qualified" ? "Qualificado" :
+               prospect.status === "won" ? "Ganho" :
+               prospect.status === "perdido" ? "Perdido" :
+               prospect.status === "fechado" ? "Fechado" : prospect.status}
+            </span>
+          </div>
+
+          {/* Dados principais */}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field label="WhatsApp" value={prospect.whatsapp || "—"} />
+            <Field label="Telefone" value={prospect.phone || "—"} />
+            <Field label="Email" value={prospect.email || "—"} />
+            <Field label="Website" value={prospect.website || (prospect.has_website ? "Tem site (URL não cadastrada)" : "Não tem")} />
+            <Field label="Nicho" value={prospect.niche} />
+            <Field label="Cidade" value={prospect.city} />
+            <Field label="Rating" value={prospect.rating ? `⭐ ${prospect.rating}` : "—"} />
+            <Field label="Endereço" value={prospect.formatted_address || "—"} full />
+          </div>
+
+          {/* Enriquecimento IA (campos do cron enrich-leads) */}
+          {(prospect.owner_name || prospect.owner_email || prospect.instagram_handle || prospect.instagram) && (
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-2 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-500"></span>
+                </span>
+                Dados enriquecidos (IA Crawler)
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Field label="Dono / Fundador" value={prospect.owner_name || "—"} />
+                <Field label="Email principal" value={prospect.owner_email || "—"} />
+                <Field label="Instagram" value={prospect.instagram_handle ? `@${prospect.instagram_handle}` : (prospect.instagram || "—")} />
+              </div>
+            </div>
+          )}
+
+          {/* Histórico de contato */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Histórico de contato</div>
+            <div className="grid sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <div className="text-[10px] text-zinc-500">Último contato</div>
+                <div className="text-zinc-200 mt-0.5">
+                  {prospect.last_contact_at ? (
+                    <>
+                      <div>{new Date(prospect.last_contact_at).toLocaleDateString("pt-BR")}</div>
+                      <div className="text-[10px] text-zinc-500">{new Date(prospect.last_contact_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
+                    </>
+                  ) : (
+                    <span className="text-amber-300">Nunca</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-zinc-500">Vezes contactado</div>
+                <div className="text-zinc-200 mt-0.5">{prospect.contacted_count}x</div>
+              </div>
+              <div>
+                <div className="text-[10px] text-zinc-500">Status envio</div>
+                <div className="text-zinc-200 mt-0.5">{prospect.send_status || "—"}</div>
+              </div>
+            </div>
+            {prospect.next_follow_up && (
+              <div className="mt-2 pt-2 border-t border-white/5 text-[11px] text-amber-300">
+                📅 Próximo follow-up: {new Date(prospect.next_follow_up).toLocaleString("pt-BR")}
+              </div>
+            )}
+            {prospect.reply_classification && (
+              <div className="mt-1 text-[11px] text-violet-300">
+                💬 Classificação da resposta: <strong>{prospect.reply_classification}</strong>
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          {prospect.notes && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Notas</div>
+              <p className="text-xs text-zinc-300 whitespace-pre-wrap">{prospect.notes}</p>
+            </div>
+          )}
+
+          {/* Botões de ação */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+            {waLink && (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 ring-1 ring-emerald-500/20"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> Abrir WhatsApp
+              </a>
+            )}
+            {prospect.website && (
+              <a
+                href={prospect.website.startsWith("http") ? prospect.website : `https://${prospect.website}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-500/25 ring-1 ring-blue-500/20"
+              >
+                <Globe className="h-3.5 w-3.5" /> Ver site
+              </a>
+            )}
+            {prospect.formatted_address && (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prospect.name + " " + prospect.formatted_address)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-300 hover:bg-amber-500/25 ring-1 ring-amber-500/20"
+              >
+                <MapPin className="h-3.5 w-3.5" /> Google Maps
+              </a>
+            )}
+            {prospect.instagram_handle && (
+              <a
+                href={`https://instagram.com/${prospect.instagram_handle}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-fuchsia-500/15 px-3 py-2 text-xs font-bold text-fuchsia-300 hover:bg-fuchsia-500/25 ring-1 ring-fuchsia-500/20"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> @{prospect.instagram_handle}
+              </a>
+            )}
+            <a
+              href={crmLink}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-500/15 px-3 py-2 text-xs font-bold text-violet-300 hover:bg-violet-500/25 ring-1 ring-violet-500/20 ml-auto"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir no CRM
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value, full }: { label: string; value: string; full?: boolean }) {
+  return (
+    <div className={full ? "sm:col-span-2" : ""}>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-0.5">{label}</div>
+      <div className="text-xs text-zinc-200 break-words">
+        {value && value !== "—" ? (
+          value.startsWith("http") ? (
+            <a href={value} target="_blank" rel="noreferrer" className="text-blue-300 hover:underline">{value}</a>
+          ) : value.startsWith("@") ? (
+            <a href={`https://instagram.com/${value.slice(1)}`} target="_blank" rel="noreferrer" className="text-fuchsia-300 hover:underline">{value}</a>
+          ) : value
+        ) : (
+          <span className="text-zinc-600 italic">—</span>
         )}
       </div>
     </div>

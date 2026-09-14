@@ -885,8 +885,32 @@ Clodoaldo Silva`;
                       const num = normalizeBrazilianPhone(p.whatsapp||p.phone) || "";
                       const wa=genWA(p);
                       return (
-                        <div key={p.id} draggable onDragStart={e=>setDraggingId(p.id!)} onDragEnd={()=>{setDraggingId(null);setDragOverCol(null);}} className="cursor-grab rounded-lg border border-white/5 bg-white/[0.04] p-3 hover:bg-white/[0.08] transition active:cursor-grabbing">
-                          <div className="mb-1 flex items-start justify-between gap-2"><h4 className="text-xs font-bold text-white truncate flex-1">{p.name}</h4><button onClick={()=>deleteProspect(p.id!)} className="shrink-0 text-zinc-600 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button></div>
+                        <div
+                          key={p.id}
+                          draggable
+                          onDragStart={e=>setDraggingId(p.id!)}
+                          onDragEnd={()=>{setDraggingId(null);setDragOverCol(null);}}
+                          onClick={()=>setSelectedLead(p)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedLead(p);
+                            }
+                          }}
+                          className="cursor-pointer rounded-lg border border-white/5 bg-white/[0.04] p-3 hover:bg-emerald-500/[0.06] hover:border-emerald-500/30 active:bg-emerald-500/[0.1] transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
+                        >
+                          <div className="mb-1 flex items-start justify-between gap-2">
+                            <h4 className="text-xs font-bold text-white truncate flex-1 group-hover:text-emerald-300 transition">{p.name}</h4>
+                            <button
+                              onClick={(e)=>{e.stopPropagation();deleteProspect(p.id!);}}
+                              className="shrink-0 text-zinc-600 hover:text-rose-400"
+                              title="Excluir lead"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
                           <p className="text-[10px] text-zinc-500 truncate mb-1">{p.formatted_address||p.city||""}</p>
                           <div className="flex flex-wrap gap-1 mb-2">
                             {p.hasWebsite?<Badge variant="info"><Globe className="h-2.5 w-2.5" /></Badge>:<Badge variant="warning"><AlertTriangle className="h-2.5 w-2.5" /></Badge>}
@@ -894,12 +918,16 @@ Clodoaldo Silva`;
                             {p.webDevOpportunity&&<Badge variant="danger"><Zap className="h-2.5 w-2.5" /></Badge>}
                             {p.rating&&<span className="text-[10px] text-amber-300">⭐{p.rating}</span>}
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1" onClick={(e)=>e.stopPropagation()}>
                             {num&&<a href={`https://wa.me/${num}?text=${encodeURIComponent(wa)}`} target="_blank" rel="noreferrer" className="flex-1 rounded bg-emerald-500/15 px-2 py-1 text-center text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25">WhatsApp</a>}
                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name+" "+(p.formatted_address||""))}`} target="_blank" rel="noreferrer" className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Ver no Google Maps"><MapPin className="h-3 w-3" /></a>
                             <button onClick={()=>openPreview(p)} className="rounded bg-amber-500/15 px-2 py-1 text-[10px] font-semibold text-amber-300 hover:bg-amber-500/25" title="Preview do site"><Eye className="h-3 w-3" /></button>
                             <button onClick={()=>copyPreviewLink(p)} className="rounded bg-blue-500/15 px-2 py-1 text-[10px] font-semibold text-blue-300 hover:bg-blue-500/25" title="Copiar link do preview"><Link2 className="h-3 w-3" /></button>
                             <button onClick={()=>openPreviewLink(p)} className="rounded bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/25" title="Abrir link compartilhável"><Share2 className="h-3 w-3" /></button>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-white/5 text-[9px] text-zinc-500 group-hover:text-emerald-400/70 transition flex items-center justify-between">
+                            <span className="truncate">📍 Clique pra ver todos os detalhes</span>
+                            <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                           </div>
                         </div>
                       );
