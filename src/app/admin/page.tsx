@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { KpiCard, Widget, Badge, EmptyState, PeriodFilter, Button } from "@/components/admin/ui";
+import { DailySummary } from "@/components/admin/daily-summary";
 import { fetchAdminData, brl, num, pct, timeAgo, statusColor } from "@/lib/admin/data";
 import Link from "next/link";
 import {
@@ -170,6 +171,9 @@ export default function AdminOverviewPage() {
 
   return (
     <AdminShell title="Visão Geral">
+      {/* Resumo do dia — IA Assistente (Sprint B) */}
+      <DailySummary />
+
       {/* Top: Welcome + period filter */}
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>

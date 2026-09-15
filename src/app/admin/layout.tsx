@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AssistantChat } from "@/components/admin/assistant-chat";
 
 export const metadata: Metadata = {
   title: "Admin — Clodoaldo Silva",
@@ -14,6 +15,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-zinc-100 antialiased">
       {children}
+      <AssistantChat />
     </div>
   );
 }
