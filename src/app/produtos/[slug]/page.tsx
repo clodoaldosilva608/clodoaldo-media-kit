@@ -4,23 +4,14 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { MessageCircle, QrCode, Loader2, Copy, Check, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { type ProductRecord, categoryLabel, formatProductPrice } from "@/lib/product-catalog";
 
 const WHATSAPP_PHONE = "5581920051068";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  site: "Site Profissional",
-  seo: "SEO",
-  gmb: "Google Meu Negócio",
-  cardapio: "Cardápio Digital",
-  social: "Redes Sociais",
-  assinatura: "Assinatura",
-  extras: "Extras",
-};
-
 export default function ProductPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const [product, setProduct] = useState<any>(null);
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug;
+  const [product, setProduct] = useState<ProductRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [pixOpen, setPixOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -58,7 +49,8 @@ export default function ProductPage() {
 
   const amount = product.price_cents / 100;
   const amountFormatted = amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const waMsg = `Olá Clodoaldo! Tenho interesse no produto: ${product.name} (${product.price_label || amountFormatted}). Pode me explicar como funciona?`;
+  const priceDisplay = formatProductPrice(product);
+  const waMsg = `Olá Clodoaldo! Tenho interesse no produto: ${product.name} (${priceDisplay}). Pode me explicar como funciona?`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,8 +65,8 @@ export default function ProductPage() {
                 "@type": "Product",
                 "@id": `https://clodoaldo.vercel.app/produtos/${slug}#product`,
                 name: product.name,
-                description: product.description || `${product.name} — serviço de ${CATEGORY_LABELS[product.category] || product.category} por Clodoaldo Silva`,
-                category: CATEGORY_LABELS[product.category] || product.category,
+                description: product.description || `${product.name} — serviço de ${categoryLabel(product.category)} por Clodoaldo Silva`,
+                category: categoryLabel(product.category),
                 brand: { "@type": "Brand", name: "Clodoaldo Silva" },
                 offers: {
                   "@type": "Offer",
@@ -122,13 +114,13 @@ export default function ProductPage() {
           {/* Info */}
           <div className="flex flex-col justify-center">
             <div className="text-xs font-bold uppercase tracking-wider text-primary mb-2">
-              {CATEGORY_LABELS[product.category] || product.category}
+              {categoryLabel(product.category)}
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-medium leading-tight mb-3">
               {product.icon || "✅"} {product.name}
             </h1>
             <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mb-4">
-              {product.price_label || amountFormatted}
+              {priceDisplay}
             </div>
             {product.description && (
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
@@ -320,7 +312,7 @@ function getInclusos(sku: string | null): string[] {
   return map[sku || ""] || ["Entre em contato para detalhes personalizados"];
 }
 
-function getFAQ(product: any): Array<{ q: string; a: string }> {
+function getFAQ(product: ProductRecord): Array<{ q: string; a: string }> {
   return [
     {
       q: "Qual o prazo de entrega?",

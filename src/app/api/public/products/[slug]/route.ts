@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { type ProductRecord } from "@/lib/product-catalog";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,7 +17,8 @@ export async function GET(req: NextRequest) {
     if (error) throw error;
     if (!data) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-    return NextResponse.json({ product: data });
+    const product = data as ProductRecord;
+    return NextResponse.json({ product });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { type PublicProduct } from "@/lib/product-catalog";
 
 /**
  * GET /api/public/products
@@ -16,9 +17,10 @@ export async function GET() {
       .order("sort_order", { ascending: true });
     if (error) throw error;
 
+    const products = (data || []) as PublicProduct[];
     return NextResponse.json({
-      products: data || [],
-      total: (data || []).length,
+      products,
+      total: products.length,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message, products: [] }, { status: 500 });

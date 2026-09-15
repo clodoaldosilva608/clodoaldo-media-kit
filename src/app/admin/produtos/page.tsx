@@ -6,6 +6,7 @@ import { Widget, Badge, Button, Input, Label, Textarea, EmptyState } from "@/com
 import {
   RefreshCw, Plus, Pencil, Trash2, X, Save, Download, Package, Check, DollarSign,
 } from "lucide-react";
+import { CATEGORY_LABELS, categoryLabel } from "@/lib/product-catalog";
 
 interface Product {
   id: string;
@@ -33,16 +34,6 @@ const EMPTY: Partial<Product> = {
   is_active: true,
   sort_order: 100,
   whatsapp_sku: "",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  site: "Site Profissional",
-  seo: "SEO",
-  gmb: "Google Meu Negócio",
-  cardapio: "Cardápio Digital",
-  social: "Redes Sociais",
-  assinatura: "Assinatura",
-  extras: "Extras",
 };
 
 function formatBRL(cents: number): string {
@@ -183,7 +174,7 @@ export default function ProdutosPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-white">{p.name}</span>
-                      <Badge variant="muted">{CATEGORY_LABELS[p.category] || p.category}</Badge>
+                      <Badge variant="muted">{categoryLabel(p.category)}</Badge>
                       {p.is_recurring && <Badge variant="info">recorrente</Badge>}
                       {!p.is_active && <Badge variant="warning">inativo</Badge>}
                     </div>

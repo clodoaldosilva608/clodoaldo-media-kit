@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, ChevronLeft, Building2, ArrowLeft, Search, AlertCircle, X } from "lucide-react";
+import { type PublicProduct, categoryLabel } from "@/lib/product-catalog";
 
 /**
  * Products Catalog — Seção da landing page que mostra os 9 produtos
@@ -11,18 +12,7 @@ import { MessageCircle, QrCode, Loader2, Copy, Check, ChevronRight, ChevronLeft,
  *   1. Lista de bancos disponíveis (cards clicáveis)
  *   2. Chave PIX do banco escolhido + valor + botão copiar + comprovante WhatsApp
  */
-interface Product {
-  id: string;
-  name: string;
-  description: string | null;
-  price_cents: number;
-  price_label: string | null;
-  category: string;
-  icon: string | null;
-  is_recurring: boolean;
-  image_path: string | null;
-  whatsapp_sku: string | null;
-}
+type Product = PublicProduct;
 
 interface PixKey {
   id: string;
@@ -175,7 +165,9 @@ export function ProductsCatalog() {
     });
 
   // Categorias únicas (com contagem)
-  const uniqueCategories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+  const uniqueCategories = Array.from(
+    new Set(products.map(p => p.category).filter((c): c is string => Boolean(c)))
+  );
 
   if (loading) {
     return (
@@ -255,7 +247,7 @@ export function ProductsCatalog() {
             <option value="all">Todas categorias</option>
             {uniqueCategories.map(cat => (
               <option key={cat} value={cat}>
-                {CATEGORY_LABELS[cat] || cat} ({products.filter(p => p.category === cat).length})
+                {categoryLabel(cat)} ({products.filter(p => p.category === cat).length})
               </option>
             ))}
           </select>
@@ -296,7 +288,7 @@ export function ProductsCatalog() {
             )}
             {categoryFilter !== "all" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-300">
-                {CATEGORY_LABELS[categoryFilter] || categoryFilter}
+                {categoryLabel(categoryFilter)}
                 <button onClick={() => setCategoryFilter("all")} className="ml-0.5 hover:text-black dark:hover:text-white"><X className="h-2.5 w-2.5" /></button>
               </span>
             )}
@@ -440,7 +432,7 @@ function ProductCard({ product, onPix, whatsappLink }: { product: Product; onPix
 
         <div className="mb-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {CATEGORY_LABELS[product.category] || product.category}
+            {categoryLabel(product.category)}
           </span>
         </div>
 
