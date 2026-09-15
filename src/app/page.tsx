@@ -54,7 +54,7 @@ export default function Home() {
                 <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                   <a
                     href="/sobre"
-                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 sm:px-5 py-2 sm:py-2.5 min-h-11 text-xs sm:text-sm font-semibold text-primary hover:bg-primary/20 transition"
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 sm:px-5 py-2 sm:py-2.5 min-h-11 text-xs sm:text-sm font-semibold text-primary light:text-orange-800 hover:bg-primary/20 transition"
                   >
                     Conhecer minha história
                   </a>

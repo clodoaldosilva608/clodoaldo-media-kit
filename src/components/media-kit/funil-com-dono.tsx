@@ -29,7 +29,7 @@ export function FunilComDono() {
       {/* 3 Pilares */}
       <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
         {/* Pilar 1 — Aquisição */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 transition hover:border-primary/40 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-border bg-card p-6 transition hover:border-primary/40 hover:shadow-lg">
           <div className="mb-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Pilar · 01
@@ -59,7 +59,7 @@ export function FunilComDono() {
         </div>
 
         {/* Pilar 2 — Conversão */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 transition hover:border-primary/40 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-border bg-card p-6 transition hover:border-primary/40 hover:shadow-lg">
           <div className="mb-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Pilar · 02
@@ -89,7 +89,7 @@ export function FunilComDono() {
         </div>
 
         {/* Pilar 3 — Inteligência */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 transition hover:border-primary/40 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-2xl border border-border bg-card p-6 transition hover:border-primary/40 hover:shadow-lg">
           <div className="mb-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Pilar · 03
@@ -123,7 +123,7 @@ export function FunilComDono() {
       <div className="mt-10 grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Como a maioria tenta */}
         <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] p-6">
-          <h4 className="text-sm font-bold text-rose-300 mb-3">❌ Como a maioria tenta crescer</h4>
+          <h4 className="text-sm font-bold text-rose-300 light:text-rose-700 mb-3">❌ Como a maioria tenta crescer</h4>
           <ul className="space-y-2 text-xs text-muted-foreground">
             <li>• Gerar mais leads (sem processo)</li>
             <li>• Contratar outra agência</li>
@@ -131,12 +131,12 @@ export function FunilComDono() {
             <li>• Trocar de CRM</li>
             <li>• Colocar mais vendedor</li>
           </ul>
-          <p className="mt-3 text-xs text-rose-300 font-semibold">Resultado: mais orçamento, mesmo resultado</p>
+          <p className="mt-3 text-xs text-rose-300 light:text-rose-700 font-semibold">Resultado: mais orçamento, mesmo resultado</p>
         </div>
 
         {/* Como o Funil com Dono cresce */}
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-6">
-          <h4 className="text-sm font-bold text-emerald-300 mb-3">✅ Como o Funil com Dono cresce</h4>
+          <h4 className="text-sm font-bold text-emerald-300 light:text-emerald-700 mb-3">✅ Como o Funil com Dono cresce</h4>
           <ul className="space-y-2 text-xs text-muted-foreground">
             <li>• Converte os leads que já tem</li>
             <li>• Tem alguém que é Dono do Funil</li>
@@ -144,7 +144,7 @@ export function FunilComDono() {
             <li>• Meta estruturada com dados</li>
             <li>• IA em cada ponto de contato</li>
           </ul>
-          <p className="mt-3 text-xs text-emerald-300 font-semibold">Resultado: mais receita, menos custo</p>
+          <p className="mt-3 text-xs text-emerald-300 light:text-emerald-700 font-semibold">Resultado: mais receita, menos custo</p>
         </div>
       </div>
 

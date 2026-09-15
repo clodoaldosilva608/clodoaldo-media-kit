@@ -54,7 +54,7 @@ export default function ResultadosPage() {
         {pendingCases.length > 0 && (
           <section className="mt-10">
             <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6 sm:p-8">
-              <div className="flex items-center gap-2 text-amber-300 font-semibold">
+              <div className="flex items-center gap-2 text-amber-300 light:text-amber-700 font-semibold">
                 <Lock size={18} />
                 <h2 className="font-display font-bold text-lg">Aguardando cases autorizados</h2>
               </div>
@@ -110,7 +110,7 @@ function CaseCard({ c }: { c: (typeof CASE_STUDIES)[number] }) {
           <p className="mt-1 text-xs text-muted-foreground">{c.anonymized ? "Case anonimizado · " : ""}{c.clientCategory} · {c.period}</p>
         </div>
         {!c.authorized && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300 light:text-amber-700">
             <Lock size={10} /> Sem autorização
           </span>
         )}

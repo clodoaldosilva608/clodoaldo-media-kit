@@ -141,7 +141,7 @@ export function Hero() {
         {/* Text content — left-aligned, globo removido */}
         <div
           ref={textWrapRef}
-          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:pt-20 max-md:max-w-md"
+          className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 w-full will-change-transform max-md:max-w-md"
           style={{ transition: "opacity 0.15s ease-out, transform 0.15s ease-out" }}
         >
           <div className="max-w-xl">
@@ -153,7 +153,7 @@ export function Hero() {
               </span>
             </div>
 
-            <h1 className="mt-5 sm:mt-8 font-display text-[2rem] sm:text-6xl lg:text-[4.5rem] font-medium leading-[1.02] sm:leading-[0.98] tracking-[-0.03em] text-foreground">
+            <h1 className="hero-title mt-4 sm:mt-6 font-display text-[2rem] sm:text-6xl lg:text-[4.25rem] font-medium leading-[1.02] sm:leading-[0.98] tracking-[-0.03em] text-foreground">
               {LINES.map((line, i) => (
                 <span key={line} className="hero-line-mask block">
                   <span style={{ animationDelay: `${200 + i * 150}ms` }}>
@@ -165,11 +165,11 @@ export function Hero() {
               ))}
             </h1>
 
-            <p className="mt-4 sm:mt-6 text-primary font-bold text-base sm:text-lg leading-snug hero-text-reveal" style={{ animationDelay: "500ms" }}>
+            <p className="mt-3 sm:mt-5 text-primary font-bold text-base sm:text-lg leading-snug hero-text-reveal" style={{ animationDelay: "500ms" }}>
               Da primeira ideia ao resultado real.
             </p>
 
-            <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
+            <p className="hero-desc mt-3 max-w-xl text-sm sm:text-lg text-muted-foreground leading-relaxed hero-text-reveal" style={{ animationDelay: "650ms" }}>
               Estratégia, conteúdo e produtos digitais para transformar atenção em resultado.
               Ajudo <strong className="text-foreground">marcas</strong>,{" "}
               <strong className="text-foreground">creators</strong> e{" "}
@@ -177,7 +177,7 @@ export function Hero() {
               comunicarem valor e lançarem experiências digitais — do início ao fim.
             </p>
 
-            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-2 sm:gap-3 hero-text-reveal" style={{ animationDelay: "800ms" }}>
+            <div className="mt-5 sm:mt-7 flex flex-wrap items-center gap-2 sm:gap-3 hero-text-reveal" style={{ animationDelay: "800ms" }}>
               <a href="/quiz" onClick={() => trackEvent("entry_path_selected", { path: "quiz_principal" })}
                 className="group btn-micro inline-flex items-center gap-2 sm:gap-3 rounded-full bg-primary px-5 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-medium text-primary-foreground transition-all hover:opacity-90">
                 <Sparkles size={16} />
@@ -192,7 +192,7 @@ export function Hero() {
             {/* Entry path cards */}
             <div
               ref={cardsRef}
-              className="mt-6 sm:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 max-w-2xl hero-text-reveal"
+              className="mt-5 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 max-w-2xl hero-text-reveal"
               style={{ animationDelay: "950ms", transition: "opacity 0.2s ease-out, transform 0.2s ease-out" }}
             >
               {ENTRY_PATHS.map((path) => {
@@ -215,7 +215,7 @@ export function Hero() {
             </div>
 
             {/* Microprova de autoridade — números reais (Passo 4 do brief de design) */}
-            <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] sm:text-xs text-muted-foreground hero-text-reveal" style={{ animationDelay: "1100ms" }}>
+            <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] sm:text-xs text-muted-foreground hero-text-reveal" style={{ animationDelay: "1100ms" }}>
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Desde 2016
@@ -229,7 +229,7 @@ export function Hero() {
             </div>
           </div>
         </div>
-        <div ref={scrollIndicatorRef} className="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
+        <div ref={scrollIndicatorRef} className="scroll-indicator absolute bottom-4 left-1/2 -translate-x-1/2 z-10 text-muted-foreground/50 text-xs uppercase tracking-[0.2em] animate-bounce">
           Scroll ↓
         </div>
       </div>

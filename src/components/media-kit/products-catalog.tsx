@@ -599,7 +599,7 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-xl">⚡</div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm text-emerald-300">PIX Automático (Asaas)</div>
+                  <div className="font-bold text-sm text-emerald-300 light:text-emerald-700">PIX Automático (Asaas)</div>
                   <div className="text-[11px] text-muted-foreground">QR Code + Copia e Cola — confirmação automática</div>
                 </div>
                 {asaasLoading && <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />}
@@ -610,12 +610,12 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
             {asaasPayment && (
               <div className="space-y-3">
                 {asaasPayment.error ? (
-                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 light:text-rose-700">
                     ⚠ {asaasPayment.error}
                   </div>
                 ) : (
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/[0.06] p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1">✅ PIX gerado — {asaasPayment.value ? 'R$ ' + asaasPayment.value : amountFormatted}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 light:text-emerald-700 mb-1">✅ PIX gerado — {asaasPayment.value ? 'R$ ' + asaasPayment.value : amountFormatted}</div>
                   {asaasPayment.pix_copy_paste && (
                     <>
                       <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1 mt-2">PIX Copia e Cola</div>
@@ -636,7 +636,7 @@ function PixModal({ product, onClose }: { product: Product; onClose: () => void 
                       Abrir página de pagamento →
                     </a>
                   )}
-                  <div className="mt-2 text-[10px] text-emerald-300">
+                  <div className="mt-2 text-[10px] text-emerald-300 light:text-emerald-700">
                     💡 Pagamento confirmado automaticamente. Você receberá email de confirmação.
                   </div>
                 </div>

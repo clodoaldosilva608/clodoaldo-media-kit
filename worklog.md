@@ -3071,3 +3071,59 @@ Stage Summary:
 - 3 novas libs integradas: z-ai-web-dev-sdk (image gen), Gemini (voice + memory + dynamic scripts), pg meucorre (enrichment)
 - Stack: Next.js 16 + React 19 + Supabase + Gemini 3.6 Flash + z-ai-web-dev-sdk
 - Custo mensal estimado: ~$15-20 (Gemini free tier + z-ai ~$0.04/imagem)
+
+---
+Task ID: Modo-Claro-Contraste-Continuacao
+Agent: main (GLM)
+Task: Continuar implementação — auditoria visual completa do modo claro (novo padrão) + correções de contraste e colisão do hero
+
+Work Log:
+- Clonado repositório, instalado deps (bun), criado .env.local dummy (Supabase não disponível localmente — dados dinâmicos com fallback)
+- Dev server subiu OK (HTTP 200) — 6 rotas públicas testadas 200
+- Auditoria visual com agent-browser: 17 seções da home + 8 páginas internas, nos 2 temas (light default + dark)
+
+BUG 1 — Hero colidia com header fixo (desktop):
+- Conteúdo do hero centralizado em h-screen subia por baixo do header transparente
+  (eyebrow em y=43 sob o logo; visível em 1440x900, pior em 1366x768)
+- Correção hero.tsx: espaçamentos verticais reduzidos (~40px), max-md:pt-20 removido,
+  scroll-indicator bottom-8→bottom-4
+- Correção globals.css: @media (min-width:768px) .hero-sticky { pt:96px pb:20px }
+  + @media (max-height:860px) { align-items:flex-start; .hero-desc oculto; título 3rem }
+- Validado em 1440x900 (centralizado, sem colisão) e 1366x768 (top-align, tudo visível)
+- Mobile inalterado (regras próprias já existentes)
+
+BUG 2 — Quiz-CTA texto invisível (light mode):
+- Card dark island (zinc-900/80) com tokens do tema claro dentro (text-foreground, text-muted-foreground)
+- Correção quiz-cta.tsx: container text-zinc-100, parágrafo text-zinc-400, strong text-white, li text-zinc-300
+- Funciona nos 2 temas (dark island legível sempre)
+
+BUG 3 — Funil com Dono: títulos rosa/verde claros fracos (light mode):
+- text-rose-300/text-emerald-300 eram cores de dark mode
+- Criada variante Tailwind custom light (@custom-variant light (&:is(.light *))) no globals.css
+  — nota: o site usa html.light como classe do tema claro; a variante dark: do Tailwind nunca ativa
+- funil-com-dono.tsx: 4 pontos com light:text-rose-700 / light:text-emerald-700
+- BUG 3b descoberto no dark: cards dos 3 pilares usavam bg-white hard-coded (dark:bg-zinc-900 morto)
+  → títulos claros invisíveis sobre branco. Corrigido p/ border-border bg-card (tokens do tema)
+
+BUG 4 — Resultados (cases): "Aguardando cases autorizados" text-amber-300 sobre fundo claro
+- Corrigido com light:text-amber-700 (título + badge "Sem autorização")
+
+BUG 5 — Modal PIX (products-catalog): emerald-300/rose-300 sobre bg branco no light
+- Corrigido com light: variants (4 pontos)
+
+BUG 6 (menor) — Botão "Conhecer minha história" (bio): text-primary suave sobre bg-primary/10
+- Corrigido com light:text-orange-800
+
+Validação:
+- bunx tsc --noEmit: erros APENAS pré-existentes (admin/approvals/scripts — fora do escopo)
+  e nenhum nos arquivos modificados; next.config.ts tem ignoreBuildErrors:true (deploy já funcionava com eles)
+- bun run build: EXIT=0, todas as rotas compiladas
+- Smoke test: 7 rotas HTTP 200
+- Console: único erro = fetch failed do Supabase dummy (esperado no ambiente local)
+
+Stage Summary:
+- ✅ Modo claro auditado por completo (home inteira + 8 páginas, desktop/laptop/mobile)
+- ✅ 6 bugs de contraste/colisão corrigidos nos 2 temas
+- ✅ Variante custom light: disponível pra próximos fixes (dark: do Tailwind é morto neste projeto)
+- ✅ Dark mode validado sem regressões (hero, quiz-cta, funil, method, pricing, biblioteca, footer)
+- ✅ Build verde + smoke tests ok
