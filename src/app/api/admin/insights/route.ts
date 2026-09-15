@@ -203,8 +203,13 @@ export async function GET() {
     if (nichos[0]) insights.push(`🏆 Nicho campeão: "${nichos[0].nome}" — ${nichos[0].reply_rate_pct}% de resposta em ${nichos[0].envios} envios.`);
     if (cidades[0]) insights.push(`📍 Cidade mais responsiva: "${cidades[0].nome}" — ${cidades[0].reply_rate_pct}% de resposta.`);
     if (horarios[0]) {
-      const melhor = [...horarios].sort((a, b) => b.reply_rate_pct - a.reply_rate_pct)[0];
-      insights.push(`⏰ Melhor horário: ${melhor.nome} (${melhor.reply_rate_pct}% de resposta em ${melhor.envios} envios).`);
+      // Só recomenda horário com resposta positiva comprovada (evita 0% em amostras pequenas)
+      const melhorComResposta = [...horarios]
+        .filter((h) => h.respostas > 0)
+        .sort((a, b) => b.reply_rate_pct - a.reply_rate_pct)[0];
+      if (melhorComResposta) {
+        insights.push(`⏰ Melhor horário: ${melhorComResposta.nome} (${melhorComResposta.reply_rate_pct}% de resposta em ${melhorComResposta.envios} envios).`);
+      }
     }
     if (variantes.length > 1) {
       insights.push(`🎯 Variante campeã: "${variantes[0].nome}" — ${variantes[0].reply_rate_pct}% vs ${variantes[1].reply_rate_pct}% da "${variantes[1].nome}".`);
