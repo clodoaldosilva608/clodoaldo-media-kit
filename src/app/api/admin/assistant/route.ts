@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase-server";
+import { predictClose } from "@/lib/close-prediction";
 
 /**
  * POST /api/admin/assistant — IA Assistente da admin (Sprint B)
@@ -194,12 +195,26 @@ async function toolGetFunnelStats() {
   };
 }
 
+/** Predição de fechamento baseada em leads históricos semelhantes (Sprint C) */
+async function toolGetClosePrediction(args: any) {
+  const result = await predictClose(String(args?.lead_id || ""));
+  if ("error" in result) return { error: result.error };
+  return {
+    probabilidade_fechamento_pct: result.probability_pct,
+    confianca: result.confidence,
+    baseada_em: `${result.cohort_size} leads históricos fechados/perdidos`,
+    taxa_base_historica_pct: result.base_rate_pct,
+    fatores: result.factors.map((f) => `[${f.impacto}] ${f.texto}`),
+  };
+}
+
 const TOOLS: Record<string, (args: any) => Promise<any>> = {
   list_leads: toolListLeads,
   get_lead: toolGetLead,
   get_cold_leads: toolGetColdLeads,
   get_hot_leads: toolGetHotLeads,
   get_funnel_stats: toolGetFunnelStats,
+  get_close_prediction: toolGetClosePrediction,
 };
 
 const FUNCTION_DECLARATIONS = [
@@ -239,6 +254,15 @@ const FUNCTION_DECLARATIONS = [
     description: "Estatísticas do funil: contagem e valor por estágio, taxa de conversão, tempo médio sem interação e gargalo principal.",
     parameters: { type: "OBJECT", properties: {} },
   },
+  {
+    name: "get_close_prediction",
+    description: "Predição de fechamento de um lead (probabilidade 0-100) baseada em leads históricos semelhantes, com fatores explicáveis. Use ao perguntarem 'qual a chance de fechar'.",
+    parameters: {
+      type: "OBJECT",
+      properties: { lead_id: { type: "STRING", description: "UUID do lead no crm_leads" } },
+      required: ["lead_id"],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `Você é a IA Assistente do Clodoaldo Silva — um "chief of staff" digital de MONITORAMENTO E PREPARAÇÃO do negócio dele (criação de sites e marketing digital local em Recife/PE).
@@ -261,7 +285,11 @@ ESTILO DE RESPOSTA:
 - Português brasileiro direto e prático, como um analista de vendas sênior.
 - Respostas curtas e escaneáveis: use listas curtas e destaque números importantes.
 - Sempre termine com "Próxima ação sugerida:" quando houver algo a fazer.
-- Não invente dados: se a ferramenta não retornou a informação, diga o que falta e sugira qual consulta supre (ou peça ao Clodoaldo para verificar no CRM).`;
+- Não invente dados: se a ferramenta não retornou a informação, diga o que falta e sugira qual consulta supre (ou peça ao Clodoaldo para verificar no CRM).
+
+SOBRE PREDIÇÃO DE FECHAMENTO:
+- A ferramenta get_close_prediction é estatística (coorte de leads semelhantes), não vidência. Apresente a probabilidade junto dos fatores e da confiança.
+- Com poucos dados históricos, diga com honestidade que a confiança é baixa e que o modelo melhora conforme o funil amadurece.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST — chat com function calling

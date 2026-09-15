@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Widget, Badge, Button, Input, Select, Textarea, EmptyState } from "@/components/admin/ui";
+import { ClosePredictionCard } from "@/components/admin/close-prediction-card";
 import {
   RefreshCw, Trash2, ChevronRight, Phone, Mail, MessageCircle,
   TrendingUp, Filter, X, Sparkles, Calculator, ListChecks, History, Plus, Check, Clock,
@@ -480,6 +481,9 @@ function LeadDetailModal({ lead, onClose, onStageChange, onDelete }: { lead: Lea
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {tab === "info" && (
             <>
+              {/* Predição de fechamento (Sprint C) */}
+              <ClosePredictionCard key={lead.id} leadId={lead.id} />
+
               {/* DEMO + Site Status Section (método Gabriel Miranda) */}
               <div className="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-4 space-y-3">
                 <div className="flex items-center justify-between">

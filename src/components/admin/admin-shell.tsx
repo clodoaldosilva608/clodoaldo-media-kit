@@ -39,6 +39,7 @@ import {
   Package,
   Phone,
   Mic,
+  Lightbulb,
 } from "lucide-react";
 
 interface NavItem {
@@ -63,6 +64,7 @@ const NAV: NavItem[] = [
   { href: "/admin/produtos", label: "Catálogo de Produtos", icon: Package, group: "vendas" },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3, group: "vendas" },
   { href: "/admin/vendas-semana", label: "Vendas da Semana", icon: TrendingUp, group: "vendas" },
+  { href: "/admin/insights", label: "Insights Semanais", icon: Lightbulb, group: "vendas" },
   { href: "/admin/parceiros", label: "Parceiros", icon: Handshake, group: "marketing" },
   { href: "/admin/aprovacoes", label: "Portal de Aprovação", icon: ClipboardCheck, group: "marketing" },
   { href: "/admin/coupons", label: "Cupons", icon: Ticket, group: "marketing" },
