@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, AppWindow, Sparkles, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, AppWindow, Sparkles, Users, X } from "lucide-react";
 import { APPS, APP_CATEGORIES, STATUS_LABEL } from "@/lib/apps-catalog";
 import { useReveal } from "@/hooks/use-reveal";
 import { SectionHeader } from "./metrics";
@@ -12,10 +13,23 @@ const FEATURED = APP_CATEGORIES
   .filter((a): a is (typeof APPS)[number] => Boolean(a))
   .slice(0, 8);
 
+type StatusFilter = "todos" | "lancado" | "construcao";
+
 export function Ecosystem() {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
   const totalApps = APPS.length;
   const launched = APPS.filter((a) => a.status === "lancado").length;
   const inDev = APPS.filter((a) => a.status !== "lancado").length;
+
+  const filteredApps = useMemo(() => {
+    if (statusFilter === "todos") return FEATURED;
+    return APPS.filter((a) =>
+      statusFilter === "lancado" ? a.status === "lancado" : a.status !== "lancado",
+    ).slice(0, 8);
+  }, [statusFilter]);
+
+  const toggleFilter = (f: StatusFilter) =>
+    setStatusFilter((cur) => (cur === f ? "todos" : f));
 
   return (
     <section id="ecossistema" className="py-16 sm:py-20 md:py-28">
@@ -27,10 +41,36 @@ export function Ecosystem() {
           subtitle={`Clodoaldo Silva não é só criador de conteúdo — é desenvolvedor de ${totalApps} aplicativos em 8 categorias, de autoconhecimento a saúde farmacêutica.`}
         />
 
-        <div className="mt-8 sm:mt-10 grid gap-3 sm:gap-4 sm:grid-cols-3">
-          <StatCard label="Apps no ecossistema" value={String(totalApps)} icon={<AppWindow className="text-primary" size={18} />} />
-          <StatCard label="Já disponíveis" value={String(launched)} icon={<Sparkles className="text-primary" size={18} />} />
-          <StatCard label="Em construção" value={String(inDev)} icon={<Users className="text-primary" size={18} />} />
+        <div className="mt-8 sm:mt-10">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Apps no ecossistema"
+              value={String(totalApps)}
+              icon={<AppWindow className="text-primary" size={18} />}
+              active={statusFilter === "todos"}
+              onClick={() => toggleFilter("todos")}
+              hint="Ver vitrine em destaque"
+            />
+            <StatCard
+              label="Já disponíveis"
+              value={String(launched)}
+              icon={<Sparkles className="text-primary" size={18} />}
+              active={statusFilter === "lancado"}
+              onClick={() => toggleFilter("lancado")}
+              hint="Filtrar apps lançados"
+            />
+            <StatCard
+              label="Em construção"
+              value={String(inDev)}
+              icon={<Users className="text-primary" size={18} />}
+              active={statusFilter === "construcao"}
+              onClick={() => toggleFilter("construcao")}
+              hint="Filtrar apps em construção"
+            />
+          </div>
+          <p className="mt-2.5 text-[11px] sm:text-xs text-muted-foreground">
+            Clique nos cartões para filtrar a vitrine por status — clique de novo para limpar.
+          </p>
         </div>
 
         <div className="mt-10 sm:mt-12">
@@ -40,10 +80,30 @@ export function Ecosystem() {
           />
         </div>
 
-        <div className="mt-10 sm:mt-12 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURED.map((app) => (
-            <FeaturedCard key={app.slug} app={app} />
-          ))}
+        <div className="mt-10 sm:mt-12">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-lg sm:text-xl font-black">
+              {statusFilter === "todos"
+                ? "Vitrine em destaque"
+                : statusFilter === "lancado"
+                  ? `Lançados (${launched})`
+                  : `Em construção (${inDev})`}
+            </h3>
+            {statusFilter !== "todos" && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter("todos")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3.5 py-1.5 min-h-9 text-[11px] sm:text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
+              >
+                Limpar filtro <X size={13} />
+              </button>
+            )}
+          </div>
+          <div className="mt-4 sm:mt-6 grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {filteredApps.map((app) => (
+              <FeaturedCard key={app.slug} app={app} />
+            ))}
+          </div>
         </div>
 
         <div className="mt-10 sm:mt-12 rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 to-transparent p-5 sm:p-6 md:p-8">
@@ -94,15 +154,41 @@ export function Ecosystem() {
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  active,
+  onClick,
+  hint,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+  hint?: string;
+}) {
   return (
-    <div className="rounded-3xl border border-border bg-card/60 p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
-      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">{icon}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={hint}
+      className={`text-left rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 transition cursor-pointer ${
+        active
+          ? "border-primary/70 bg-primary/10 ring-2 ring-primary/30"
+          : "border-border bg-card/60 hover:border-primary/40 hover:bg-card"
+      }`}
+    >
+      <div className={`h-10 w-10 sm:h-11 sm:w-11 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-primary/20" : "bg-primary/10"}`}>
+        {icon}
+      </div>
       <div className="min-w-0">
         <div className="font-display text-2xl sm:text-3xl font-black text-gradient-orange break-words">{value}</div>
         <div className="text-[11px] sm:text-xs text-muted-foreground uppercase tracking-wider leading-tight">{label}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -117,7 +203,6 @@ function FeaturedCard({ app }: { app: (typeof APPS)[number] }) {
         href={`/apps#${app.slug}`}
         className={`relative aspect-[16/10] overflow-hidden bg-gradient-to-br ${app.gradient}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={app.coverUrl}
           alt={`Capa de ${app.name}`}
